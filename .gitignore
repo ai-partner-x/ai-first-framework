@@ -21,6 +21,9 @@ dist
 *~
 .DS_Store
 
+# VSCode Local History
+.history
+
 # Testing
 coverage
 .nyc_output
