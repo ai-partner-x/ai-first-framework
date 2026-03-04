@@ -6,5 +6,13 @@ export default defineConfig({
   dts: true,
   clean: true,
   sourcemap: true,
-  external: ['@mikro-orm/core', '@mikro-orm/sqlite', '@mikro-orm/postgresql', '@mikro-orm/mysql'],
+  external: [
+    '@mikro-orm/core',
+    '@mikro-orm/sqlite',
+    '@mikro-orm/postgresql',
+    '@mikro-orm/mysql',
+    'pg',
+    'mysql2',
+    'better-sqlite3',
+  ],
 });
