@@ -78,8 +78,8 @@ export function generateJavaClass(
  */
 function getClassType(parsedClass: ParsedClass): 'entity' | 'repository' | 'service' | 'controller' {
   for (const dec of parsedClass.decorators) {
-    if (dec.name === 'Entity') return 'entity';
-    if (dec.name === 'Repository') return 'repository';
+    if (dec.name === 'Entity' || dec.name === 'TableName') return 'entity';
+    if (dec.name === 'Mapper' || dec.name === 'Repository') return 'repository';
     if (dec.name === 'Service') return 'service';
     if (dec.name === 'RestController') return 'controller';
   }
@@ -109,11 +109,22 @@ function collectImports(parsedClass: ParsedClass, imports: Set<string>, classTyp
       // MyBatis-Plus imports
       imports.add('com.baomidou.mybatisplus.annotation.TableName');
       imports.add('com.baomidou.mybatisplus.annotation.TableId');
+      imports.add('com.baomidou.mybatisplus.annotation.TableField');
       imports.add('com.baomidou.mybatisplus.annotation.IdType');
       // Lombok
       if (options.useLombok) {
         imports.add('lombok.Data');
       }
+      // Check for validation annotations
+      parsedClass.fields.forEach(field => {
+        field.decorators.forEach(dec => {
+          if (['NotNull', 'Required'].includes(dec.name)) imports.add('javax.validation.constraints.NotNull');
+          if (dec.name === 'Email') imports.add('javax.validation.constraints.Email');
+          if (dec.name === 'Min') imports.add('javax.validation.constraints.Min');
+          if (dec.name === 'Max') imports.add('javax.validation.constraints.Max');
+          if (dec.name === 'Size') imports.add('javax.validation.constraints.Size');
+        });
+      });
       break;
     case 'repository':
       imports.add('com.baomidou.mybatisplus.core.mapper.BaseMapper');
@@ -148,9 +159,14 @@ function collectImports(parsedClass: ParsedClass, imports: Set<string>, classTyp
     });
   });
 
-  // Check for injected fields
-  if (parsedClass.constructor && classType !== 'entity' && classType !== 'repository') {
-    imports.add('org.springframework.beans.factory.annotation.Autowired');
+  // Check for injected fields (@Autowired property injection)
+  if (classType !== 'entity' && classType !== 'repository') {
+    const hasAutowired = parsedClass.fields?.some(f => 
+      f.decorators.some(d => d.name === 'Autowired')
+    );
+    if (hasAutowired || parsedClass.constructor) {
+      imports.add('org.springframework.beans.factory.annotation.Autowired');
+    }
   }
 
   // Common imports
@@ -164,17 +180,19 @@ function generateClassAnnotations(parsedClass: ParsedClass, lines: string[], opt
   parsedClass.decorators.forEach(dec => {
     switch (dec.name) {
       case 'Entity':
+      case 'TableName':
         // Lombok annotations
         if (options.useLombok) {
           lines.push('@Data');
         }
         // MyBatis-Plus @TableName
-        if (dec.args.table) {
-          lines.push(`@TableName("${dec.args.table}")`);
+        if (dec.args.tableName || dec.args.table) {
+          lines.push(`@TableName("${dec.args.tableName || dec.args.table}")`);
         } else {
           lines.push('@TableName');
         }
         break;
+      case 'Mapper':
       case 'Repository':
         lines.push('@Mapper');
         break;
@@ -200,20 +218,27 @@ function generateEntityFields(parsedClass: ParsedClass, lines: string[]): void {
   parsedClass.fields.forEach(field => {
     const javaType = mapType(field.type);
     
-    // Check for primary key
-    const dbField = field.decorators.find(d => d.name === 'DbField');
-    if (dbField?.args.primaryKey) {
-      lines.push('    @TableId(type = IdType.AUTO)');
+    // Check for @TableId (primary key)
+    const tableId = field.decorators.find(d => d.name === 'TableId');
+    if (tableId) {
+      const idType = tableId.args.type || 'AUTO';
+      lines.push(`    @TableId(type = IdType.${idType})`);
     }
 
-    // Check for validation
-    const validation = field.decorators.find(d => d.name === 'Validation');
-    if (validation) {
-      if (validation.args.required) lines.push('    @NotNull');
-      if (validation.args.email) lines.push('    @Email');
-      if (validation.args.min) lines.push(`    @Min(${validation.args.min})`);
-      if (validation.args.max) lines.push(`    @Max(${validation.args.max})`);
+    // Check for @TableField (column mapping)
+    const tableField = field.decorators.find(d => d.name === 'TableField' || d.name === 'Column');
+    if (tableField?.args.column && tableField.args.column !== field.name) {
+      lines.push(`    @TableField("${tableField.args.column}")`);
     }
+
+    // Check for validation decorators
+    field.decorators.forEach(dec => {
+      if (dec.name === 'NotNull' || dec.name === 'Required') lines.push('    @NotNull');
+      if (dec.name === 'Email') lines.push('    @Email');
+      if (dec.name === 'Min') lines.push(`    @Min(${dec.args.value || dec.args.arg0})`);
+      if (dec.name === 'Max') lines.push(`    @Max(${dec.args.value || dec.args.arg0})`);
+      if (dec.name === 'Size') lines.push(`    @Size(min = ${dec.args.min || 0}, max = ${dec.args.max || 255})`);
+    });
 
     lines.push(`    private ${javaType} ${field.name};`);
     lines.push('');
@@ -222,13 +247,26 @@ function generateEntityFields(parsedClass: ParsedClass, lines: string[]): void {
 
 /**
  * Generate injected fields for Services/Controllers
+ * Supports both constructor injection and @Autowired property injection
  */
 function generateInjectedFields(parsedClass: ParsedClass, lines: string[]): void {
+  // 1. From constructor parameters (legacy style)
   parsedClass.constructor?.parameters.forEach(param => {
     const javaType = mapType(param.type);
     lines.push('    @Autowired');
     lines.push(`    private ${javaType} ${param.name};`);
     lines.push('');
+  });
+
+  // 2. From @Autowired property decorators (Spring Boot style)
+  parsedClass.fields.forEach(field => {
+    const autowired = field.decorators.find(d => d.name === 'Autowired');
+    if (autowired) {
+      const javaType = mapType(field.type);
+      lines.push('    @Autowired');
+      lines.push(`    private ${javaType} ${field.name};`);
+      lines.push('');
+    }
   });
 }
 

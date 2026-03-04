@@ -1,0 +1,19 @@
+{
+  "name": "user-crud-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "dev:api": "pnpm -F @user-crud/api dev",
+    "dev:admin": "pnpm -F @user-crud/admin dev",
+    "dev:mobile": "pnpm -F @user-crud/mall-mobile dev",
+    "build": "pnpm -r build",
+    "build:api": "pnpm -F @user-crud/api build",
+    "build:admin": "pnpm -F @user-crud/admin build",
+    "start:api": "pnpm -F @user-crud/api start",
+    "lint": "pnpm -r lint"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}
