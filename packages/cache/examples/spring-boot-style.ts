@@ -1,7 +1,7 @@
 /**
  * Redis Spring Boot 风格使用示例
  *
- * 展示 @ai-first/redis 的基本用法，对标 Spring Boot Redis 风格
+ * 展示 @ai-first/cache 的基本用法，对标 Spring Boot Redis 风格
  *
  * 注意：本示例需要运行中的 Redis 实例（默认 localhost:6379）
  * 实际运行: node --experimental-specifier-resolution=node examples/spring-boot-style.mjs
@@ -90,7 +90,7 @@ class UserCacheService {
 // ==================== 主示例 ====================
 
 async function main() {
-  console.log('=== @ai-first/redis Spring Boot 风格示例 ===\n');
+  console.log('=== @ai-first/cache Spring Boot 风格示例 ===\n');
 
   // 1. 创建 Redis 连接（类比 Spring Boot application.properties 中的 redis 配置）
   console.log('--- 初始化 Redis 连接 ---');

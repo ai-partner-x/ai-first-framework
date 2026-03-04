@@ -1,5 +1,5 @@
 /**
- * @ai-first/redis
+ * @ai-first/cache
  *
  * Redis framework with Spring Boot compatible decorators
  */

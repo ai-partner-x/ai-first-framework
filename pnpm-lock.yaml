@@ -177,6 +177,28 @@ importers:
         specifier: ^5.3.0
         version: 5.9.3
 
+  packages/cache:
+    dependencies:
+      '@ai-first/di':
+        specifier: workspace:*
+        version: link:../di
+      ioredis:
+        specifier: ^5.4.2
+        version: 5.10.0
+      reflect-metadata:
+        specifier: ^0.2.1
+        version: 0.2.2
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.0
+        version: 20.19.35
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
+
   packages/codegen:
     dependencies:
       typescript:
@@ -311,28 +333,6 @@ importers:
       pg:
         specifier: ^8.13.0
         version: 8.19.0
-      tsup:
-        specifier: ^8.0.0
-        version: 8.5.1(jiti@2.6.1)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)
-      typescript:
-        specifier: ^5.3.0
-        version: 5.9.3
-
-  packages/redis:
-    dependencies:
-      '@ai-first/di':
-        specifier: workspace:*
-        version: link:../di
-      ioredis:
-        specifier: ^5.4.2
-        version: 5.10.0
-      reflect-metadata:
-        specifier: ^0.2.1
-        version: 0.2.2
-    devDependencies:
-      '@types/node':
-        specifier: ^20.11.0
-        version: 20.19.35
       tsup:
         specifier: ^8.0.0
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)
@@ -5158,7 +5158,7 @@ snapshots:
 
   '@types/pg@8.18.0':
     dependencies:
-      '@types/node': 20.19.35
+      '@types/node': 24.11.0
       pg-protocol: 1.12.0
       pg-types: 2.2.0
 
