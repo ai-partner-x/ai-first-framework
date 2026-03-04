@@ -1,0 +1,41 @@
+{
+  "name": "@ai-first/redis",
+  "version": "0.1.0",
+  "description": "AI-First Framework - Redis with Spring Boot compatible decorators",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@ai-first/di": "workspace:*",
+    "ioredis": "^5.4.2",
+    "reflect-metadata": "^0.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0"
+  },
+  "keywords": [
+    "ai-first",
+    "redis",
+    "spring-boot",
+    "cache",
+    "decorator",
+    "typescript"
+  ]
+}
