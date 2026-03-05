@@ -31,25 +31,25 @@
 pnpm add @ai-first/cache
 ```
 
+### 方式一：@Service / @Component + @Cacheable（推荐）
+
+使用通用 DI 装饰器作为类装饰器，方法上使用 `@Cacheable` 等缓存注解。  
+**当方法带有 `@Cacheable`/`@CachePut`/`@CacheEvict` 时，类会被自动识别为缓存组件。**
+
 ```typescript
 import 'reflect-metadata';
-import { createRedisConnection, RedisTemplate, RedisComponent, Cacheable, Autowired } from '@ai-first/cache';
-import { Container } from '@ai-first/di';
+import { Cacheable, CachePut, CacheEvict, Autowired } from '@ai-first/cache';
 import { Service } from '@ai-first/core';
+import { Container } from '@ai-first/di';
 
-// 1. 建立 Redis 连接（对应 application.properties: spring.data.redis.*）
-const client = createRedisConnection({ host: 'localhost', port: 6379 });
-
-// 2. 创建 RedisTemplate（对应 @Autowired RedisTemplate）
-const redisTemplate = new RedisTemplate<string, unknown>({ client });
-
-// 3. @RedisComponent 自动注册到 DI 容器，支持 @Autowired 注入
 @Service()
 class UserRepository {
   findById(id: number): User { return db.findUser(id); }
 }
 
-@RedisComponent()
+// @Service 作为类装饰器，无需 @RedisComponent
+// 方法带有 @Cacheable，类被自动识别为缓存组件（等同于 @RedisComponent）
+@Service()
 class UserCacheService {
   @Autowired()
   private userRepository!: UserRepository;  // DI 自动注入
@@ -58,9 +58,42 @@ class UserCacheService {
   async getUserById(id: number): Promise<User> {
     return this.userRepository.findById(id);
   }
+
+  @CachePut({ key: 'user', ttl: 300 })
+  async updateUser(id: number, user: User): Promise<User> {
+    return this.userRepository.save(user);
+  }
+
+  @CacheEvict({ key: 'user' })
+  async deleteUser(id: number): Promise<void> {
+    await this.userRepository.delete(id);
+  }
 }
 
-// 4. 通过 DI 容器解析（等同于 Java @Autowired）
+// 通过 DI 容器解析（等同于 Java @Autowired）
+const userService = Container.resolve(UserCacheService);
+```
+
+### 方式二：@RedisComponent（专用缓存组件装饰器）
+
+语义上更明确，表达"这个类是 Redis 缓存组件"。与方式一完全等价。
+
+```typescript
+import 'reflect-metadata';
+import { RedisComponent, Cacheable, Autowired } from '@ai-first/cache';
+import { Container } from '@ai-first/di';
+
+@RedisComponent()
+class UserCacheService {
+  @Autowired()
+  private userRepository!: UserRepository;
+
+  @Cacheable({ key: 'user', ttl: 300 })
+  async getUserById(id: number): Promise<User> {
+    return this.userRepository.findById(id);
+  }
+}
+
 const userService = Container.resolve(UserCacheService);
 ```
 
@@ -111,30 +144,41 @@ await closeRedisConnection();
 
 ## Cache 装饰器
 
-### @RedisComponent
+### 两种类级装饰器（等价）
 
-标记该类为 Redis 缓存组件，等同于 `@Service` / `@Component` 的完整 DI 行为：
+#### 方式一：@Service / @Component（推荐）
 
-- **自动注册到 DI 容器**（Injectable + Singleton），可被其他服务通过 `@Autowired` 注入
-- **支持构造函数注入**（constructor injection）
-- **支持 `@Autowired` 属性注入**（通过 DI 容器自动管理依赖）
-- **未初始化 Redis 时自动降级**，缓存方法直接调用原始实现
+使用通用 DI 装饰器作为类装饰器。方法上有 `@Cacheable`/`@CachePut`/`@CacheEvict` 时，类**自动被识别为缓存组件**，无需显式添加 `@RedisComponent`。
 
 ```typescript
-import { RedisComponent, Autowired, Cacheable, CacheEvict } from '@ai-first/cache';
-import { Container } from '@ai-first/di';
-import { Service } from '@ai-first/core';
+import { Service } from '@ai-first/core';          // 通用 DI 装饰器
+import { Cacheable, CachePut, CacheEvict, Autowired } from '@ai-first/cache';
 
-// 被注入的依赖（用 @Service 注册）
-@Service()
-class UserRepository {
-  findById(id: number): User { return db.findUser(id); }
+// @Service 作为类装饰器，等同于 Java:
+// @Service
+// public class UserCacheService { ... }
+@Service({ name: 'UserCacheService' })
+class UserCacheService {
+  @Autowired()
+  private userRepository!: UserRepository;
+
+  // 有 @Cacheable → 类被自动识别为缓存组件
+  @Cacheable({ key: 'user', ttl: 300 })
+  async getUserById(id: number): Promise<User | null> {
+    return this.userRepository.findById(id);
+  }
 }
+```
 
-// @RedisComponent：等同于 @Service + 缓存语义
+#### 方式二：@RedisComponent（专用装饰器）
+
+与方式一完全等价，语义上更明确地标记"这是 Redis 缓存组件"。
+
+```typescript
+import { RedisComponent, Cacheable, Autowired } from '@ai-first/cache';
+
 @RedisComponent({ name: 'UserCacheService' })
 class UserCacheService {
-  // @Autowired 属性注入，由 DI 容器自动处理
   @Autowired()
   private userRepository!: UserRepository;
 
@@ -143,21 +187,33 @@ class UserCacheService {
     return this.userRepository.findById(id);
   }
 }
+```
 
-// 方式一：通过 DI 容器解析（@Autowired 依赖自动注入）
+两种方式都支持：
+- **自动注册到 DI 容器**（Injectable + Singleton），可被其他服务通过 `@Autowired` 注入
+- **支持构造函数注入**（constructor injection）
+- **支持 `@Autowired` 属性注入**（通过 DI 容器自动管理依赖）
+- **未初始化 Redis 时自动降级**，缓存方法直接调用原始实现
+- `getRedisComponentMetadata()` 返回有效元数据
+
+```typescript
+// 通过 DI 容器解析（两种方式均有效）
 const svc = Container.resolve(UserCacheService);
 
-// 方式二：在另一个 @Service 中注入
+// 在另一个 @Service 中注入（两种方式均有效）
 @Service()
 class UserService {
   @Autowired()
-  private cacheService!: UserCacheService;  // DI 自动注入
+  private cacheService!: UserCacheService;
 }
 
-// 读取元数据
+// 读取元数据（两种方式均返回有效数据）
 const meta = getRedisComponentMetadata(UserCacheService);
-// { name: 'UserCacheService', className: 'UserCacheService' }
+// 方式一（@Service + @Cacheable）: { className: 'UserCacheService' }
+// 方式二（@RedisComponent）:        { name: 'UserCacheService', className: 'UserCacheService' }
 ```
+
+### @RedisComponent 选项
 
 | 选项 | 类型 | 说明 |
 |------|------|------|

@@ -233,24 +233,28 @@ const adapter = new PostgresAdapter<User>({
 ## @ai-first/cache
 
 **路径：** `packages/cache/`  
-**描述：** 缓存框架，提供 Spring Boot Cache 风格装饰器（`@Cacheable`、`@CachePut`、`@CacheEvict`）与 Spring Data Redis 风格的 `RedisTemplate<K, V>`，底层基于 ioredis。`@RedisComponent` 已集成 DI 容器，等同于 `@Service` + 缓存语义。
+**描述：** 缓存框架，提供 Spring Boot Cache 风格装饰器（`@Cacheable`、`@CachePut`、`@CacheEvict`）与 Spring Data Redis 风格的 `RedisTemplate<K, V>`，底层基于 ioredis。支持两种类级装饰器风格，与 Spring Boot 写法一致。
 
 ### 装饰器
 
-#### @RedisComponent（含 DI 集成）
+#### 两种类级装饰器（等价）
 
-`@RedisComponent` 自动注册到 DI 容器（Injectable + Singleton），支持 `@Autowired` 属性注入，行为与 `@Service` / `@Component` 完全一致。
+**推荐：直接使用 `@Service` / `@Component`（通用 DI 装饰器）**
+
+当方法带有 `@Cacheable`/`@CachePut`/`@CacheEvict` 时，类**自动被识别为缓存组件**：
 
 ```typescript
-import { RedisComponent, Autowired, Cacheable, CachePut, CacheEvict } from '@ai-first/cache';
+import { Service } from '@ai-first/core';
+import { Cacheable, CachePut, CacheEvict, Autowired } from '@ai-first/cache';
 import { Container } from '@ai-first/di';
 
-@RedisComponent({ name: 'UserCacheService' })
+// @Service 作为类装饰器 — 等同于 Java @Service
+@Service({ name: 'UserCacheService' })
 export class UserCacheService {
   @Autowired()
   private userRepository!: UserRepository;  // DI 自动注入
 
-  @Cacheable({ key: 'user', ttl: 300 })
+  @Cacheable({ key: 'user', ttl: 300 })     // 触发自动识别为缓存组件
   async getUserById(id: number): Promise<User> { return this.userRepository.findById(id); }
 
   @CachePut({ key: 'user', ttl: 300, keyGenerator: (id) => String(id) })
@@ -259,13 +263,26 @@ export class UserCacheService {
   @CacheEvict({ key: 'user' })
   async deleteUser(id: number): Promise<void> { await this.userRepository.remove(id); }
 
-  // 清除所有以 'user::' 开头的缓存
   @CacheEvict({ key: 'user', allEntries: true })
   async clearAll(): Promise<void> { ... }
 }
 
-// 通过 DI 容器解析（@Autowired 依赖自动注入）
 const svc = Container.resolve(UserCacheService);
+```
+
+**或者使用 `@RedisComponent`（专用缓存组件装饰器，语义更明确）：**
+
+```typescript
+import { RedisComponent, Cacheable, Autowired } from '@ai-first/cache';
+
+@RedisComponent({ name: 'UserCacheService' })
+export class UserCacheService {
+  @Autowired()
+  private userRepository!: UserRepository;
+
+  @Cacheable({ key: 'user', ttl: 300 })
+  async getUserById(id: number): Promise<User> { return this.userRepository.findById(id); }
+}
 ```
 
 ### RedisTemplate\<K, V\>

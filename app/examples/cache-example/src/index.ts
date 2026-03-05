@@ -1,9 +1,11 @@
 /**
  * Cache Example - 入口
  *
- * 演示 @ai-first/cache 在应用层的用法：
- * 1. @RedisComponent + @Autowired — DI 容器自动注入依赖（无需 Redis 可自动降级）
- * 2. RedisTemplate 直接操作（需要 Redis 实例）
+ * 演示 @ai-first/cache 与通用 DI 装饰器的结合用法：
+ * 1. @Service + @Cacheable/@CachePut/@CacheEvict — 使用通用 DI 装饰器标记缓存服务
+ *    （类方法带有缓存注解时，类被自动识别为缓存组件，无需 @RedisComponent）
+ * 2. @Autowired — DI 容器自动注入依赖（无需 Redis 可自动降级）
+ * 3. RedisTemplate 直接操作（需要 Redis 实例）
  *
  * 运行：
  *   # 无 Redis（装饰器自动降级）
@@ -45,19 +47,28 @@ async function main() {
     console.log('--- 未配置 REDIS_HOST，跳过 Redis 连接（装饰器自动降级）---\n');
   }
 
+  // ==================== 自动识别为缓存组件 ====================
+  //
+  // UserCacheService 使用 @Service 作为类装饰器（而非 @RedisComponent），
+  // 但因为方法带有 @Cacheable/@CachePut/@CacheEvict，类被自动标记为缓存组件。
+  // getRedisComponentMetadata() 仍然返回有效的元数据。
+  //
+  // 对应 Java: @Service 类有 @Cacheable 方法时，Spring 自动启用缓存代理
+
+  console.log('--- 自动识别为缓存组件（@Service + @Cacheable 方法）---');
+  const meta = getRedisComponentMetadata(UserCacheService);
+  console.log('  getRedisComponentMetadata():', meta);
+  console.log('  （类使用 @Service 装饰，但因方法有 @Cacheable，被自动标记为缓存组件）');
+  console.log('');
+
   // ==================== DI 容器解析 ====================
   //
-  // @RedisComponent 已自动注册为 DI 单例（Injectable + Singleton）
+  // @Service 已自动注册为 DI 单例（Injectable + Singleton）
   // 通过 Container.resolve() 获取，@Autowired 依赖由 DI 自动注入
   //
   // 对应 Java: @Autowired UserCacheService userCacheService;
 
-  console.log('--- RedisComponent 元数据 ---');
-  const meta = getRedisComponentMetadata(UserCacheService);
-  console.log('  Metadata:', meta);
-  console.log('');
-
-  console.log('--- DI 容器解析（@RedisComponent 已注册为单例）---');
+  console.log('--- DI 容器解析（@Service 已注册为单例）---');
   const userService = Container.resolve(UserCacheService);
   console.log('  resolved:', userService.constructor.name);
   // 通过实际调用来验证 @Autowired 注入是否成功（如果 userRepository 未注入，调用会抛出异常）
