@@ -15,6 +15,7 @@
 
 | 概念 | TypeScript（AI-First） | Java（Spring Boot） |
 |------|----------------------|---------------------|
+| 开启缓存功能（启动验证） | `@EnableCaching(config)` + `initializeCaching()` | `@EnableCaching` + `spring.data.redis.*` |
 | 缓存组件标记（含 DI 注册） | `@Service()` | `@Service` / `@Repository` |
 | 属性注入 | `@Autowired()` | `@Autowired` |
 | 读通缓存 | `@Cacheable` | `@Cacheable` |
@@ -66,6 +67,90 @@ class UserCacheService {
 
 // 通过 DI 容器解析（等同于 Java @Autowired）
 const userService = Container.resolve(UserCacheService);
+```
+
+---
+
+## @EnableCaching — 开启缓存功能（启动验证）
+
+对标 Spring Boot 的 `@EnableCaching` + `spring.data.redis.*` 配置，  
+将 Redis 配置绑定到应用配置类，并在启动时验证连接可用性。
+
+### 用法
+
+```typescript
+import { EnableCaching, initializeCaching, CacheInitializationError } from '@ai-first/cache';
+import { Service } from '@ai-first/core';
+import { Container } from '@ai-first/di';
+
+// Step 1: 将 Redis 配置绑定到应用配置类（纯声明，无网络副作用）
+// 对应 Java: @SpringBootApplication @EnableCaching + application.properties
+@EnableCaching({
+  host: process.env.REDIS_HOST ?? '127.0.0.1',
+  port: Number(process.env.REDIS_PORT ?? 6379),
+  password: process.env.REDIS_PASSWORD,
+})
+class AppConfig {}
+
+// Step 2: 在异步启动函数中验证连接（失败则阻止启动）
+// 对应 Java: SpringApplication.run() → CacheManager bean 初始化
+async function main() {
+  try {
+    await initializeCaching();
+    console.log('缓存连接就绪');
+  } catch (e) {
+    if (e instanceof CacheInitializationError) {
+      console.error('启动失败：', e.message);
+      process.exit(1);  // 连接失败时终止应用
+    }
+    throw e;
+  }
+
+  // 缓存初始化成功，正常启动应用
+  const userService = Container.resolve(UserCacheService);
+  await userService.getUserById(1);  // 命中 Redis 缓存
+}
+```
+
+### 验证流程
+
+`initializeCaching()` 的内部流程：
+
+1. **检查 `@EnableCaching` 是否已应用** — 若未应用，抛出 `CacheInitializationError`
+2. **检查 Redis 配置是否存在** — 若配置为空，抛出 `CacheInitializationError`
+3. **创建短连接验证客户端**（`maxRetriesPerRequest: 0`，不重试） — 发送 `PING` 验证连通性
+4. **验证成功** → 建立生产用持久连接，`@Cacheable`/`@CachePut`/`@CacheEvict` 开始生效
+5. **验证失败** → 抛出 `CacheInitializationError`，错误信息包含 Redis 地址和原始错误
+
+### `@EnableCaching` 选项
+
+接受与 `createRedisConnection()` 相同的 `RedisConfig` 配置：
+
+| 选项（单机） | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `host` | `string` | `'127.0.0.1'` | Redis 主机 |
+| `port` | `number` | `6379` | Redis 端口 |
+| `password` | `string` | — | 认证密码 |
+| `database` | `number` | `0` | 数据库索引 |
+| `tls` | `boolean` | `false` | 启用 TLS |
+
+同样支持 Sentinel 和 Cluster 模式（参见 [连接配置](#连接配置)）。
+
+### 不使用 `@EnableCaching` 时的行为（自动降级）
+
+不调用 `@EnableCaching` 时，`@Cacheable`/`@CachePut`/`@CacheEvict` 会检测到 Redis 未初始化，  
+**自动降级为直接调用原方法**，不访问 Redis，适合开发/测试环境：
+
+```typescript
+// 无 @EnableCaching，无 initializeCaching() 调用
+// → @Cacheable 等装饰器检测到 Redis 未初始化，直接调用原方法（不缓存）
+@Service()
+class UserCacheService {
+  @Cacheable({ key: 'user', ttl: 300 })
+  async getUserById(id: number): Promise<User | null> {
+    return db.findUser(id);  // 始终执行，不走缓存
+  }
+}
 ```
 
 ---

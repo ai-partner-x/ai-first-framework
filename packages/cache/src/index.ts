@@ -39,6 +39,15 @@ export {
   type CacheKeyGenerator,
 } from './decorators.js';
 
+// Enable Caching — @EnableCaching + initializeCaching() startup validation
+export {
+  EnableCaching,
+  initializeCaching,
+  isCachingEnabled,
+  CacheInitializationError,
+  ENABLE_CACHING_METADATA,
+} from './enable-caching.js';
+
 // DI convenience re-exports — 配合 @Autowired 属性注入使用
 export { Autowired } from '@ai-first/di/server';
 

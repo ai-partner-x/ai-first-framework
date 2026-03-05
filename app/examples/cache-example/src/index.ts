@@ -1,22 +1,29 @@
 /**
  * Cache Example - 入口
  *
- * 演示 @ai-first/cache 与通用 DI 装饰器的结合用法：
- * 1. @Service + @Cacheable/@CachePut/@CacheEvict — 使用通用 DI 装饰器标记缓存服务
- * 2. @Autowired — DI 容器自动注入依赖（无需 Redis 可自动降级）
- * 3. RedisTemplate 直接操作（需要 Redis 实例）
+ * 演示 @ai-first/cache 的两种启动模式：
+ *
+ * 模式一（REDIS_HOST 已配置）：@EnableCaching + initializeCaching()
+ *   - @EnableCaching 将 Redis 配置绑定到应用配置类（纯声明，无副作用）
+ *   - initializeCaching() 在启动时创建连接并验证（PING）；失败则抛出 CacheInitializationError
+ *   - 对应 Spring Boot: @EnableCaching + spring.data.redis.* 配置项
+ *
+ * 模式二（REDIS_HOST 未配置）：无 @EnableCaching，缓存装饰器自动降级
+ *   - @Cacheable/@CachePut/@CacheEvict 直接调用原方法，不访问 Redis
  *
  * 运行：
  *   # 无 Redis（装饰器自动降级）
  *   pnpm start
  *
- *   # 有 Redis
+ *   # 有 Redis（启用 @EnableCaching 严格模式）
  *   REDIS_HOST=127.0.0.1 REDIS_PORT=6379 pnpm start
  */
 
 import 'reflect-metadata';
 import {
-  createRedisConnection,
+  EnableCaching,
+  initializeCaching,
+  CacheInitializationError,
   closeRedisConnection,
   RedisTemplate,
   StringRedisTemplate,
@@ -27,22 +34,58 @@ import { UserCacheService } from './service/user.cache.service.js';
 const REDIS_HOST = process.env.REDIS_HOST;
 const REDIS_PORT = process.env.REDIS_PORT ? Number(process.env.REDIS_PORT) : 6379;
 
+// ==================== @EnableCaching（应用配置类）====================
+//
+// 在实际应用中，通常在顶层用装饰器语法：
+//
+//   @EnableCaching({
+//     host: process.env.REDIS_HOST ?? '127.0.0.1',
+//     port: Number(process.env.REDIS_PORT ?? 6379),
+//   })
+//   class AppConfig {}
+//
+//   async function main() {
+//     await initializeCaching();  // 失败则抛出 CacheInitializationError
+//   }
+//
+// 本示例为演示两种模式，仅在 REDIS_HOST 配置时才启用 @EnableCaching。
+// EnableCaching(config)(Class) 等价于 @EnableCaching(config) class Class {}
+
+class AppConfig {}
+
 async function main() {
   console.log('=== @app/cache-example ===\n');
 
-  // ==================== Redis 连接（可选）====================
-
-  let redisTemplate: RedisTemplate<string, unknown> | null = null;
-  let stringTemplate: StringRedisTemplate | null = null;
+  // ==================== 启动验证（@EnableCaching 模式）====================
+  //
+  // @EnableCaching 将 Redis 配置绑定到 AppConfig（纯声明，无网络副作用）。
+  // initializeCaching() 创建 Redis 连接并发送 PING 验证：
+  //   - 成功 → 缓存就绪，继续启动
+  //   - 失败 → 抛出 CacheInitializationError（生产环境应在此 process.exit(1)）
+  //
+  // 对应 Spring Boot: ApplicationContext 启动时的 CacheManager bean 初始化检查
 
   if (REDIS_HOST) {
-    console.log(`--- 连接 Redis: ${REDIS_HOST}:${REDIS_PORT} ---`);
-    const client = createRedisConnection({ host: REDIS_HOST, port: REDIS_PORT });
-    redisTemplate = new RedisTemplate<string, unknown>({ client });
-    stringTemplate = new StringRedisTemplate({ client });
-    console.log('  Redis 连接成功\n');
+    console.log(`--- @EnableCaching 模式：连接 Redis ${REDIS_HOST}:${REDIS_PORT} ---`);
+
+    // 等价于在 AppConfig 类上添加 @EnableCaching({ host, port }) 装饰器
+    EnableCaching({ host: REDIS_HOST, port: REDIS_PORT })(AppConfig);
+
+    try {
+      await initializeCaching();
+      console.log('  ✅ Redis 连接验证成功，缓存已就绪\n');
+    } catch (e) {
+      if (e instanceof CacheInitializationError) {
+        // 生产环境应在此处终止应用: process.exit(1)
+        console.error('  ❌ 缓存初始化失败（启动阶段）：', e.message);
+        console.error('  → 生产环境应在此处终止应用启动（process.exit(1)）\n');
+        return;
+      }
+      throw e;
+    }
   } else {
-    console.log('--- 未配置 REDIS_HOST，跳过 Redis 连接（装饰器自动降级）---\n');
+    console.log('--- 未配置 REDIS_HOST：跳过 @EnableCaching，缓存装饰器自动降级 ---');
+    console.log('  提示：设置 REDIS_HOST=127.0.0.1 可开启 @EnableCaching 严格模式\n');
   }
 
   // ==================== DI 容器解析 ====================
@@ -55,7 +98,6 @@ async function main() {
   console.log('--- DI 容器解析（@Service 已注册为单例）---');
   const userService = Container.resolve(UserCacheService);
   console.log('  resolved:', userService.constructor.name);
-  // 通过实际调用来验证 @Autowired 注入是否成功（如果 userRepository 未注入，调用会抛出异常）
   const testUser = await userService.getUserById(999);
   console.log('  @Autowired UserRepository 注入验证（id=999 查询返回 null）:', testUser === null);
   console.log('');
@@ -102,7 +144,12 @@ async function main() {
 
   // ==================== RedisTemplate 直接操作（需要 Redis）====================
 
-  if (redisTemplate && stringTemplate) {
+  if (REDIS_HOST) {
+    const { getRedisClient } = await import('@ai-first/cache');
+    const client = getRedisClient();
+    const redisTemplate = new RedisTemplate<string, unknown>({ client });
+    const stringTemplate = new StringRedisTemplate({ client });
+
     console.log('--- RedisTemplate: opsForValue ---');
     const valueOps = redisTemplate.opsForValue();
     await valueOps.set('app:version', '1.0.0', 3600);
@@ -116,26 +163,15 @@ async function main() {
     console.log('  app:counter (after 2 increments):', counter);
     console.log('');
 
-    console.log('--- RedisTemplate: opsForHash ---');
-    const hashOps = redisTemplate.opsForHash<string, string>();
-    await hashOps.put('session:abc123', 'userId', '1');
-    await hashOps.put('session:abc123', 'role', 'admin');
-    const sessionEntries = await hashOps.entries('session:abc123');
-    console.log('  session:abc123:', Object.fromEntries(sessionEntries));
-    console.log('');
-
-    console.log('--- RedisTemplate: opsForZSet (排行榜) ---');
-    const zsetOps = redisTemplate.opsForZSet();
-    await zsetOps.add('score:board', 'user:1', 1500);
-    await zsetOps.add('score:board', 'user:2', 2300);
-    await zsetOps.add('score:board', 'user:3', 1800);
-    const top3 = await zsetOps.reverseRangeWithScores('score:board', 0, 2);
-    console.log('  Top 3:', top3);
+    console.log('--- StringRedisTemplate ---');
+    await stringTemplate.opsForValue().set('str:hello', 'world', 60);
+    const hello = await stringTemplate.opsForValue().get('str:hello');
+    console.log('  str:hello:', hello);
     console.log('');
 
     // 清理测试数据
     console.log('--- 清理测试数据 ---');
-    await redisTemplate.delete(['app:version', 'app:counter', 'session:abc123', 'score:board']);
+    await redisTemplate.delete(['app:version', 'app:counter', 'str:hello']);
     console.log('  done');
     console.log('');
 
