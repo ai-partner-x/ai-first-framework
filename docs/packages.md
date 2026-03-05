@@ -233,36 +233,39 @@ const adapter = new PostgresAdapter<User>({
 ## @ai-first/cache
 
 **路径：** `packages/cache/`  
-**描述：** 缓存框架，提供 Spring Boot Cache 风格装饰器（`@Cacheable`、`@CachePut`、`@CacheEvict`）与 Spring Data Redis 风格的 `RedisTemplate<K, V>`，底层基于 ioredis。
+**描述：** 缓存框架，提供 Spring Boot Cache 风格装饰器（`@Cacheable`、`@CachePut`、`@CacheEvict`）与 Spring Data Redis 风格的 `RedisTemplate<K, V>`，底层基于 ioredis。`@RedisComponent` 已集成 DI 容器，等同于 `@Service` + 缓存语义。
 
 ### 装饰器
 
-#### @RedisComponent
+#### @RedisComponent（含 DI 集成）
+
+`@RedisComponent` 自动注册到 DI 容器（Injectable + Singleton），支持 `@Autowired` 属性注入，行为与 `@Service` / `@Component` 完全一致。
 
 ```typescript
-import { RedisComponent, getRedisComponentMetadata } from '@ai-first/cache';
+import { RedisComponent, Autowired, Cacheable, CachePut, CacheEvict } from '@ai-first/cache';
+import { Container } from '@ai-first/di';
 
 @RedisComponent({ name: 'UserCacheService' })
-export class UserCacheService { ... }
-```
+export class UserCacheService {
+  @Autowired()
+  private userRepository!: UserRepository;  // DI 自动注入
 
-#### @Cacheable / @CachePut / @CacheEvict
+  @Cacheable({ key: 'user', ttl: 300 })
+  async getUserById(id: number): Promise<User> { return this.userRepository.findById(id); }
 
-```typescript
-import { Cacheable, CachePut, CacheEvict } from '@ai-first/cache';
+  @CachePut({ key: 'user', ttl: 300, keyGenerator: (id) => String(id) })
+  async updateUser(id: number, user: User): Promise<User> { return this.userRepository.save(user); }
 
-@Cacheable({ key: 'user', ttl: 300 })
-async getUserById(id: number): Promise<User> { return db.findUser(id); }
+  @CacheEvict({ key: 'user' })
+  async deleteUser(id: number): Promise<void> { await this.userRepository.remove(id); }
 
-@CachePut({ key: 'user', ttl: 300, keyGenerator: (id) => String(id) })
-async updateUser(id: number, user: User): Promise<User> { return db.updateUser(id, user); }
+  // 清除所有以 'user::' 开头的缓存
+  @CacheEvict({ key: 'user', allEntries: true })
+  async clearAll(): Promise<void> { ... }
+}
 
-@CacheEvict({ key: 'user' })
-async deleteUser(id: number): Promise<void> { await db.deleteUser(id); }
-
-// 清除所有以 'user::' 开头的缓存
-@CacheEvict({ key: 'user', allEntries: true })
-async clearAll(): Promise<void> { ... }
+// 通过 DI 容器解析（@Autowired 依赖自动注入）
+const svc = Container.resolve(UserCacheService);
 ```
 
 ### RedisTemplate\<K, V\>

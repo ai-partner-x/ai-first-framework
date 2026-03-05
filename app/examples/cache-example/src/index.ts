@@ -2,7 +2,7 @@
  * Cache Example - 入口
  *
  * 演示 @ai-first/cache 在应用层的用法：
- * 1. 带装饰器的 UserCacheService（无需 Redis 可自动降级）
+ * 1. @RedisComponent + @Autowired — DI 容器自动注入依赖（无需 Redis 可自动降级）
  * 2. RedisTemplate 直接操作（需要 Redis 实例）
  *
  * 运行：
@@ -21,6 +21,7 @@ import {
   StringRedisTemplate,
   getRedisComponentMetadata,
 } from '@ai-first/cache';
+import { Container } from '@ai-first/di';
 import { UserCacheService } from './service/user.cache.service.js';
 
 const REDIS_HOST = process.env.REDIS_HOST;
@@ -44,16 +45,28 @@ async function main() {
     console.log('--- 未配置 REDIS_HOST，跳过 Redis 连接（装饰器自动降级）---\n');
   }
 
-  // ==================== UserCacheService 装饰器示例 ====================
+  // ==================== DI 容器解析 ====================
+  //
+  // @RedisComponent 已自动注册为 DI 单例（Injectable + Singleton）
+  // 通过 Container.resolve() 获取，@Autowired 依赖由 DI 自动注入
+  //
+  // 对应 Java: @Autowired UserCacheService userCacheService;
 
   console.log('--- RedisComponent 元数据 ---');
   const meta = getRedisComponentMetadata(UserCacheService);
   console.log('  Metadata:', meta);
   console.log('');
 
-  const userService = new UserCacheService();
+  console.log('--- DI 容器解析（@RedisComponent 已注册为单例）---');
+  const userService = Container.resolve(UserCacheService);
+  console.log('  resolved:', userService.constructor.name);
+  // 通过实际调用来验证 @Autowired 注入是否成功（如果 userRepository 未注入，调用会抛出异常）
+  const testUser = await userService.getUserById(999);
+  console.log('  @Autowired UserRepository 注入验证（id=999 查询返回 null）:', testUser === null);
+  console.log('');
 
-  // @Cacheable - 查询
+  // ==================== @Cacheable: 查询 ====================
+
   console.log('--- @Cacheable: getUserById ---');
   console.log('第一次查询（访问 DB）:');
   const user1 = await userService.getUserById(1);
@@ -64,25 +77,29 @@ async function main() {
   console.log('  result:', user1Cached);
   console.log('');
 
-  // @Cacheable - 列表
+  // ==================== @Cacheable: 列表 ====================
+
   console.log('--- @Cacheable: getUserList ---');
   const list = await userService.getUserList();
   console.log('  list count:', list.length);
   console.log('');
 
-  // @CacheEvict + create（清除列表缓存）
+  // ==================== @CacheEvict + createUser ====================
+
   console.log('--- @CacheEvict: createUser（清除 user:list 缓存）---');
   const newUser = await userService.createUser({ name: '赵六', email: 'zhaoliu@example.com', age: 28 });
   console.log('  created:', newUser);
   console.log('');
 
-  // @CachePut - 更新
+  // ==================== @CachePut: 更新 ====================
+
   console.log('--- @CachePut: updateUser ---');
   const updated = await userService.updateUser(1, { name: '张三（已更新）', age: 26 });
   console.log('  updated:', updated);
   console.log('');
 
-  // @CacheEvict - 删除
+  // ==================== @CacheEvict: 删除 ====================
+
   console.log('--- @CacheEvict: deleteUser ---');
   const deleted = await userService.deleteUser(2);
   console.log('  deleteUser(2):', deleted);

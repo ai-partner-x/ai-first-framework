@@ -15,7 +15,8 @@
 
 | 概念 | TypeScript（AI-First） | Java（Spring Boot） |
 |------|----------------------|---------------------|
-| 缓存组件标记 | `@RedisComponent()` | `@Service` / `@Repository` |
+| 缓存组件标记（含 DI 注册） | `@RedisComponent()` | `@Service` / `@Repository` |
+| 属性注入 | `@Autowired()` | `@Autowired` |
 | 读通缓存 | `@Cacheable` | `@Cacheable` |
 | 写通缓存 | `@CachePut` | `@CachePut` |
 | 缓存失效 | `@CacheEvict` | `@CacheEvict` |
@@ -32,7 +33,9 @@ pnpm add @ai-first/cache
 
 ```typescript
 import 'reflect-metadata';
-import { createRedisConnection, RedisTemplate, RedisComponent, Cacheable } from '@ai-first/cache';
+import { createRedisConnection, RedisTemplate, RedisComponent, Cacheable, Autowired } from '@ai-first/cache';
+import { Container } from '@ai-first/di';
+import { Service } from '@ai-first/core';
 
 // 1. 建立 Redis 连接（对应 application.properties: spring.data.redis.*）
 const client = createRedisConnection({ host: 'localhost', port: 6379 });
@@ -40,14 +43,25 @@ const client = createRedisConnection({ host: 'localhost', port: 6379 });
 // 2. 创建 RedisTemplate（对应 @Autowired RedisTemplate）
 const redisTemplate = new RedisTemplate<string, unknown>({ client });
 
-// 3. 使用 Cache 装饰器
+// 3. @RedisComponent 自动注册到 DI 容器，支持 @Autowired 注入
+@Service()
+class UserRepository {
+  findById(id: number): User { return db.findUser(id); }
+}
+
 @RedisComponent()
-class UserService {
+class UserCacheService {
+  @Autowired()
+  private userRepository!: UserRepository;  // DI 自动注入
+
   @Cacheable({ key: 'user', ttl: 300 })
   async getUserById(id: number): Promise<User> {
-    return db.findUser(id);
+    return this.userRepository.findById(id);
   }
 }
+
+// 4. 通过 DI 容器解析（等同于 Java @Autowired）
+const userService = Container.resolve(UserCacheService);
 ```
 
 ---
@@ -99,14 +113,46 @@ await closeRedisConnection();
 
 ### @RedisComponent
 
-标记该类为 Redis 缓存组件，类似 Spring 中的 `@Service` / `@Repository`。  
-主要用于代码可读性与元数据标记，无运行时副作用。
+标记该类为 Redis 缓存组件，等同于 `@Service` / `@Component` 的完整 DI 行为：
+
+- **自动注册到 DI 容器**（Injectable + Singleton），可被其他服务通过 `@Autowired` 注入
+- **支持构造函数注入**（constructor injection）
+- **支持 `@Autowired` 属性注入**（通过 DI 容器自动管理依赖）
+- **未初始化 Redis 时自动降级**，缓存方法直接调用原始实现
 
 ```typescript
-import { RedisComponent, getRedisComponentMetadata } from '@ai-first/cache';
+import { RedisComponent, Autowired, Cacheable, CacheEvict } from '@ai-first/cache';
+import { Container } from '@ai-first/di';
+import { Service } from '@ai-first/core';
 
+// 被注入的依赖（用 @Service 注册）
+@Service()
+class UserRepository {
+  findById(id: number): User { return db.findUser(id); }
+}
+
+// @RedisComponent：等同于 @Service + 缓存语义
 @RedisComponent({ name: 'UserCacheService' })
-class UserCacheService { ... }
+class UserCacheService {
+  // @Autowired 属性注入，由 DI 容器自动处理
+  @Autowired()
+  private userRepository!: UserRepository;
+
+  @Cacheable({ key: 'user', ttl: 300 })
+  async getUserById(id: number): Promise<User | null> {
+    return this.userRepository.findById(id);
+  }
+}
+
+// 方式一：通过 DI 容器解析（@Autowired 依赖自动注入）
+const svc = Container.resolve(UserCacheService);
+
+// 方式二：在另一个 @Service 中注入
+@Service()
+class UserService {
+  @Autowired()
+  private cacheService!: UserCacheService;  // DI 自动注入
+}
 
 // 读取元数据
 const meta = getRedisComponentMetadata(UserCacheService);
@@ -116,6 +162,24 @@ const meta = getRedisComponentMetadata(UserCacheService);
 | 选项 | 类型 | 说明 |
 |------|------|------|
 | `name` | `string` | 组件名称（可选，用于日志/调试） |
+
+**对应 Java：**
+```java
+@Service  // 等价于 @RedisComponent
+public class UserCacheService {
+    @Autowired
+    private UserRepository userRepository;
+}
+```
+
+### @Autowired（便捷再导出）
+
+`@ai-first/cache` 已内置再导出 `@Autowired`，无需单独引入 `@ai-first/di`：
+
+```typescript
+import { RedisComponent, Autowired } from '@ai-first/cache';
+// 等同于：import { Autowired } from '@ai-first/di';
+```
 
 ### @Cacheable
 
@@ -323,43 +387,56 @@ const count = await zsetOps.count('leaderboard', 0, 200);
 import 'reflect-metadata';
 import {
   createRedisConnection, closeRedisConnection,
-  RedisTemplate, StringRedisTemplate,
-  RedisComponent, Cacheable, CachePut, CacheEvict,
+  RedisTemplate,
+  RedisComponent, Cacheable, CachePut, CacheEvict, Autowired,
 } from '@ai-first/cache';
+import { Container } from '@ai-first/di';
+import { Service } from '@ai-first/core';
 
 interface User { id: number; name: string; email: string; }
 
-@RedisComponent({ name: 'UserCacheService' })
-class UserCacheService {
+// 数据层：用 @Service 注册到 DI 容器
+@Service()
+class UserRepository {
   private db = new Map<number, User>([
     [1, { id: 1, name: '张三', email: 'zhangsan@example.com' }],
   ]);
+  findById(id: number): User | null { return this.db.get(id) ?? null; }
+  save(user: User): User { this.db.set(user.id, user); return user; }
+  remove(id: number): void { this.db.delete(id); }
+}
+
+// 缓存层：@RedisComponent = @Service + 缓存语义
+@RedisComponent({ name: 'UserCacheService' })
+class UserCacheService {
+  @Autowired()
+  private userRepository!: UserRepository;  // DI 自动注入
 
   @Cacheable({ key: 'user', ttl: 300 })
   async getUserById(id: number): Promise<User | null> {
     console.log('[DB] 查询数据库');
-    return this.db.get(id) ?? null;
+    return this.userRepository.findById(id);
   }
 
-  @CachePut({ key: 'user', ttl: 300, keyGenerator: (_id, user) => String((user as User).id) })
-  async updateUser(_id: number, user: User): Promise<User> {
-    this.db.set(user.id, user);
-    return user;
+  @CachePut({ key: 'user', ttl: 300, keyGenerator: (id) => String(id) })
+  async updateUser(id: number, user: User): Promise<User> {
+    return this.userRepository.save(user);
   }
 
   @CacheEvict({ key: 'user' })
   async deleteUser(id: number): Promise<void> {
-    this.db.delete(id);
+    this.userRepository.remove(id);
   }
 }
 
+// 使用 DI 容器解析（UserRepository 自动注入）
 const client = createRedisConnection({ host: 'localhost', port: 6379 });
 const redisTemplate = new RedisTemplate<string, unknown>({ client });
 
-const userService = new UserCacheService();
+const userService = Container.resolve(UserCacheService);
 const user = await userService.getUserById(1);  // 第一次：查询 DB
 await userService.getUserById(1);               // 第二次：命中缓存
-await userService.deleteUser(1);               // 清除缓存
+await userService.deleteUser(1);                // 清除缓存
 
 // 直接操作 Redis
 const ops = redisTemplate.opsForValue();

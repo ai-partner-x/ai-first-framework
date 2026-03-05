@@ -41,6 +41,9 @@ export {
   type CacheKeyGenerator,
 } from './decorators.js';
 
+// DI convenience re-exports — @RedisComponent 已集成 DI，配合 @Autowired 使用
+export { Autowired } from '@ai-first/di/server';
+
 // Operations
 export type { ValueOperations } from './operations/value-operations.js';
 export type { ListOperations } from './operations/list-operations.js';

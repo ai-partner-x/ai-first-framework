@@ -15,8 +15,11 @@ import {
   Cacheable,
   CachePut,
   CacheEvict,
+  Autowired,
   getRedisComponentMetadata,
 } from '../src/index.js';
+import { Container } from '@ai-first/di';
+import { Service } from '@ai-first/core';
 
 // ==================== Entity 定义 ====================
 
@@ -30,27 +33,65 @@ interface User {
   age: number;
 }
 
+// ==================== Repository 定义（模拟数据库层）====================
+
+/**
+ * 用户数据仓库（通过 @Service 注册到 DI 容器）
+ *
+ * TypeScript: @Service()
+ * Java: @Repository / @Service
+ */
+@Service()
+class UserRepository {
+  private db: Map<number, User> = new Map([
+    [1, { id: 1, name: '张三', email: 'zhangsan@example.com', age: 25 }],
+    [2, { id: 2, name: '李四', email: 'lisi@example.com', age: 30 }],
+    [3, { id: 3, name: '王五', email: 'wangwu@example.com', age: 22 }],
+  ]);
+
+  findById(id: number): User | null {
+    return this.db.get(id) ?? null;
+  }
+
+  save(user: User): User {
+    this.db.set(user.id, user);
+    return user;
+  }
+
+  delete(id: number): void {
+    this.db.delete(id);
+  }
+}
+
 // ==================== Cache Service 定义 ====================
 
 /**
  * 用户缓存服务
  *
  * TypeScript:
- * @RedisComponent()
+ * @RedisComponent()                   ← 自动注册到 DI 容器（Injectable + Singleton）
  * class UserCacheService { ... }
  *
  * 转译为 Java:
  * @Service
  * public class UserCacheService { ... }
+ *
+ * @RedisComponent 与 @Service / @Component 完全等价的 DI 行为：
+ * - 自动注册为单例
+ * - 支持构造函数注入
+ * - 支持 @Autowired 属性注入
+ * - 可被其他 @Service / @Component 通过 @Autowired 注入
  */
 @RedisComponent({ name: 'UserCacheService' })
 class UserCacheService {
-  // 模拟数据库
-  private db: Map<number, User> = new Map([
-    [1, { id: 1, name: '张三', email: 'zhangsan@example.com', age: 25 }],
-    [2, { id: 2, name: '李四', email: 'lisi@example.com', age: 30 }],
-    [3, { id: 3, name: '王五', email: 'wangwu@example.com', age: 22 }],
-  ]);
+  /**
+   * 通过 @Autowired 注入 UserRepository（DI 容器自动处理）
+   *
+   * TypeScript: @Autowired()
+   * Java: @Autowired UserRepository userRepository;
+   */
+  @Autowired()
+  private userRepository!: UserRepository;
 
   /**
    * 查询用户（带缓存）
@@ -61,7 +102,7 @@ class UserCacheService {
   @Cacheable({ key: 'user', ttl: 300 })
   async getUserById(id: number): Promise<User | null> {
     console.log(`  [DB] 查询数据库: getUserById(${id})`);
-    return this.db.get(id) ?? null;
+    return this.userRepository.findById(id);
   }
 
   /**
@@ -73,8 +114,7 @@ class UserCacheService {
   @CachePut({ key: 'user', ttl: 300, keyGenerator: (_id, user) => String((user as User).id) })
   async updateUser(_id: number, user: User): Promise<User> {
     console.log(`  [DB] 更新数据库: updateUser(${user.id})`);
-    this.db.set(user.id, user);
-    return user;
+    return this.userRepository.save(user);
   }
 
   /**
@@ -86,7 +126,7 @@ class UserCacheService {
   @CacheEvict({ key: 'user' })
   async deleteUser(id: number): Promise<void> {
     console.log(`  [DB] 删除数据库: deleteUser(${id})`);
-    this.db.delete(id);
+    this.userRepository.delete(id);
   }
 
   /**
@@ -97,7 +137,7 @@ class UserCacheService {
    */
   @CacheEvict({ key: 'user', allEntries: true })
   async clearAll(): Promise<void> {
-    console.log('  [DB] 清空所有用户缓存');
+    console.log('  [Cache] 清空所有用户缓存');
   }
 }
 
@@ -111,8 +151,14 @@ async function main() {
   console.log('RedisComponent Metadata:', meta);
   console.log('');
 
-  // 2. 创建缓存服务实例
-  const userService = new UserCacheService();
+  // 2. 通过 DI 容器解析（@RedisComponent 已自动注册为单例）
+  //
+  // TypeScript: Container.resolve(UserCacheService)
+  // Java: @Autowired UserCacheService userCacheService;
+  console.log('--- DI 容器解析 ---');
+  const userService = Container.resolve(UserCacheService);
+  console.log('DI resolved UserCacheService:', userService.constructor.name);
+  console.log('');
 
   // 3. @Cacheable - 查询用户（第一次访问 DB，有 Redis 时第二次命中缓存）
   console.log('--- @Cacheable ---');

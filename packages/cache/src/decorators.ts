@@ -2,34 +2,48 @@
  * Redis Decorators - Spring Boot 风格的缓存注解
  *
  * 提供与 Spring Cache 风格兼容的装饰器：
- * - @RedisComponent — 标记 Redis 组件类（类似 @Repository）
+ * - @RedisComponent — 标记 Redis 缓存组件（兼容 @Component/@Service，自动注册到 DI 容器）
  * - @Cacheable — 缓存方法返回值，存在时直接返回缓存
  * - @CachePut — 执行方法并将返回值更新到缓存
  * - @CacheEvict — 执行方法后删除缓存
  *
  * @example
  * ```typescript
+ * import { RedisComponent, Cacheable, CachePut, CacheEvict, Autowired } from '@ai-first/cache';
+ *
  * @RedisComponent()
  * class UserCacheService {
+ *   // 支持 @Autowired 属性注入（由 DI 容器管理）
+ *   @Autowired()
+ *   private userMapper!: UserMapper;
+ *
  *   @Cacheable({ key: 'user', ttl: 300 })
  *   async getUserById(id: number): Promise<User> {
- *     return db.findUser(id);
+ *     return this.userMapper.findById(id);
  *   }
  *
  *   @CachePut({ key: 'user' })
  *   async updateUser(id: number, user: User): Promise<User> {
- *     return db.updateUser(id, user);
+ *     return this.userMapper.update(id, user);
  *   }
  *
  *   @CacheEvict({ key: 'user' })
  *   async deleteUser(id: number): Promise<void> {
- *     await db.deleteUser(id);
+ *     await this.userMapper.delete(id);
  *   }
+ * }
+ *
+ * // 也可在其他 @Service / @Component 中通过 @Autowired 注入 UserCacheService
+ * @Service()
+ * class UserService {
+ *   @Autowired()
+ *   private cacheService!: UserCacheService;
  * }
  * ```
  */
 
 import 'reflect-metadata';
+import { Injectable, Singleton, inject, injectAutowiredProperties } from '@ai-first/di/server';
 import { getRedisClient, isRedisInitialized } from './config.js';
 
 // ==================== Metadata Keys ====================
@@ -114,16 +128,79 @@ function buildCacheKey(prefix: string, args: unknown[], keyGenerator?: CacheKeyG
 /**
  * @RedisComponent 装饰器
  *
- * 标记该类为 Redis 缓存组件，类似 Spring 中的 @Component / @Repository。
- * 主要用于文档和代码可读性，无运行时副作用。
+ * 标记该类为 Redis 缓存组件。在 Spring Boot 风格上对标 @Service / @Repository，
+ * 同时自动注册到 DI 容器（Injectable + Singleton），并支持 @Autowired 属性注入。
+ *
+ * 效果等同于同时使用 @Service + 缓存语义标记：
+ * - 自动注入构造函数参数（constructor injection）
+ * - 支持 @Autowired 属性注入
+ * - 注册为单例，可被其他 @Service / @Component 通过 @Autowired 注入
+ *
+ * @example
+ * ```typescript
+ * @RedisComponent({ name: 'UserCacheService' })
+ * class UserCacheService {
+ *   @Autowired()
+ *   private userMapper!: UserMapper;
+ *
+ *   @Cacheable({ key: 'user', ttl: 300 })
+ *   async getUserById(id: number): Promise<User> { ... }
+ * }
+ *
+ * // 在 @Service 中注入 UserCacheService
+ * @Service()
+ * class UserService {
+ *   @Autowired()
+ *   private cacheService!: UserCacheService;
+ * }
+ *
+ * // 通过 DI 容器解析
+ * import { container } from '@ai-first/di';
+ * const svc = container.resolve(UserCacheService);
+ * ```
  */
 export function RedisComponent(options: RedisComponentOptions = {}) {
-  return function <T extends { new (...args: unknown[]): object }>(target: T): T {
+  // Note: `any` is intentional here — TSyringe's Injectable/inject APIs require `any`-typed
+  // constructors; using `unknown` breaks compatibility with tsyringe's type signatures.
+  // This mirrors the same pattern used by @Service / @Component in @ai-first/core.
+  return function <T extends { new (...args: any[]): any }>(target: T): T {
+    // 存储 Redis 组件元数据
     Reflect.defineMetadata(REDIS_COMPONENT_METADATA, {
       ...options,
       className: target.name,
     }, target);
-    return target;
+
+    // 自动注入构造函数参数（constructor injection）
+    const paramTypes: unknown[] = Reflect.getMetadata('design:paramtypes', target) || [];
+    paramTypes.forEach((type: unknown, index: number) => {
+      // `undefined` for the property key is the TSyringe convention for constructor-parameter injection
+      inject(type as Parameters<typeof inject>[0])(target, undefined as any, index);
+    });
+
+    // 注册到 DI 容器（Injectable + Singleton），与 @Service / @Component 行为一致
+    Injectable()(target);
+    Singleton()(target);
+
+    // 包装构造函数，支持 @Autowired 属性注入
+    // `any` here is intentional: the wrapper must be assignable to T at runtime
+    const originalConstructor = target;
+    const newConstructor = function (this: any, ...args: any[]) {
+      const instance = new (originalConstructor as any)(...args);
+      injectAutowiredProperties(instance);
+      return instance;
+    } as unknown as T;
+
+    newConstructor.prototype = originalConstructor.prototype;
+    Object.setPrototypeOf(newConstructor, originalConstructor);
+
+    // 复制所有元数据（保留 @Cacheable / @CachePut / @CacheEvict 方法元数据）
+    const metadataKeys: (string | symbol)[] = Reflect.getMetadataKeys(originalConstructor) as (string | symbol)[];
+    metadataKeys.forEach((key: string | symbol) => {
+      const value = Reflect.getMetadata(key, originalConstructor);
+      Reflect.defineMetadata(key, value, newConstructor);
+    });
+
+    return newConstructor;
   };
 }
 

@@ -84,6 +84,12 @@ importers:
       '@ai-first/cache':
         specifier: workspace:*
         version: link:../../../packages/cache
+      '@ai-first/core':
+        specifier: workspace:*
+        version: link:../../../packages/core
+      '@ai-first/di':
+        specifier: workspace:*
+        version: link:../../../packages/di
       reflect-metadata:
         specifier: ^0.2.1
         version: 0.2.2

@@ -2,28 +2,34 @@
  * 用户缓存服务
  *
  * 展示 @ai-first/cache 在实际应用中的用法：
- * - @RedisComponent 标记缓存组件
+ * - @RedisComponent 标记缓存组件，同时自动注册到 DI 容器（Injectable + Singleton）
+ * - @Autowired 属性注入（由 DI 容器管理，等同于 Spring @Autowired）
  * - @Cacheable 读通缓存（查询）
  * - @CachePut 写通缓存（更新）
- * - @CacheEvict 缓存失效（删除）
+ * - @CacheEvict 缓存失效（创建/删除）
  *
  * 对应 Java Spring Boot:
  * @Service
- * public class UserCacheService { ... }
+ * public class UserCacheService {
+ *   @Autowired
+ *   private UserRepository userRepository;
+ * }
  */
 
-import { RedisComponent, Cacheable, CachePut, CacheEvict } from '@ai-first/cache';
+import { RedisComponent, Cacheable, CachePut, CacheEvict, Autowired } from '@ai-first/cache';
 import { type User } from '../entity/user.entity.js';
+import { UserRepository } from '../entity/user.repository.js';
 
 @RedisComponent({ name: 'UserCacheService' })
 export class UserCacheService {
-  // 模拟数据库（实际项目中替换为 UserMapper 或数据库调用）
-  private db: Map<number, User> = new Map([
-    [1, { id: 1, name: '张三', email: 'zhangsan@example.com', age: 25 }],
-    [2, { id: 2, name: '李四', email: 'lisi@example.com', age: 30 }],
-    [3, { id: 3, name: '王五', email: 'wangwu@example.com', age: 22 }],
-  ]);
-  private nextId = 4;
+  /**
+   * 通过 @Autowired 注入 UserRepository（DI 容器自动管理）
+   *
+   * TypeScript: @Autowired()
+   * Java: @Autowired UserRepository userRepository;
+   */
+  @Autowired()
+  private userRepository!: UserRepository;
 
   /**
    * 查询单个用户（带缓存）
@@ -34,7 +40,7 @@ export class UserCacheService {
   @Cacheable({ key: 'user', ttl: 300 })
   async getUserById(id: number): Promise<User | null> {
     console.log(`  [DB] 查询数据库: getUserById(${id})`);
-    return this.db.get(id) ?? null;
+    return this.userRepository.findById(id);
   }
 
   /**
@@ -46,7 +52,7 @@ export class UserCacheService {
   @Cacheable({ key: 'user:list', ttl: 60 })
   async getUserList(): Promise<User[]> {
     console.log('  [DB] 查询数据库: getUserList()');
-    return [...this.db.values()];
+    return this.userRepository.findAll();
   }
 
   /**
@@ -58,25 +64,19 @@ export class UserCacheService {
   @CacheEvict({ key: 'user:list', allEntries: true })
   async createUser(data: Omit<User, 'id'>): Promise<User> {
     console.log('  [DB] 写入数据库: createUser()');
-    const user: User = { id: this.nextId++, ...data };
-    this.db.set(user.id, user);
-    return user;
+    return this.userRepository.save(data);
   }
 
   /**
-   * 更新用户（更新单条缓存，同时清除列表缓存）
+   * 更新用户（更新单条缓存）
    *
    * TypeScript: @CachePut({ key: 'user', ttl: 300 })
-   * Java: @CachePut(value = "user", key = "#result.id")
+   * Java: @CachePut(value = "user", key = "#id")
    */
   @CachePut({ key: 'user', ttl: 300, keyGenerator: (id: unknown) => String(id as number) })
   async updateUser(id: number, data: Partial<Omit<User, 'id'>>): Promise<User> {
     console.log(`  [DB] 更新数据库: updateUser(${id})`);
-    const user = this.db.get(id);
-    if (!user) throw new Error(`用户 ${id} 不存在`);
-    const updated: User = { ...user, ...data };
-    this.db.set(id, updated);
-    return updated;
+    return this.userRepository.update(id, data);
   }
 
   /**
@@ -88,6 +88,6 @@ export class UserCacheService {
   @CacheEvict({ key: 'user' })
   async deleteUser(id: number): Promise<boolean> {
     console.log(`  [DB] 删除数据库: deleteUser(${id})`);
-    return this.db.delete(id);
+    return this.userRepository.remove(id);
   }
 }
