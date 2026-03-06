@@ -1,0 +1,50 @@
+{
+  "name": "@ai-first/mq",
+  "version": "0.1.0",
+  "description": "AI-First Framework - Message Queue abstraction and adapters",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./di": {
+      "import": "./dist/di.js",
+      "types": "./dist/di.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@ai-first/di": "workspace:*",
+    "reflect-metadata": "^0.2.1"
+  },
+  "peerDependencies": {},
+  "optionalDependencies": {
+    "amqplib": "^0.10.3"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.0",
+    "vitest": "^1.2.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0"
+  },
+  "keywords": [
+    "ai-first",
+    "mq",
+    "message-queue",
+    "rabbitmq",
+    "kafka",
+    "typescript"
+  ]
+}
