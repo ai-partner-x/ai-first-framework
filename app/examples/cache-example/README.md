@@ -24,6 +24,8 @@ src/
 
 ## 快速启动
 
+**macOS / Linux（bash / zsh）**
+
 ```bash
 # 进入示例目录（所有命令均在此目录下执行）
 cd app/examples/cache-example
@@ -40,6 +42,27 @@ REDIS_HOST=127.0.0.1 REDIS_PORT=6379 pnpm start
 # 模式三：有 Redis，带密码认证
 REDIS_HOST=127.0.0.1 REDIS_PORT=6379 REDIS_PASSWORD=yourpassword pnpm start
 ```
+
+**Windows（PowerShell）**
+
+```powershell
+# 进入示例目录（所有命令均在此目录下执行）
+cd app/examples/cache-example
+
+# 安装依赖（首次运行或依赖变更后）
+pnpm install
+
+# 模式一：无 Redis — 装饰器自动降级，直接调用原方法
+pnpm start
+
+# 模式二：有 Redis，无密码
+$env:REDIS_HOST="127.0.0.1"; $env:REDIS_PORT="6379"; pnpm start
+
+# 模式三：有 Redis，带密码认证
+$env:REDIS_HOST="127.0.0.1"; $env:REDIS_PORT="6379"; $env:REDIS_PASSWORD="yourpassword"; pnpm start
+```
+
+> **提示**：PowerShell 不支持 `KEY=value command` 语法，需要用 `$env:KEY="value"` 单独设置环境变量，再以 `;` 分隔执行命令。
 
 | 环境变量 | 说明 | 默认值 |
 |---|---|---|
