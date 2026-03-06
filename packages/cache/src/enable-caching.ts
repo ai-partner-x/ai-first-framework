@@ -114,6 +114,7 @@ async function initializeRedisCaching(config: RedisConfig): Promise<void> {
   const validationClient = createValidationClient(config);
 
   try {
+    await validationClient.connect();
     await validationClient.ping();
   } catch (error) {
     throw new CacheInitializationError(
