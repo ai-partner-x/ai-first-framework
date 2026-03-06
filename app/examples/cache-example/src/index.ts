@@ -56,7 +56,7 @@ async function main() {
     console.log(`--- initializeCaching：连接 Redis ${REDIS_HOST}:${REDIS_PORT} ---`);
 
     try {
-      await initializeCaching({ host: REDIS_HOST, port: REDIS_PORT });
+      await initializeCaching({ type: 'redis', host: REDIS_HOST, port: REDIS_PORT });
       console.log('  ✅ Redis 连接验证成功，缓存已就绪\n');
     } catch (e) {
       if (e instanceof CacheInitializationError) {

@@ -1,17 +1,19 @@
 /**
- * 缓存启动验证 — Spring Boot 风格的 Redis 连接初始化
+ * 缓存启动验证 — Spring Boot 风格的缓存后端初始化
  *
- * 提供 initializeCaching(config) 用于在应用启动阶段验证 Redis 连接，
- * 并将 RedisCacheManager 注册为全局 CacheManager，使 @Cacheable / @CachePut /
- * @CacheEvict 等注解通过 Redis 后端提供缓存服务。
+ * 提供 initializeCaching(config) 用于在应用启动阶段根据 config.type 选择并初始化
+ * 缓存后端，对应 Spring Boot 的 `spring.cache.type` 自动配置机制。
  *
- * @example
+ * 目前支持 `type: 'redis'`，后续扩展新后端只需在 switch 中添加 case 分支。
+ *
+ * @example Redis 后端
  * ```typescript
  * import { createApp } from '@ai-first/nextjs';
  *
  * const app = await createApp({
  *   srcDir: import.meta.dirname,
  *   cache: {
+ *     type: 'redis',
  *     host: process.env.REDIS_HOST ?? '127.0.0.1',
  *     port: Number(process.env.REDIS_PORT ?? 6379),
  *   },
@@ -29,15 +31,16 @@ import {
 } from './config.js';
 import { RedisCacheManager } from './cache-managers/redis-cache-manager.js';
 import { setCacheManager } from './cache-manager-registry.js';
+import type { CacheConfig } from './spi/cache-config.js';
 
 // ==================== Error ====================
 
 /**
  * 缓存初始化失败错误
  *
- * 调用 initializeCaching(config) 时，若 Redis 连接失败，则抛出此错误并阻止应用启动。
+ * 调用 initializeCaching(config) 时，若后端连接失败，则抛出此错误并阻止应用启动。
  *
- * 对应 Spring Boot 中 Redis 连接失败时的 BeanCreationException。
+ * 对应 Spring Boot 中 CacheManager Bean 创建失败时的 BeanCreationException。
  */
 export class CacheInitializationError extends Error {
   override readonly cause: unknown;
@@ -52,33 +55,62 @@ export class CacheInitializationError extends Error {
 // ==================== Bootstrap Validation ====================
 
 /**
- * 初始化并验证 Redis 缓存连接（**必须**在异步启动阶段调用）
+ * 初始化并验证缓存后端（**必须**在异步启动阶段调用）
  *
- * 验证流程：
- * 1. 向 Redis 发送 PING 命令验证连接可用性（默认超时 5 秒）
- * 2. 连接成功后，创建持久化的生产客户端
- * 3. 创建 RedisCacheManager 并注册到全局 CacheManager 注册表
+ * 根据 `config.type` 自动选择对应的缓存后端，对应 Spring Boot 的
+ * `spring.cache.type` 自动配置机制：
  *
- * 注册完成后，@Cacheable / @CachePut / @CacheEvict 将自动通过 Redis 提供缓存服务。
- * 若需切换到其他缓存后端，可在启动时调用 setCacheManager() 替换（无需修改业务代码）。
+ * - `'redis'` — 验证 Redis 连接（PING）后创建 RedisCacheManager 并注册
  *
- * 对应 Spring Boot 应用上下文启动时的 CacheManager Bean 初始化检查。
+ * 初始化完成后，@Cacheable / @CachePut / @CacheEvict 将自动通过所选后端提供缓存服务。
  * 通常由 createApp({ cache: config }) 自动调用，无需手动调用。
  *
- * @param config Redis 连接配置（对应 `spring.data.redis.*`）
+ * @param config 缓存后端配置（type 字段决定使用哪个后端）
  *
- * @throws {CacheInitializationError} Redis 连接失败时
+ * @throws {CacheInitializationError} 后端连接失败时
  *
  * @example
  * ```typescript
- * await initializeCaching({ host: '127.0.0.1', port: 6379 });
+ * await initializeCaching({ type: 'redis', host: '127.0.0.1', port: 6379 });
  * ```
  */
-export async function initializeCaching(config: RedisConfig): Promise<void> {
-  // We use a separate, short-lived validation client (maxRetriesPerRequest: 0,
-  // retryStrategy: null) so that a failing connection is detected immediately —
-  // no ioredis retry spam during startup.
-  const configDesc = describeConfig(config);
+export async function initializeCaching(config: CacheConfig): Promise<void> {
+  switch (config.type) {
+    case 'redis': {
+      // Strip the `type` discriminant to get a plain RedisConfig.
+      // The extra `type` property is ignored by ioredis and our Redis helpers.
+      const { type: _cacheType, ...redisConfig } = config;
+      await initializeRedisCaching(redisConfig as RedisConfig);
+      break;
+    }
+
+    // Future backends — add new case branches here:
+    // case 'simple': {
+    //   setCacheManager(new SimpleCacheManager());
+    //   break;
+    // }
+    // case 'memcached': { ... }
+
+    default: {
+      throw new CacheInitializationError(
+        `[AI-First Cache] Unknown cache type: "${(config as { type: string }).type}". ` +
+        `Supported types: 'redis'.`,
+      );
+    }
+  }
+}
+
+// ==================== Redis backend init ====================
+
+/**
+ * 初始化 Redis 缓存后端
+ *
+ * 1. 用短生命周期客户端发 PING 验证连接（5 秒超时）
+ * 2. 验证通过后创建持久客户端
+ * 3. 注册 RedisCacheManager 到全局 CacheManager 注册表
+ */
+async function initializeRedisCaching(config: RedisConfig): Promise<void> {
+  const configDesc = describeRedisConfig(config);
   const validationClient = createValidationClient(config);
 
   try {
@@ -159,7 +191,7 @@ function createValidationClient(config: RedisConfig): Redis {
   });
 }
 
-function describeConfig(config: RedisConfig): string {
+function describeRedisConfig(config: RedisConfig): string {
   if (config.mode === 'sentinel') {
     return `sentinel[${(config as RedisSentinelConfig).sentinels.map(s => `${s.host}:${s.port}`).join(',')}]`;
   }

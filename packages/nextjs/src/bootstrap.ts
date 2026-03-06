@@ -8,7 +8,7 @@
  * const app = await createApp({
  *   srcDir: import.meta.dirname,
  *   database: { type: 'sqlite', filename: ':memory:' },
- *   cache: { host: '127.0.0.1', port: 6379 },
+ *   cache: { type: 'redis', host: '127.0.0.1', port: 6379 },
  * });
  * app.listen(3001, () => console.log('Server running on port 3001'));
  * ```
@@ -22,11 +22,10 @@ import { createExpressRouter } from './express-router.js';
 import { getControllerMetadata } from './decorators.js';
 import { Injectable, Singleton } from '@ai-first/di/server';
 import { createKyselyDatabase, type DatabaseConnectionConfig } from '@ai-first/orm';
-import { initializeCaching } from '@ai-first/cache';
-import { type RedisConfig } from '@ai-first/cache/redis';
+import { initializeCaching, type CacheConfig } from '@ai-first/cache';
 
 export type { DatabaseConnectionConfig };
-export type { RedisConfig };
+export type { CacheConfig };
 
 export interface AppOptions {
   /** 源代码目录，默认自动扫描 controller/, service/, mapper/ */
@@ -36,15 +35,32 @@ export interface AppOptions {
   /** 数据库配置 */
   database?: DatabaseConnectionConfig;
   /**
-   * Redis 缓存配置（对应 Spring Boot spring.data.redis.*）
+   * 缓存配置 — 通过 `type` 字段选择后端（对应 Spring Boot spring.cache.type）
    *
-   * 提供此选项时，createApp 会自动调用 initializeCaching(config) 验证 Redis 连接；
-   * 连接失败则抛出 CacheInitializationError 并阻止启动。
+   * 提供此选项时，createApp 会自动调用 initializeCaching(config) 初始化对应后端；
+   * 初始化失败则抛出 CacheInitializationError 并阻止启动。
    *
-   * @example
-   * createApp({ cache: { host: '127.0.0.1', port: 6379 } })
+   * 目前支持的后端类型：
+   * - `'redis'` — Redis 缓存（对应 spring.data.redis.*）
+   *
+   * @example Redis 单机
+   * ```typescript
+   * createApp({ cache: { type: 'redis', host: '127.0.0.1', port: 6379 } })
+   * ```
+   *
+   * @example Redis Sentinel（高可用）
+   * ```typescript
+   * createApp({
+   *   cache: {
+   *     type: 'redis',
+   *     mode: 'sentinel',
+   *     masterName: 'mymaster',
+   *     sentinels: [{ host: '127.0.0.1', port: 26379 }],
+   *   },
+   * })
+   * ```
    */
-  cache?: RedisConfig;
+  cache?: CacheConfig;
   /** 是否启用 CORS，默认 true */
   cors?: boolean;
   /** 是否打印详细日志，默认 true */
@@ -77,16 +93,11 @@ export async function createApp(options: AppOptions): Promise<Express> {
     }
   }
 
-  // 初始化 Redis 缓存
+  // 初始化缓存后端（根据 cache.type 自动选择）
   if (cache) {
     await initializeCaching(cache);
     if (verbose) {
-      const standaloneCache = cache as { host?: string; port?: number; mode?: string };
-      const isStandalone = standaloneCache.mode === undefined || standaloneCache.mode === 'standalone';
-      const desc = isStandalone
-        ? `${standaloneCache.host ?? '127.0.0.1'}:${standaloneCache.port ?? 6379}`
-        : standaloneCache.mode;
-      console.log(`🔴 [AI-First] Cache: Redis @ ${desc}`);
+      console.log(`🔴 [AI-First] Cache: ${describeCacheConfig(cache)}`);
     }
   }
 
@@ -181,6 +192,26 @@ async function scanAndImport(dirPath: string, verbose: boolean): Promise<any[]> 
   }
 
   return modules;
+}
+
+/**
+ * 生成缓存配置的可读描述字符串（用于启动日志）
+ */
+function describeCacheConfig(config: CacheConfig): string {
+  if (config.type === 'redis') {
+    const c = config as { type: 'redis'; mode?: string; host?: string; port?: number };
+    if (c.mode === 'sentinel') {
+      const sc = config as { type: 'redis'; mode: 'sentinel'; masterName: string; sentinels: { host: string; port: number }[] };
+      return `Redis (sentinel) master=${sc.masterName}`;
+    }
+    if (c.mode === 'cluster') {
+      const cc = config as { type: 'redis'; mode: 'cluster'; nodes: { host: string; port: number }[] };
+      return `Redis (cluster) nodes=${cc.nodes.length}`;
+    }
+    return `Redis @ ${c.host ?? '127.0.0.1'}:${c.port ?? 6379}`;
+  }
+  // Future backends: add descriptions here
+  return `${(config as { type: string }).type}`;
 }
 
 /**

@@ -29,6 +29,11 @@
 // 并在启动时通过 setCacheManager() 注册。
 export type { Cache, CacheManager } from './spi/cache.js';
 
+// ==================== Cache Config (后端选择) ====================
+// CacheConfig 是 createApp({ cache: ... }) 接受的通用配置类型；
+// 通过 type 字段（如 'redis'）决定初始化哪个后端。
+export type { CacheConfig, RedisCacheConfig } from './spi/cache-config.js';
+
 export {
   setCacheManager,
   getCacheManager,
