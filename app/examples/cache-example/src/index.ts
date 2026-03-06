@@ -17,6 +17,9 @@
  *
  *   # 有 Redis（启用缓存严格模式）
  *   REDIS_HOST=127.0.0.1 REDIS_PORT=6379 pnpm start
+ *
+ *   # 有 Redis + 密码认证
+ *   REDIS_HOST=127.0.0.1 REDIS_PORT=6379 REDIS_PASSWORD=yourpassword pnpm start
  */
 
 import 'reflect-metadata';
@@ -37,6 +40,7 @@ import { UserCacheService } from './service/user.cache.service.js';
 
 const REDIS_HOST = process.env.REDIS_HOST;
 const REDIS_PORT = process.env.REDIS_PORT ? Number(process.env.REDIS_PORT) : 6379;
+const REDIS_PASSWORD = process.env.REDIS_PASSWORD || undefined; // 空字符串视为"无密码"
 
 async function main() {
   console.log('=== @app/cache-example ===\n');
@@ -53,10 +57,11 @@ async function main() {
   // 对应 Spring Boot: ApplicationContext 启动时的 CacheManager bean 初始化检查
 
   if (REDIS_HOST) {
-    console.log(`--- initializeCaching：连接 Redis ${REDIS_HOST}:${REDIS_PORT} ---`);
+    const pwdHint = REDIS_PASSWORD ? '（已配置密码）' : '（无密码）';
+    console.log(`--- initializeCaching：连接 Redis ${REDIS_HOST}:${REDIS_PORT} ${pwdHint} ---`);
 
     try {
-      await initializeCaching({ type: 'redis', host: REDIS_HOST, port: REDIS_PORT });
+      await initializeCaching({ type: 'redis', host: REDIS_HOST, port: REDIS_PORT, password: REDIS_PASSWORD });
       console.log('  ✅ Redis 连接验证成功，缓存已就绪\n');
     } catch (e) {
       if (e instanceof CacheInitializationError) {
