@@ -25,15 +25,27 @@ src/
 ## 快速启动
 
 ```bash
-# 安装依赖
+# 进入示例目录（所有命令均在此目录下执行）
+cd app/examples/cache-example
+
+# 安装依赖（首次运行或依赖变更后）
 pnpm install
 
-# 运行（无 Redis，装饰器自动降级）
+# 模式一：无 Redis — 装饰器自动降级，直接调用原方法
 pnpm start
 
-# 运行（有 Redis）
+# 模式二：有 Redis，无密码
 REDIS_HOST=127.0.0.1 REDIS_PORT=6379 pnpm start
+
+# 模式三：有 Redis，带密码认证
+REDIS_HOST=127.0.0.1 REDIS_PORT=6379 REDIS_PASSWORD=yourpassword pnpm start
 ```
+
+| 环境变量 | 说明 | 默认值 |
+|---|---|---|
+| `REDIS_HOST` | Redis 服务器地址，不设置则跳过连接验证 | _(未设置)_ |
+| `REDIS_PORT` | Redis 服务器端口 | `6379` |
+| `REDIS_PASSWORD` | Redis 连接密码，不设置或为空则不认证 | _(未设置)_ |
 
 ## 对应 Java Spring Boot
 
