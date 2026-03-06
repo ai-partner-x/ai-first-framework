@@ -1,8 +1,9 @@
 /**
  * 缓存启动验证 — Spring Boot 风格的 Redis 连接初始化
  *
- * 提供 initializeCaching(config) 用于在应用启动阶段验证 Redis 连接。
- * 配置直接通过 createApp({ cache: { ... } }) 传入，无需 @EnableCaching 装饰器。
+ * 提供 initializeCaching(config) 用于在应用启动阶段验证 Redis 连接，
+ * 并将 RedisCacheManager 注册为全局 CacheManager，使 @Cacheable / @CachePut /
+ * @CacheEvict 等注解通过 Redis 后端提供缓存服务。
  *
  * @example
  * ```typescript
@@ -26,6 +27,8 @@ import {
   type RedisSentinelConfig,
   type RedisClusterConfig,
 } from './config.js';
+import { RedisCacheManager } from './cache-managers/redis-cache-manager.js';
+import { setCacheManager } from './cache-manager-registry.js';
 
 // ==================== Error ====================
 
@@ -54,8 +57,12 @@ export class CacheInitializationError extends Error {
  * 验证流程：
  * 1. 向 Redis 发送 PING 命令验证连接可用性（默认超时 5 秒）
  * 2. 连接成功后，创建持久化的生产客户端
+ * 3. 创建 RedisCacheManager 并注册到全局 CacheManager 注册表
  *
- * 对应 Spring Boot 应用上下文启动时的 CacheManager 初始化检查。
+ * 注册完成后，@Cacheable / @CachePut / @CacheEvict 将自动通过 Redis 提供缓存服务。
+ * 若需切换到其他缓存后端，可在启动时调用 setCacheManager() 替换（无需修改业务代码）。
+ *
+ * 对应 Spring Boot 应用上下文启动时的 CacheManager Bean 初始化检查。
  * 通常由 createApp({ cache: config }) 自动调用，无需手动调用。
  *
  * @param config Redis 连接配置（对应 `spring.data.redis.*`）
@@ -89,7 +96,11 @@ export async function initializeCaching(config: RedisConfig): Promise<void> {
   }
 
   // Validation passed — set up the persistent production client.
-  createRedisConnection(config);
+  const client = createRedisConnection(config);
+
+  // Register RedisCacheManager as the global CacheManager.
+  // From this point, @Cacheable / @CachePut / @CacheEvict use Redis.
+  setCacheManager(new RedisCacheManager(client));
 }
 
 // ==================== Helpers ====================

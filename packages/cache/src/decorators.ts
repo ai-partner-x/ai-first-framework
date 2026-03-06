@@ -1,10 +1,14 @@
 /**
- * Redis Decorators - Spring Boot 风格的缓存注解
+ * Cache Decorators - Spring Boot 风格的缓存注解
  *
  * 提供与 Spring Cache 风格兼容的方法装饰器：
  * - @Cacheable — 缓存方法返回值，存在时直接返回缓存
  * - @CachePut — 执行方法并将返回值更新到缓存
  * - @CacheEvict — 执行方法后删除缓存
+ *
+ * 装饰器通过 CacheManager 接口与缓存后端解耦，
+ * 后端实现（Redis、Memcached、In-Memory 等）可在应用启动时通过
+ * setCacheManager() 自由切换，无需修改业务代码。
  *
  * 使用方式：在类上使用 @Service / @Component（来自 @ai-first/core），
  * 方法上使用 @Cacheable / @CachePut / @CacheEvict（来自 @ai-first/cache）。
@@ -38,11 +42,17 @@
  */
 
 import 'reflect-metadata';
-import { getRedisClient, isRedisInitialized } from './config.js';
+import { getCacheManager } from './cache-manager-registry.js';
 
 // ==================== Metadata Keys ====================
 
-export const REDIS_COMPONENT_METADATA = Symbol('redisComponent');
+export const CACHE_COMPONENT_METADATA = Symbol('cacheComponent');
+/**
+ * @deprecated 请使用 CACHE_COMPONENT_METADATA。
+ * 此常量是 CACHE_COMPONENT_METADATA 的别名（指向同一 Symbol 实例），
+ * 保留仅为向后兼容：使用任意一个读写的元数据完全相同。
+ */
+export const REDIS_COMPONENT_METADATA = CACHE_COMPONENT_METADATA;
 export const CACHEABLE_METADATA = Symbol('cacheable');
 export const CACHE_PUT_METADATA = Symbol('cachePut');
 export const CACHE_EVICT_METADATA = Symbol('cacheEvict');
@@ -55,9 +65,10 @@ export type CacheKeyGenerator = (...args: unknown[]) => string;
 /** @Cacheable / @CachePut 选项 */
 export interface CacheableOptions {
   /**
-   * 缓存 key 前缀，最终 key = `${key}::${keyGenerator 返回值}`
+   * 缓存命名空间，对应 @Cacheable(value = "user") 中的 `value`。
    *
-   * 对应 Spring: @Cacheable(value = "user")
+   * 由 CacheManager 实现决定如何映射到物理存储 key，
+   * 业务代码只需关注命名空间语义，无需感知底层格式。
    */
   key: string;
   /**
@@ -66,7 +77,7 @@ export interface CacheableOptions {
    */
   ttl?: number;
   /**
-   * 自定义 key 生成器（接收方法参数）
+   * 自定义条目 key 生成器（接收方法参数）
    * 默认将所有参数 JSON 序列化后拼接
    *
    * 对应 Spring: @Cacheable(key = "#id")
@@ -82,16 +93,16 @@ export interface CacheableOptions {
 /** @CacheEvict 选项 */
 export interface CacheEvictOptions {
   /**
-   * 缓存 key 前缀
+   * 缓存命名空间
    * 对应 Spring: @CacheEvict(value = "user")
    */
   key: string;
   /**
-   * 自定义 key 生成器
+   * 自定义条目 key 生成器
    */
   keyGenerator?: CacheKeyGenerator;
   /**
-   * 是否清除所有以 key 开头的缓存（使用 KEYS pattern 删除）
+   * 是否清空整个命名空间（即调用 Cache.clear()）
    * 对应 Spring: @CacheEvict(allEntries = true)
    */
   allEntries?: boolean;
@@ -102,28 +113,31 @@ export interface CacheEvictOptions {
   beforeInvocation?: boolean;
 }
 
-// ==================== Helper ====================
+// ==================== Helpers ====================
 
-function buildCacheKey(prefix: string, args: unknown[], keyGenerator?: CacheKeyGenerator): string {
-  const suffix = keyGenerator
+/**
+ * 根据方法参数生成条目 key 字符串。
+ * 当无参数时返回空字符串，Cache 实现可将其退化为命名空间本身。
+ */
+function buildEntryKey(args: unknown[], keyGenerator?: CacheKeyGenerator): string {
+  return keyGenerator
     ? keyGenerator(...args)
     : args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(':');
-  return suffix ? `${prefix}::${suffix}` : prefix;
 }
 
 /**
- * 在目标类上自动标记 REDIS_COMPONENT_METADATA（若尚未标记）。
+ * 在目标类上自动标记 CACHE_COMPONENT_METADATA（若尚未标记）。
  *
  * 当 @Cacheable / @CachePut / @CacheEvict 被应用到方法上时调用此函数，
  * 使得只使用 @Service / @Component 作为类装饰器的缓存服务类也能被
- * getRedisComponentMetadata() 识别为 Redis 缓存组件。
+ * getCacheComponentMetadata() 识别为缓存组件。
  *
- * @param methodPrototype - 被装饰方法所在类的原型对象（即方法装饰器接收的 target 参数）
+ * @param methodPrototype - 被装饰方法所在类的原型对象
  */
-function autoMarkRedisComponent(methodPrototype: object): void {
+function autoMarkCacheComponent(methodPrototype: object): void {
   const ctor = (methodPrototype as { constructor: Function }).constructor;
-  if (!Reflect.hasMetadata(REDIS_COMPONENT_METADATA, ctor)) {
-    Reflect.defineMetadata(REDIS_COMPONENT_METADATA, { className: ctor.name }, ctor);
+  if (!Reflect.hasMetadata(CACHE_COMPONENT_METADATA, ctor)) {
+    Reflect.defineMetadata(CACHE_COMPONENT_METADATA, { className: ctor.name }, ctor);
   }
 }
 
@@ -139,7 +153,7 @@ function autoMarkRedisComponent(methodPrototype: object): void {
  * ```typescript
  * @Cacheable({ key: 'user', ttl: 300 })
  * async getUserById(id: number): Promise<User> {
- *   return db.findUser(id);  // Redis 命中时不会执行
+ *   return db.findUser(id);  // 缓存命中时不会执行
  * }
  * ```
  */
@@ -149,13 +163,13 @@ export function Cacheable(options: CacheableOptions) {
     _propertyKey: string | symbol,
     descriptor: PropertyDescriptor,
   ): PropertyDescriptor {
-    // 自动将所在类标记为缓存组件（兼容 @Service / @Component 用法）
-    autoMarkRedisComponent(methodPrototype);
+    autoMarkCacheComponent(methodPrototype);
 
     const originalMethod = descriptor.value as (...args: unknown[]) => Promise<unknown>;
 
     descriptor.value = async function (this: unknown, ...args: unknown[]) {
-      if (!isRedisInitialized()) {
+      const manager = getCacheManager();
+      if (!manager) {
         return originalMethod.apply(this, args);
       }
 
@@ -163,10 +177,10 @@ export function Cacheable(options: CacheableOptions) {
         return originalMethod.apply(this, args);
       }
 
-      const client = getRedisClient();
-      const cacheKey = buildCacheKey(options.key, args, options.keyGenerator);
+      const cache = manager.getCache(options.key);
+      const entryKey = buildEntryKey(args, options.keyGenerator);
 
-      const cached = await client.get(cacheKey);
+      const cached = await cache.get(entryKey);
       if (cached !== null) {
         return JSON.parse(cached) as unknown;
       }
@@ -174,12 +188,7 @@ export function Cacheable(options: CacheableOptions) {
       const result = await originalMethod.apply(this, args);
 
       if (result !== undefined && result !== null) {
-        const serialized = JSON.stringify(result);
-        if (options.ttl !== undefined) {
-          await client.set(cacheKey, serialized, 'EX', options.ttl);
-        } else {
-          await client.set(cacheKey, serialized);
-        }
+        await cache.put(entryKey, JSON.stringify(result), options.ttl);
       }
 
       return result;
@@ -209,15 +218,15 @@ export function CachePut(options: CacheableOptions) {
     _propertyKey: string | symbol,
     descriptor: PropertyDescriptor,
   ): PropertyDescriptor {
-    // 自动将所在类标记为缓存组件（兼容 @Service / @Component 用法）
-    autoMarkRedisComponent(methodPrototype);
+    autoMarkCacheComponent(methodPrototype);
 
     const originalMethod = descriptor.value as (...args: unknown[]) => Promise<unknown>;
 
     descriptor.value = async function (this: unknown, ...args: unknown[]) {
       const result = await originalMethod.apply(this, args);
 
-      if (!isRedisInitialized()) {
+      const manager = getCacheManager();
+      if (!manager) {
         return result;
       }
 
@@ -226,14 +235,9 @@ export function CachePut(options: CacheableOptions) {
       }
 
       if (result !== undefined && result !== null) {
-        const client = getRedisClient();
-        const cacheKey = buildCacheKey(options.key, args, options.keyGenerator);
-        const serialized = JSON.stringify(result);
-        if (options.ttl !== undefined) {
-          await client.set(cacheKey, serialized, 'EX', options.ttl);
-        } else {
-          await client.set(cacheKey, serialized);
-        }
+        const cache = manager.getCache(options.key);
+        const entryKey = buildEntryKey(args, options.keyGenerator);
+        await cache.put(entryKey, JSON.stringify(result), options.ttl);
       }
 
       return result;
@@ -256,7 +260,7 @@ export function CachePut(options: CacheableOptions) {
  *   await db.deleteUser(id);
  * }
  *
- * // 清除所有 user:: 开头的缓存
+ * // 清空整个 user 命名空间
  * @CacheEvict({ key: 'user', allEntries: true })
  * async clearAllUsers(): Promise<void> {}
  * ```
@@ -267,26 +271,22 @@ export function CacheEvict(options: CacheEvictOptions) {
     _propertyKey: string | symbol,
     descriptor: PropertyDescriptor,
   ): PropertyDescriptor {
-    // 自动将所在类标记为缓存组件（兼容 @Service / @Component 用法）
-    autoMarkRedisComponent(methodPrototype);
+    autoMarkCacheComponent(methodPrototype);
 
     const originalMethod = descriptor.value as (...args: unknown[]) => Promise<unknown>;
 
     descriptor.value = async function (this: unknown, ...args: unknown[]) {
       const evict = async () => {
-        if (!isRedisInitialized()) return;
+        const manager = getCacheManager();
+        if (!manager) return;
 
-        const client = getRedisClient();
+        const cache = manager.getCache(options.key);
 
         if (options.allEntries) {
-          const pattern = `${options.key}::*`;
-          const keysToDelete = await client.keys(pattern);
-          if (keysToDelete.length > 0) {
-            await client.del(...keysToDelete);
-          }
+          await cache.clear();
         } else {
-          const cacheKey = buildCacheKey(options.key, args, options.keyGenerator);
-          await client.del(cacheKey);
+          const entryKey = buildEntryKey(args, options.keyGenerator);
+          await cache.evict(entryKey);
         }
       };
 
@@ -309,10 +309,16 @@ export function CacheEvict(options: CacheEvictOptions) {
 /**
  * 获取缓存组件元数据（由 @Cacheable/@CachePut/@CacheEvict 自动写入）
  */
-export function getRedisComponentMetadata(
+export function getCacheComponentMetadata(
   target: Function,
 ): { className: string } | undefined {
-  return Reflect.getMetadata(REDIS_COMPONENT_METADATA, target) as
+  return Reflect.getMetadata(CACHE_COMPONENT_METADATA, target) as
     | { className: string }
     | undefined;
 }
+
+/**
+ * @deprecated 使用 getCacheComponentMetadata，此别名保持向后兼容
+ */
+export const getRedisComponentMetadata = getCacheComponentMetadata;
+

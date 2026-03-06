@@ -27,6 +27,9 @@
  * ```
  */
 
+// ==================== RedisCacheManager ====================
+export { RedisCacheManager } from './cache-managers/redis-cache-manager.js';
+
 // ==================== Connection / Config ====================
 export {
   createRedisConnection,
