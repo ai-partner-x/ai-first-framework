@@ -67,3 +67,54 @@ jobs:
               });
               console.log(`Added labels: ${labels.join(', ')}`);
             }
+
+            // 设置 Issue Type (使用 GraphQL API)
+            const issueType = labels.includes('bug') ? 'Bug' : 
+                             labels.includes('feature') ? 'Feature' : 
+                             labels.includes('question') ? 'Task' : null;
+            
+            if (issueType) {
+              try {
+                // 获取 Issue Type ID
+                const typeQuery = `
+                  query {
+                    repository(owner: "${context.repo.owner}", name: "${context.repo.repo}") {
+                      issueTypes(first: 10) {
+                        nodes {
+                          id
+                          name
+                        }
+                      }
+                    }
+                  }
+                `;
+                
+                const typeResult = await github.graphql(typeQuery);
+                const issueTypes = typeResult.repository.issueTypes.nodes;
+                const targetType = issueTypes.find(t => t.name === issueType);
+                
+                if (targetType) {
+                  // 设置 Issue Type
+                  const mutation = `
+                    mutation {
+                      updateIssueIssueType(input: {
+                        issueId: "${issue.node_id}",
+                        issueTypeId: "${targetType.id}"
+                      }) {
+                        issue {
+                          id
+                          issueType {
+                            name
+                          }
+                        }
+                      }
+                    }
+                  `;
+                  
+                  await github.graphql(mutation);
+                  console.log(`Set Issue Type to: ${issueType}`);
+                }
+              } catch (error) {
+                console.log(`Could not set Issue Type: ${error.message}`);
+              }
+            }
