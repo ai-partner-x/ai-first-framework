@@ -17,10 +17,9 @@
   },
   "dependencies": {
     "@ai-first/cache": "workspace:*",
-    "@ai-first/core": "workspace:*",
-    "@ai-first/di": "workspace:*",
-    "@ai-first/nextjs": "workspace:*",
-    "@ai-first/orm": "workspace:*",
+    "@ai-partner-x/aiko-boot": "workspace:*",
+    "@ai-partner-x/aiko-boot-starter-orm": "workspace:*",
+    "@ai-partner-x/aiko-boot-starter-web": "workspace:*",
     "better-sqlite3": "^12.6.2",
     "cors": "^2.8.5",
     "express": "^4.18.0",

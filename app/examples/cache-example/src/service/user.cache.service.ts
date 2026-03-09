@@ -20,8 +20,8 @@
  * }
  */
 
-import { Service } from '@ai-first/core';
-import { Cacheable, CachePut, CacheEvict, Autowired } from '@ai-first/cache';
+import { Service, Autowired } from '@ai-partner-x/aiko-boot';
+import { Cacheable, CachePut, CacheEvict } from '@ai-first/cache';
 import { User } from '../entity/user.entity.js';
 import { UserRepository } from '../entity/user.repository.js';
 
@@ -74,7 +74,11 @@ export class UserCacheService {
   @CacheEvict({ key: 'user:list', allEntries: true })
   async createUser(data: Omit<User, 'id'>): Promise<User> {
     console.log('  [DB] 写入数据库: createUser()');
-    return this.userRepository.insert(data);
+    await this.userRepository.insert(data);
+    const list = await this.userRepository.selectList(data as Partial<User>);
+    const created = list[list.length - 1];
+    if (!created) throw new Error('Failed to create user');
+    return created;
   }
 
   /**
@@ -89,7 +93,8 @@ export class UserCacheService {
     const existing = await this.userRepository.selectById(id);
     if (!existing) throw new Error(`用户 ${id} 不存在`);
     const updated: User = { ...existing, ...data };
-    return this.userRepository.updateById(updated);
+    await this.userRepository.updateById(updated);
+    return updated;
   }
 
   /**
@@ -101,6 +106,7 @@ export class UserCacheService {
   @CacheEvict({ key: 'user' })
   async deleteUser(id: number): Promise<boolean> {
     console.log(`  [DB] 删除数据库: deleteUser(${id})`);
-    return this.userRepository.deleteById(id);
+    const affected = await this.userRepository.deleteById(id);
+    return affected > 0;
   }
 }

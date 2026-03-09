@@ -23,8 +23,8 @@ import {
   DeleteMapping,
   PathVariable,
   RequestBody,
-} from '@ai-first/nextjs';
-import { Autowired } from '@ai-first/di/server';
+} from '@ai-partner-x/aiko-boot-starter-web';
+import { Autowired } from '@ai-partner-x/aiko-boot';
 import { User } from '../entity/user.entity.js';
 import { UserCacheService } from '../service/user.cache.service.js';
 
