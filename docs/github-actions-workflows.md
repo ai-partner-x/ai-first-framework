@@ -284,22 +284,20 @@ permissions:
 
 ## 工作流执行流程
 
-```mermaid
-graph TD
-    A[创建 Issue] --> B[auto-label.yml]
-    A --> C[opencode-triage.yml]
-    B --> D[添加标签]
-    B --> E[设置 Issue Type]
-    C --> F[账户年龄检查]
-    F -->|通过| G[AI 分析]
-    F -->|不通过| H[跳过]
-    G --> I[发布分析评论]
-    
-    J[Issue/PR 评论] --> K{包含 /oc 或 /opencode?}
-    K -->|是| L[opencode.yml]
-    K -->|否| M[不触发]
-    L --> N[AI 响应]
-    N --> O[发布回复评论]
+```
+创建 Issue
+    ├── auto-label.yml
+    │       ├── 添加标签
+    │       └── 设置 Issue Type
+    │
+    └── opencode-triage.yml
+            ├── 账户年龄检查
+            │       ├── 通过 → AI 分析 → 发布分析评论
+            │       └── 不通过 → 跳过
+
+Issue/PR 评论
+    ├── 包含 /oc 或 /opencode → opencode.yml → AI 响应 → 发布回复评论
+    └── 不包含命令 → 不触发
 ```
 
 ---
