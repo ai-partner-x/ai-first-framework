@@ -51,6 +51,7 @@ import type { CacheConfig } from './spi/cache-config.js';
  * ```json
  * {
  *   "cache": {
+ *     "enabled": true,
  *     "type": "redis",
  *     "host": "127.0.0.1",
  *     "port": 6379,
@@ -62,6 +63,9 @@ import type { CacheConfig } from './spi/cache-config.js';
  */
 @ConfigurationProperties('cache')
 export class CacheProperties {
+  /** 是否启用缓存，设置为 true 时才会自动初始化缓存连接 */
+  enabled?: boolean;
+
   /** 缓存后端类型，目前支持 'redis' */
   type?: 'redis';
 
@@ -101,11 +105,24 @@ export class CacheProperties {
 /**
  * Cache 自动配置类
  * 
- * 当配置了 cache.type 时自动初始化缓存连接。
+ * 当配置了 cache.enabled = true 时自动初始化缓存连接。
  * 对应 Spring Boot 的 `spring.cache.type` 自动配置机制。
+ * 
+ * @example
+ * ```json
+ * // app.config.json
+ * {
+ *   "cache": {
+ *     "enabled": true,
+ *     "type": "redis",
+ *     "host": "127.0.0.1",
+ *     "port": 6379
+ *   }
+ * }
+ * ```
  */
 @AutoConfiguration({ order: 50 })
-@ConditionalOnProperty('cache.type')
+@ConditionalOnProperty('cache.enabled', { havingValue: 'true' })
 @Component()
 export class CacheAutoConfiguration {
 
