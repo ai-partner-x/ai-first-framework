@@ -9,5 +9,5 @@ export default defineConfig({
   dts: true,
   clean: true,
   sourcemap: true,
-  external: ['ioredis'],
+  external: ['ioredis', '@ai-partner-x/aiko-boot'],
 });

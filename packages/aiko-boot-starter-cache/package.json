@@ -25,9 +25,10 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@ai-first/di": "workspace:*",
+    "@ai-partner-x/aiko-boot": "file:../aiko-boot",
     "ioredis": "^5.4.2",
-    "reflect-metadata": "^0.2.1"
+    "reflect-metadata": "^0.2.1",
+    "tslib": "^2.8.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

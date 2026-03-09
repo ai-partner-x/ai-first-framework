@@ -6,6 +6,7 @@
  * - @CachePut  — 执行方法并更新缓存（写通缓存）
  * - @CacheEvict — 清除缓存
  * - initializeCaching(config) — 启动时验证 Redis 连接并注册 RedisCacheManager
+ * - CacheAutoConfiguration — Spring Boot 风格自动配置（@AutoConfiguration）
  *
  * 扩展接口（CacheManager SPI）供自定义后端使用：
  * - Cache / CacheManager — 缓存后端扩展接口
@@ -64,6 +65,16 @@ export {
   CacheInitializationError,
 } from './enable-caching.js';
 
+// ==================== Auto Configuration (Spring Boot 风格) ====================
+// CacheAutoConfiguration 在 createApp() 启动阶段自动初始化缓存连接
+export {
+  CacheAutoConfiguration,
+  CacheProperties,
+} from './auto-configuration.js';
+
+// ==================== Config Augmentation (扩展 @ai-partner-x/aiko-boot 的 AppConfig) ====================
+import './config-augment.js';
+
 // ==================== DI convenience re-export ====================
 // 配合 @Cacheable/@CachePut/@CacheEvict 服务类中的 @Autowired 属性注入使用
-export { Autowired } from '@ai-first/di/server';
+export { Autowired } from '@ai-partner-x/aiko-boot';
