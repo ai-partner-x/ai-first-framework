@@ -324,6 +324,60 @@ export function generateApiClient(options: CodegenOptions = {}) {
   log('\n🎉 API Client generated!');
 }
 
+// ==================== Watch 模式 ====================
+
+export interface WatchOptions extends CodegenOptions {
+  /** 防抖时间，单位毫秒，默认 300 */
+  debounce?: number;
+}
+
+/**
+ * Watch 模式：监控源文件变化自动重新生成
+ */
+export function watchApiClient(options: WatchOptions = {}) {
+  const srcDir = path.resolve(process.cwd(), options.srcDir || './src');
+  const debounceMs = options.debounce ?? 300;
+
+  // 首次生成
+  generateApiClient(options);
+
+  console.log(`\n👀 [codegen] Watching for changes in ${srcDir}...`);
+  console.log('   Monitoring: entity/, dto/, controller/\n');
+
+  const watchDirs = ['entity', 'dto', 'controller'];
+  let debounceTimer: NodeJS.Timeout | null = null;
+
+  const regenerate = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      console.log('\n🔄 [codegen] Change detected, regenerating...');
+      try {
+        generateApiClient({ ...options, silent: false });
+      } catch (e) {
+        console.error(`❌ [codegen] Error: ${(e as Error).message}`);
+      }
+    }, debounceMs);
+  };
+
+  // 使用 Node.js 原生 watch API
+  for (const dir of watchDirs) {
+    const dirPath = path.join(srcDir, dir);
+    if (!fs.existsSync(dirPath)) continue;
+
+    try {
+      fs.watch(dirPath, { recursive: true }, (eventType, filename) => {
+        if (filename && (filename.endsWith('.ts') || filename.endsWith('.tsx'))) {
+          console.log(`📝 [codegen] ${eventType}: ${dir}/${filename}`);
+          regenerate();
+        }
+      });
+      console.log(`   ✅ Watching: ${dir}/`);
+    } catch (e) {
+      console.warn(`   ⚠️  Cannot watch ${dir}/: ${(e as Error).message}`);
+    }
+  }
+}
+
 // ==================== CLI 入口 ====================
 
 // 只有当直接运行 codegen.js 时才执行 CLI 逻辑
@@ -332,17 +386,24 @@ if (isCLI) {
   const args = process.argv.slice(2);
   let srcDir = './src';
   let outDir = './dist/client';
+  let watch = false;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--src' && args[i + 1]) srcDir = args[++i];
     else if (args[i] === '--out' && args[i + 1]) outDir = args[++i];
+    else if (args[i] === '--watch' || args[i] === '-w') watch = true;
     else if (args[i] === '--help' || args[i] === '-h') {
-      console.log(`\nUsage: aiko-boot-codegen [options]\n\nOptions:\n  --src <dir>   Source directory (default: ./src)\n  --out <dir>   Output directory (default: ./dist/client)\n`);
+      console.log(`\nUsage: aiko-boot-codegen [options]\n\nOptions:\n  --src <dir>   Source directory (default: ./src)\n  --out <dir>   Output directory (default: ./dist/client)\n  --watch, -w   Watch mode, auto-regenerate on file changes\n`);
       process.exit(0);
     }
   }
 
   console.log(`📁 Source: ${srcDir}`);
   console.log(`📁 Output: ${outDir}`);
-  generateApiClient({ srcDir, outDir });
+  
+  if (watch) {
+    watchApiClient({ srcDir, outDir });
+  } else {
+    generateApiClient({ srcDir, outDir });
+  }
 }

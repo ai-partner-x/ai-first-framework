@@ -10,7 +10,7 @@ export {
   generateJavaComment,
   type GeneratorOptions 
 } from './generator.js';
-export { generateApiClient, type CodegenOptions } from './client-generator.js';
+export { generateApiClient, watchApiClient, type CodegenOptions, type WatchOptions } from './client-generator.js';
 export { createDecoratorGenericTransformer, transformSourceCode } from './transformer.js';
 export { decoratorGenericPlugin } from './tsup-plugin.js';
 
