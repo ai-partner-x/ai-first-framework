@@ -68,6 +68,9 @@ export {
 export {
   WebAutoConfiguration,
   ServerProperties,
+  ServletProperties,
+  MultipartProperties,
+  parseSizeToBytes,
   getServerConfig,
   setServerConfig,
   getExpressApp,
@@ -76,4 +79,12 @@ export {
 
 // Config Augmentation (扩展 @ai-partner-x/aiko-boot 的 AppConfig)
 import './config-augment.js';
+
+// Re-export @Async and related helpers from @ai-partner-x/aiko-boot for convenient one-stop import
+export {
+  Async,
+  isAsync,
+  getAsyncOptions,
+  type AsyncOptions,
+} from '@ai-partner-x/aiko-boot';
 

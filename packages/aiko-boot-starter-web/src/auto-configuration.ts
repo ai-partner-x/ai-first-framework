@@ -9,8 +9,18 @@
  * export default {
  *   server: {
  *     port: 3001,
- *     prefix: '/api',
- *     cors: true,
+ *     servlet: {
+ *       contextPath: '/api',
+ *     },
+ *   },
+ *   spring: {
+ *     servlet: {
+ *       multipart: {
+ *         enabled: true,
+ *         maxFileSize: '5MB',
+ *         maxRequestSize: '20MB',
+ *       },
+ *     },
  *   },
  * };
  * ```
@@ -30,12 +40,58 @@ import { createExpressRouter } from './express-router.js';
 import { getControllerMetadata } from './decorators.js';
 import { ExceptionHandlerRegistry, createErrorHandler } from '@ai-partner-x/aiko-boot/boot';
 
+// ==================== Multipart Properties ====================
+
+/**
+ * Spring Boot 风格文件上传配置
+ * 
+ * 对应 Spring Boot 的 spring.servlet.multipart.* 配置
+ * @see https://docs.spring.io/spring-boot/docs/current/reference/html/application-properties.html#appendix.application-properties.web
+ */
+@ConfigurationProperties('spring.servlet.multipart')
+export class MultipartProperties {
+  /** 是否启用 multipart 上传，默认 true (Spring Boot: spring.servlet.multipart.enabled) */
+  enabled?: boolean = true;
+  /** 单个上传文件最大大小，默认 1MB (Spring Boot: spring.servlet.multipart.max-file-size) */
+  maxFileSize?: string = '1MB';
+  /** 整个 multipart 请求最大大小，默认 10MB (Spring Boot: spring.servlet.multipart.max-request-size) */
+  maxRequestSize?: string = '10MB';
+}
+
+/**
+ * 将 Spring Boot 风格的文件大小字符串（如 "1MB", "512KB"）转换为字节数。
+ * 如果字符串格式无法识别，抛出 Error。
+ */
+export function parseSizeToBytes(size: string): number {
+  const str = size.trim().toUpperCase();
+  const units: Record<string, number> = {
+    B:  1,
+    KB: 1024,
+    MB: 1024 * 1024,
+    GB: 1024 * 1024 * 1024,
+  };
+  const match = /^(\d+(?:\.\d+)?)\s*(B|KB|MB|GB)?$/.exec(str);
+  if (!match) {
+    throw new Error(
+      `[aiko-web] Invalid size string "${size}" in spring.servlet.multipart config. ` +
+      'Use formats like "1MB", "512KB", "10GB".',
+    );
+  }
+  const value = parseFloat(match[1]);
+  const unit = match[2] || 'B';
+  return Math.round(value * (units[unit] ?? 1));
+}
+
+// ==================== Servlet / Server Properties ====================
+
 /**
  * Servlet 配置（Spring Boot 风格）
  */
 export class ServletProperties {
-  /** 上下文路径，默认 /api */
+  /** 上下文路径，默认 /api (Spring Boot: server.servlet.context-path) */
   contextPath?: string = '/api';
+  /** 文件上传配置 (Spring Boot: spring.servlet.multipart.*) */
+  multipart?: MultipartProperties = new MultipartProperties();
 }
 
 /**
@@ -114,6 +170,25 @@ export class WebAutoConfiguration {
     const maxHttpPostSize = ConfigLoader.get<string>('server.maxHttpPostSize', '10mb');
     const verbose = context.verbose;
 
+    // 读取 multipart 文件上传配置 (spring.servlet.multipart.*)
+    const multipartEnabled    = ConfigLoader.get<boolean>('spring.servlet.multipart.enabled', true);
+    const maxFileSizeStr      = ConfigLoader.get<string>('spring.servlet.multipart.maxFileSize', '1MB');
+    const maxRequestSizeStr   = ConfigLoader.get<string>('spring.servlet.multipart.maxRequestSize', '10MB');
+    // maxRequestSize 直接用作 Express body-parser 的 limit
+    const resolvedBodyLimit = maxRequestSizeStr;
+
+    let multipartOptions: { maxFileSize: number; maxRequestSize: number } | undefined;
+    if (multipartEnabled) {
+      try {
+        multipartOptions = {
+          maxFileSize:    parseSizeToBytes(maxFileSizeStr),
+          maxRequestSize: parseSizeToBytes(maxRequestSizeStr),
+        };
+      } catch (e: any) {
+        console.error(`[aiko-web] Misconfigured spring.servlet.multipart size: ${e.message}. File size limits will not be enforced.`);
+      }
+    }
+
     // 创建 Express 应用
     const app = express();
 
@@ -121,15 +196,19 @@ export class WebAutoConfiguration {
     const corsModule = await import('cors');
     app.use(corsModule.default());
     
-    // Body parser
-    app.use(express.json({ limit: maxHttpPostSize }));
+    // Body parser (limit from spring.servlet.multipart.maxRequestSize > server.maxHttpPostSize)
+    app.use(express.json({ limit: resolvedBodyLimit }));
 
     // 收集 Controller 并注册路由
     const controllers = context.components.get('controller') || [];
     const validControllers = controllers.filter((c: Function) => getControllerMetadata(c)) as (new (...args: any[]) => any)[];
     
     if (validControllers.length > 0) {
-      app.use(createExpressRouter(validControllers, { prefix: contextPath, verbose }));
+      app.use(createExpressRouter(validControllers, {
+        prefix: contextPath,
+        verbose,
+        multipart: multipartOptions,
+      }));
       if (verbose) {
         console.log(`📡 [aiko-web] Registered ${validControllers.length} controller(s)`);
       }

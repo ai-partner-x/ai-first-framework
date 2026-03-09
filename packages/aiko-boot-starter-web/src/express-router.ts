@@ -42,6 +42,17 @@ export interface ExpressRouterOptions {
   prefix?: string;
   /** 是否打印路由注册日志，默认 true */
   verbose?: boolean;
+  /**
+   * 文件上传限制（由 spring.servlet.multipart.* 配置驱动）
+   * 未设置时 multer 不限制单个文件大小。
+   * 整个请求的大小限制由 Express body-parser（server.maxHttpPostSize）统一控制。
+   */
+  multipart?: {
+    /** 单个文件最大字节数 (spring.servlet.multipart.max-file-size) */
+    maxFileSize?: number;
+    /** 整个请求最大字节数 — 传给 Express body-parser limit (spring.servlet.multipart.max-request-size) */
+    maxRequestSize?: number;
+  };
 }
 
 type MulterFile = {
@@ -81,7 +92,7 @@ export function createExpressRouter(
   controllers: (new (...args: any[]) => any)[] | Record<string, any>,
   options: ExpressRouterOptions = {}
 ): IRouter {
-  const { prefix = '/api', verbose = true, instances = [] } = options;
+  const { prefix = '/api', verbose = true, instances = [], multipart } = options;
 
   const router = Router();
 
@@ -96,7 +107,7 @@ export function createExpressRouter(
   controllerClasses.forEach((ControllerClass, i) => {
     // 优先使用传入的实例，否则通过 DI Container 解析
     const instance = instances[i] ?? resolveController(ControllerClass);
-    registerController(router, ControllerClass, instance, prefix, verbose);
+    registerController(router, ControllerClass, instance, prefix, verbose, multipart);
   });
 
   return router;
@@ -125,7 +136,8 @@ function registerController(
   ControllerClass: new (...args: any[]) => any,
   instance: Record<string, (...args: any[]) => Promise<any>>,
   prefix: string,
-  verbose: boolean
+  verbose: boolean,
+  multipart?: ExpressRouterOptions['multipart']
 ) {
   const controllerMeta = getControllerMetadata(ControllerClass);
   if (!controllerMeta) {
@@ -152,8 +164,15 @@ function registerController(
     const requestAttrs    = getRequestAttributes(ControllerClass.prototype, methodName);
 
     // Build multer middleware when the handler has @RequestPart parameters
+    // Note: multer `fileSize` limits each individual file.
+    // Total request size is controlled by Express body-parser (server.maxHttpPostSize).
     const uploadMiddleware = Object.keys(partParams).length > 0
-      ? multer({ storage: multer.memoryStorage() }).fields(
+      ? multer({
+          storage: multer.memoryStorage(),
+          limits: {
+            fileSize: multipart?.maxFileSize,
+          },
+        }).fields(
           Object.values(partParams).map(p => ({ name: p.name, maxCount: 1 }))
         )
       : null;

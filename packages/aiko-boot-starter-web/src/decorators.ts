@@ -11,9 +11,9 @@ const REQUEST_MAPPING_METADATA = 'aiko-boot:requestMapping';
 const PATH_VARIABLE_METADATA = 'aiko-boot:pathVariable';
 const REQUEST_PARAM_METADATA = 'aiko-boot:requestParam';
 const REQUEST_BODY_METADATA = 'aiko-boot:requestBody';
-const REQUEST_PART_METADATA = Symbol('aiko-boot:requestPart');
-const MODEL_ATTRIBUTE_METADATA = Symbol('aiko-boot:modelAttribute');
-const REQUEST_ATTRIBUTE_METADATA = Symbol('aiko-boot:requestAttribute');
+const REQUEST_PART_METADATA = 'aiko-boot:requestPart';
+const MODEL_ATTRIBUTE_METADATA = 'aiko-boot:modelAttribute';
+const REQUEST_ATTRIBUTE_METADATA = 'aiko-boot:requestAttribute';
 
 /** 导出供 ApiContract 复用的元数据 key */
 export { CONTROLLER_METADATA, REQUEST_MAPPING_METADATA };
