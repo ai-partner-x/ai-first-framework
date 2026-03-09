@@ -1,8 +1,8 @@
 # AI-First Framework — @ai-first/cache 说明
 
-> 本文档描述 `packages/cache/` 包的功能、API 与使用方式。
+> 本文档描述 `packages/aiko-boot-starter-cache/` 包的功能、API 与使用方式。
 
-**路径：** `packages/cache/`  
+**路径：** `packages/aiko-boot-starter-cache/`  
 **包名：** `@ai-first/cache`  
 **版本：** 0.1.0
 
@@ -188,32 +188,37 @@ class StringRedisTemplate extends RedisTemplate<string, string> {}  // 字符串
 ### 安装
 
 ```bash
-pnpm add @ai-first/aiko-boot-starter-cache
+pnpm add @ai-first/cache
 ```
 
-### 方式一：与 `createApp` 集成（推荐）
+### 方式一：`app.config.ts` 自动配置（推荐）
 
-最简单的方式，在 `createApp` 时传入 `cache` 配置，框架自动完成连接验证和 CacheManager 注册：
+在 `app.config.ts` 中声明 `cache.*` 配置，`CacheAutoConfiguration` 在应用启动时自动完成连接验证和 CacheManager 注册：
 
 ```typescript
-import { createApp } from '@ai-first/nextjs';
+// app.config.ts
+import type { AppConfig } from '@ai-partner-x/aiko-boot';
 
-const app = await createApp({
-  srcDir: import.meta.dirname,
+export default {
   cache: {
     type: 'redis',
     host: process.env.REDIS_HOST ?? '127.0.0.1',
     port: Number(process.env.REDIS_PORT ?? 6379),
   },
-});
-app.listen(3001);
+} satisfies AppConfig;
+
+// src/server.ts
+import { createApp } from '@ai-partner-x/aiko-boot';
+
+const app = await createApp({ srcDir: import.meta.dirname });
+app.run();
 ```
 
 Redis Sentinel（高可用）：
 
 ```typescript
-const app = await createApp({
-  srcDir: import.meta.dirname,
+// app.config.ts
+export default {
   cache: {
     type: 'redis',
     mode: 'sentinel',
@@ -223,8 +228,10 @@ const app = await createApp({
       { host: '127.0.0.1', port: 26380 },
     ],
   },
-});
+} satisfies AppConfig;
 ```
+
+> **提示**：`cache.*` 属性缺失时，`@ConditionalOnProperty('cache.type')` 会跳过 `CacheAutoConfiguration`，缓存装饰器自动降级，无需 Redis 即可本地开发。
 
 ### 方式二：手动初始化
 
@@ -253,8 +260,8 @@ try {
 在 `@Service` / `@Component` 类的方法上使用缓存注解（需先完成缓存初始化）：
 
 ```typescript
-import { Service } from '@ai-first/core';
-import { Cacheable, CachePut, CacheEvict, Autowired } from '@ai-first/cache';
+import { Service, Autowired } from '@ai-partner-x/aiko-boot';
+import { Cacheable, CachePut, CacheEvict } from '@ai-first/cache';
 
 @Service()
 export class UserCacheService {
@@ -264,19 +271,24 @@ export class UserCacheService {
   // 读通缓存：命中则直接返回，不访问数据库
   @Cacheable({ key: 'user', ttl: 300 })
   async getUserById(id: number): Promise<User | null> {
-    return this.userRepository.findById(id);
+    return this.userRepository.selectById(id);
   }
 
   // 写通缓存：执行方法并将结果更新到缓存
-  @CachePut({ key: 'user', ttl: 300 })
-  async updateUser(id: number, user: User): Promise<User> {
-    return this.userRepository.save(user);
+  @CachePut({ key: 'user', ttl: 300, keyGenerator: (id: unknown) => String(id) })
+  async updateUser(id: number, data: Partial<Omit<User, 'id'>>): Promise<User> {
+    const existing = await this.userRepository.selectById(id);
+    if (!existing) throw new Error(`用户 ${id} 不存在`);
+    const updated: User = { ...existing, ...data };
+    await this.userRepository.updateById(updated);
+    return updated;
   }
 
   // 删除缓存：执行方法后清除对应条目
   @CacheEvict({ key: 'user' })
-  async deleteUser(id: number): Promise<void> {
-    await this.userRepository.remove(id);
+  async deleteUser(id: number): Promise<boolean> {
+    const affected = await this.userRepository.deleteById(id);
+    return affected > 0;
   }
 
   // 清空整个命名空间
@@ -394,11 +406,11 @@ public void clearAll() { ... }
 
 ### @Autowired（便捷再导出）
 
-`@ai-first/cache` 内置再导出 `@Autowired`（来自 `@ai-first/di/server`），无需单独引入：
+`@ai-first/cache` 内置再导出 `@Autowired`（来自 `@ai-partner-x/aiko-boot`），无需单独引入：
 
 ```typescript
 import { Cacheable, Autowired } from '@ai-first/cache';
-// 等同于：import { Autowired } from '@ai-first/di/server';
+// 等同于：import { Autowired } from '@ai-partner-x/aiko-boot';
 ```
 
 ---
@@ -609,9 +621,8 @@ setCacheManager(new MapCacheManager());
 
 ```typescript
 import 'reflect-metadata';
-import { createApp } from '@ai-first/nextjs';
-import { Service } from '@ai-first/core';
-import { Cacheable, CachePut, CacheEvict, Autowired } from '@ai-first/cache';
+import { Service, Autowired } from '@ai-partner-x/aiko-boot';
+import { Cacheable, CachePut, CacheEvict } from '@ai-first/cache';
 import { getRedisClient, RedisTemplate } from '@ai-first/cache/redis';
 
 interface User { id: number; name: string; email: string; }
@@ -639,7 +650,7 @@ class UserCacheService {
     return this.userRepository.findById(id);
   }
 
-  @CachePut({ key: 'user', ttl: 300, keyGenerator: (id: number) => String(id) })
+  @CachePut({ key: 'user', ttl: 300, keyGenerator: (id: unknown) => String(id) })
   async updateUser(id: number, user: User): Promise<User> {
     return this.userRepository.save(user);
   }
@@ -649,25 +660,35 @@ class UserCacheService {
     this.userRepository.remove(id);
   }
 }
+```
 
-// 启动应用（自动初始化 Redis 连接 + CacheManager）
-const app = await createApp({
-  srcDir: import.meta.dirname,
+```typescript
+// app.config.ts — 启动应用（CacheAutoConfiguration 自动初始化 Redis 连接 + CacheManager）
+import type { AppConfig } from '@ai-partner-x/aiko-boot';
+
+export default {
   cache: {
     type: 'redis',
     host: process.env.REDIS_HOST ?? '127.0.0.1',
     port: Number(process.env.REDIS_PORT ?? 6379),
   },
-});
+} satisfies AppConfig;
+```
 
-// 直接操作 Redis（通过 RedisTemplate）
+```typescript
+// src/server.ts
+import { createApp } from '@ai-partner-x/aiko-boot';
+
+const app = await createApp({ srcDir: import.meta.dirname });
+
+// 直接操作 Redis（通过 RedisTemplate，在 CacheAutoConfiguration 初始化后可用）
 const client = getRedisClient();
 const redisTemplate = new RedisTemplate<string, unknown>({ client });
 const ops = redisTemplate.opsForValue();
 await ops.set('config:timeout', 30, 3600);
 const timeout = await ops.get('config:timeout');
 
-app.listen(3001);
+app.run();
 ```
 
 ---
@@ -681,9 +702,11 @@ app.listen(3001);
 | `Cacheable(options)` | 方法装饰器 | 读通缓存 |
 | `CachePut(options)` | 方法装饰器 | 写通缓存 |
 | `CacheEvict(options)` | 方法装饰器 | 删除缓存 |
-| `Autowired` | 属性装饰器 | DI 属性注入（re-export from `@ai-first/di/server`） |
+| `Autowired` | 属性装饰器 | DI 属性注入（re-export from `@ai-partner-x/aiko-boot`） |
 | `initializeCaching(config)` | `async function` | 根据 `config.type` 初始化缓存后端 |
 | `CacheInitializationError` | 类 | 初始化失败异常 |
+| `CacheAutoConfiguration` | 类 | Spring Boot 风格自动配置（读取 `cache.*` 属性，自动初始化/关闭连接） |
+| `CacheProperties` | 类 | `@ConfigurationProperties('cache')` 绑定类，覆盖 standalone/sentinel/cluster 全部属性 |
 | `CacheConfig` | 类型 | 通用缓存配置联合类型（`type: 'redis' \| ...`） |
 | `RedisCacheConfig` | 类型 | Redis 后端配置（`{ type: 'redis' } & RedisConfig`） |
 | `Cache` | 接口 | 缓存命名空间操作 SPI |
@@ -725,4 +748,4 @@ app.listen(3001);
 
 - `ioredis ^5.4.2`（由 `@ai-first/cache/redis` 使用）
 - `reflect-metadata ^0.2.1`
-- `@ai-first/di workspace:*`
+- `@ai-partner-x/aiko-boot workspace:*`
