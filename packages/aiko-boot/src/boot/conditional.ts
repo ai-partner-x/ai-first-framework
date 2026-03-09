@@ -14,7 +14,7 @@
  * @example
  * ```typescript
  * @Configuration()
- * @ConditionalOnProperty('aiko-boot-starter-cache.enabled', { havingValue: 'true' })
+ * @ConditionalOnProperty('cache.enabled', { havingValue: 'true' })
  * export class CacheAutoConfiguration {
  *   @Bean()
  *   @ConditionalOnMissingBean(CacheService)
@@ -158,7 +158,7 @@ export function ConditionalOnMissingClass(classes: Function | Function[]) {
  * @example
  * ```typescript
  * @Configuration()
- * @ConditionalOnProperty('aiko-boot-starter-cache.enabled', { havingValue: 'true' })
+ * @ConditionalOnProperty('cache.enabled', { havingValue: 'true' })
  * export class CacheAutoConfiguration { ... }
  * 
  * // 或简单检查属性存在
