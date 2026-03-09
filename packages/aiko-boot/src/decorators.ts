@@ -14,7 +14,7 @@ import type { ServiceOptions, AsyncOptions } from './types.js';
 const SERVICE_METADATA = 'aiko-boot:service';
 const COMPONENT_METADATA = 'aiko-boot:component';
 const TRANSACTIONAL_METADATA = 'aiko-boot:transactional';
-const ASYNC_METADATA = Symbol('aiko-boot:async');
+const ASYNC_METADATA = 'aiko-boot:async';
 
 // ==================== Component Layer ====================
 
