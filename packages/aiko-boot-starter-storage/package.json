@@ -1,0 +1,63 @@
+{
+  "name": "@ai-partner-x/aiko-boot-starter-storage",
+  "version": "0.1.0",
+  "description": "Aiko Boot - Storage Starter with multi-provider support (Local, S3, OSS, COS)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "aiko-boot.config.json"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@ai-partner-x/aiko-boot": "workspace:*",
+    "reflect-metadata": "^0.2.1"
+  },
+  "devDependencies": {
+    "@types/ali-oss": "^6.16.11",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0"
+  },
+  "peerDependencies": {
+    "@aws-sdk/client-s3": ">=3.0.0",
+    "@aws-sdk/s3-request-presigner": ">=3.0.0",
+    "ali-oss": ">=6.0.0",
+    "cos-nodejs-sdk-v5": ">=2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@aws-sdk/client-s3": {
+      "optional": true
+    },
+    "@aws-sdk/s3-request-presigner": {
+      "optional": true
+    },
+    "ali-oss": {
+      "optional": true
+    },
+    "cos-nodejs-sdk-v5": {
+      "optional": true
+    }
+  },
+  "keywords": [
+    "aiko-boot",
+    "boot-starter-storage",
+    "storage",
+    "s3",
+    "oss",
+    "cos",
+    "file-upload",
+    "typescript"
+  ]
+}
