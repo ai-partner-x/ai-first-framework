@@ -104,6 +104,12 @@ export async function transpileCommand(source: string, options: TranspileOptions
   const generatedFiles: string[] = [];
   const entities: { tableName: string; fields: { name: string; type: string; column: string }[] }[] = [];
   const allParsedClasses: ParsedClass[] = [];
+  
+  // Track which components are used
+  let hasRedis = false;
+  let hasMQ = false;
+  let hasSecurity = false;
+  let hasAdmin = false;
 
   // Clear utility type tracking
   clearUtilityTypeUsages();
@@ -131,6 +137,37 @@ export async function transpileCommand(source: string, options: TranspileOptions
 
       // Process classes
       for (const cls of classes) {
+        // Track which components are used
+        for (const dec of cls.decorators) {
+          if (dec.name === 'RedisHash' || dec.name === 'RedisRepository' || dec.name === 'RedisRepo') {
+            hasRedis = true;
+          }
+          if (dec.name === 'MqBinding' || dec.name === 'EnableBinding' || dec.name === 'MqListener' || dec.name === 'StreamListener') {
+            hasMQ = true;
+          }
+          if (dec.name === 'EnableGlobalMethodSecurity' || dec.name === 'PreAuthorize' || dec.name === 'Secured' || dec.name === 'RolesAllowed') {
+            hasSecurity = true;
+          }
+          if (dec.name === 'AdminModule' || dec.name === 'AdminMenu' || dec.name === 'AdminPermission' || dec.name === 'AdminRoute') {
+            hasAdmin = true;
+          }
+        }
+        
+        // Also check method decorators
+        for (const method of cls.methods) {
+          for (const dec of method.decorators) {
+            if (dec.name === 'PreAuthorize' || dec.name === 'Secured' || dec.name === 'RolesAllowed') {
+              hasSecurity = true;
+            }
+            if (dec.name === 'MqListener' || dec.name === 'StreamListener') {
+              hasMQ = true;
+            }
+            if (dec.name === 'AdminRoute') {
+              hasAdmin = true;
+            }
+          }
+        }
+
         // Collect entity info for schema generation
         const entityInfo = getEntityInfo(cls);
         if (entityInfo) {
@@ -263,7 +300,7 @@ export async function transpileCommand(source: string, options: TranspileOptions
 
     // pom.xml
     const pomFile = path.join(outputDir, 'pom.xml');
-    const pomContent = generatePomXml(options);
+    const pomContent = generatePomXml(options, { hasRedis, hasMQ, hasSecurity, hasAdmin });
     fs.writeFileSync(pomFile, pomContent);
     console.log(`  📄 Generated: pom.xml`);
 
@@ -276,7 +313,7 @@ export async function transpileCommand(source: string, options: TranspileOptions
 
     // application.yml
     const ymlFile = path.join(resourcesDir, 'application.yml');
-    const ymlContent = generateApplicationYml(options);
+    const ymlContent = generateApplicationYml(options, { hasRedis, hasMQ, hasSecurity, hasAdmin });
     fs.writeFileSync(ymlFile, ymlContent);
     console.log(`  📄 Generated: application.yml`);
 
@@ -339,9 +376,11 @@ public class ${className} {
 /**
  * Generate application.yml
  */
-function generateApplicationYml(options: TranspileOptions): string {
+function generateApplicationYml(options: TranspileOptions, parsedFiles: { hasRedis: boolean; hasMQ: boolean; hasSecurity: boolean; hasAdmin: boolean }): string {
   const appName = options.package.split('.').pop() || 'app';
-  return `spring:
+  const { hasRedis, hasMQ, hasSecurity, hasAdmin } = parsedFiles;
+  
+  let config = `spring:
   application:
     name: ${appName}
   datasource:
@@ -356,7 +395,64 @@ function generateApplicationYml(options: TranspileOptions): string {
   sql:
     init:
       mode: always
-
+`;
+  
+  // Redis configuration
+  if (hasRedis) {
+    config += `  redis:
+    host: localhost
+    port: 6379
+    password:
+    timeout: 10000
+    lettuce:
+      pool:
+        max-active: 8
+        max-wait: -1
+        max-idle: 8
+        min-idle: 0
+`;
+  }
+  
+  // Message Queue configuration
+  if (hasMQ) {
+    config += `  cloud:
+    stream:
+      bindings:
+        output:
+          destination: orders
+          content-type: application/json
+        input:
+          destination: orders
+          content-type: application/json
+      rabbit:
+        bindings:
+          output:
+            producer:
+              routing-key-expression: headers['eventType']
+`;
+  }
+  
+  // Security configuration
+  if (hasSecurity) {
+    config += `  security:
+    user:
+      name: user
+      password: password
+      roles: USER
+`;
+  }
+  
+  // Admin configuration
+  if (hasAdmin) {
+    config += `aiko:
+  admin:
+    enabled: true
+    base-path: /admin
+    title: Admin Portal
+`;
+  }
+  
+  config += `
 mybatis-plus:
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
@@ -365,6 +461,8 @@ mybatis-plus:
 server:
   port: 8080
 `;
+  
+  return config;
 }
 
 /**
@@ -411,13 +509,15 @@ function mapTypeToSql(tsType: string): string {
 /**
  * Generate Maven pom.xml
  */
-function generatePomXml(options: TranspileOptions): string {
+function generatePomXml(options: TranspileOptions, parsedFiles: { hasRedis: boolean; hasMQ: boolean; hasSecurity: boolean; hasAdmin: boolean }): string {
   // Determine MyBatis-Plus starter based on Spring Boot version
   const isSpringBoot3 = options.springBoot.startsWith('3.');
   const mybatisStarter = isSpringBoot3 
     ? 'mybatis-plus-spring-boot3-starter'
     : 'mybatis-plus-boot-starter';
   const mybatisVersion = isSpringBoot3 ? '3.5.9' : '3.5.5';
+
+  const { hasRedis, hasMQ, hasSecurity, hasAdmin } = parsedFiles;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -476,6 +576,48 @@ function generatePomXml(options: TranspileOptions): string {
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
+${hasRedis ? `
+        <!-- Redis -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+        </dependency>
+` : ''}
+${hasMQ ? `
+        <!-- Message Queue (Spring Cloud Stream) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-stream</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-stream-binder-rabbit</artifactId>
+        </dependency>
+` : ''}
+${hasSecurity ? `
+        <!-- Spring Security -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+` : ''}
+${hasAdmin ? `
+        <!-- Aiko Admin -->
+        <dependency>
+            <groupId>com.ai-partner-x</groupId>
+            <artifactId>aiko-boot-starter-admin</artifactId>
+            <version>0.1.0-SNAPSHOT</version>
+        </dependency>
+` : ''}
 ${options.lombok ? `
         <!-- Lombok -->
         <dependency>

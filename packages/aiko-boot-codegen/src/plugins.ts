@@ -13,7 +13,7 @@ export interface TransformContext {
   /** Current class name */
   className: string;
   /** Class type determined by decorators */
-  classType: 'entity' | 'repository' | 'service' | 'controller' | 'dto' | 'unknown';
+  classType: 'entity' | 'repository' | 'service' | 'controller' | 'dto' | 'redis' | 'mq' | 'security' | 'admin' | 'unknown';
   /** Transpiler options */
   options: TranspilerOptions;
   /** All parsed classes in current file */

@@ -201,6 +201,9 @@ function parseInterface(node: ts.InterfaceDeclaration, sourceFile: ts.SourceFile
   // Check if exported
   const isExported = node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword) ?? false;
   
+  // Parse interface-level decorators (empty for now, we'll use name pattern to identify Redis repos)
+  const decorators: ParsedDecorator[] = [];
+  
   // Parse interface-level JSDoc comment
   const comments = parseLeadingComments(node, sourceFile);
   const comment = comments.find(c => c.type === 'jsdoc') || comments[0];
@@ -226,7 +229,7 @@ function parseInterface(node: ts.InterfaceDeclaration, sourceFile: ts.SourceFile
     }
   });
   
-  return { name, properties, comment, isExported };
+  return { name, properties, decorators, comment, isExported };
 }
 
 /**

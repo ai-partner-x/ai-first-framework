@@ -84,6 +84,10 @@ export function generateJavaClass(
     // MyBatis-Plus Mapper extends BaseMapper
     const entityName = getEntityNameFromRepository(transformedClass);
     lines.push(`public interface ${transformedClass.name} extends BaseMapper<${entityName}> {`);
+  } else if (classType === 'redis' && transformedClass.decorators.some(d => d.name === 'RedisRepository' || d.name === 'RedisRepo')) {
+    // Redis Repository extends RedisRepository
+    const entityName = getEntityNameFromRepository(transformedClass);
+    lines.push(`public interface ${transformedClass.name} extends RedisRepository<${entityName}, String> {`);
   } else {
     lines.push(`public class ${transformedClass.name} {`);
   }
@@ -94,18 +98,21 @@ export function generateJavaClass(
     generateEntityFields(transformedClass, lines);
   } else if (classType === 'dto') {
     generateDtoFields(transformedClass, lines, options);
-  } else if (classType !== 'repository') {
-    // For service/controller, always generate injected fields
+  } else if (classType === 'redis') {
+    // Generate Redis entity fields
+    generateDtoFields(transformedClass, lines, options);
+  } else if (classType !== 'repository' && !transformedClass.decorators.some(d => d.name === 'RedisRepository' || d.name === 'RedisRepo')) {
+    // For service/controller/mq/security/admin, generate injected fields
     generateInjectedFields(transformedClass, lines);
   }
 
   // Constructor (for DI) - skip for entity with Lombok and repository
-  if (transformedClass.constructor && classType !== 'entity' && classType !== 'repository') {
+  if (transformedClass.constructor && classType !== 'entity' && classType !== 'repository' && !transformedClass.decorators.some(d => d.name === 'RedisRepository' || d.name === 'RedisRepo')) {
     generateConstructor(transformedClass, lines);
   }
 
   // Methods - skip for repository (BaseMapper provides methods)
-  if (classType !== 'repository') {
+  if (classType !== 'repository' && !transformedClass.decorators.some(d => d.name === 'RedisRepository' || d.name === 'RedisRepo')) {
     transformedClass.methods.forEach(method => {
       // Apply method-level plugin transformations
       const transformedMethod = pluginRegistry.applyMethodTransform(method, context);
@@ -114,8 +121,8 @@ export function generateJavaClass(
     });
   }
 
-  // Getters/Setters for Entity and DTO (skip if using Lombok)
-  if ((classType === 'entity' || classType === 'dto') && !options.useLombok) {
+  // Getters/Setters for Entity, DTO, and Redis (skip if using Lombok)
+  if ((classType === 'entity' || classType === 'dto' || classType === 'redis') && !options.useLombok) {
     generateGettersSetters(transformedClass, lines);
   }
 
@@ -140,12 +147,16 @@ function createDefaultPluginRegistry(): PluginRegistry {
 /**
  * Get class type based on decorators
  */
-function getClassType(parsedClass: ParsedClass): 'entity' | 'repository' | 'service' | 'controller' | 'dto' {
+function getClassType(parsedClass: ParsedClass): 'entity' | 'repository' | 'service' | 'controller' | 'dto' | 'redis' | 'mq' | 'security' | 'admin' {
   for (const dec of parsedClass.decorators) {
     if (dec.name === 'Entity' || dec.name === 'TableName') return 'entity';
     if (dec.name === 'Mapper' || dec.name === 'Repository') return 'repository';
     if (dec.name === 'Service') return 'service';
     if (dec.name === 'RestController') return 'controller';
+    if (dec.name === 'RedisHash' || dec.name === 'RedisRepository' || dec.name === 'RedisRepo') return 'redis';
+    if (dec.name === 'MqBinding' || dec.name === 'EnableBinding') return 'mq';
+    if (dec.name === 'EnableGlobalMethodSecurity') return 'security';
+    if (dec.name === 'AdminModule' || dec.name === 'AdminMenu' || dec.name === 'AdminPermission') return 'admin';
   }
   // If no decorators and has fields, it's likely a DTO
   if (parsedClass.fields.length > 0 && parsedClass.methods.length === 0) {
@@ -312,6 +323,41 @@ function collectImports(parsedClass: ParsedClass, imports: Set<string>, classTyp
         collectImportsFromType(javaType, imports, options.packageName);
       });
       break;
+    case 'redis':
+      // Redis imports
+      imports.add('org.springframework.data.redis.core.RedisHash');
+      imports.add('org.springframework.data.redis.repository.RedisRepository');
+      imports.add('org.springframework.data.annotation.Id');
+      imports.add('org.springframework.data.redis.core.index.Indexed');
+      // Lombok
+      if (options.useLombok) {
+        imports.add('lombok.Data');
+      }
+      break;
+    case 'mq':
+      // Message Queue imports
+      imports.add('org.springframework.cloud.stream.annotation.EnableBinding');
+      imports.add('org.springframework.cloud.stream.annotation.StreamListener');
+      imports.add('org.springframework.cloud.stream.annotation.Output');
+      imports.add('org.springframework.cloud.stream.messaging.Source');
+      imports.add('org.springframework.cloud.stream.messaging.Sink');
+      break;
+    case 'security':
+      // Security imports
+      imports.add('org.springframework.security.access.prepost.PreAuthorize');
+      imports.add('org.springframework.security.access.prepost.PostAuthorize');
+      imports.add('org.springframework.security.access.annotation.Secured');
+      imports.add('javax.annotation.security.RolesAllowed');
+      imports.add('org.springframework.security.core.annotation.AuthenticationPrincipal');
+      imports.add('org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity');
+      break;
+    case 'admin':
+      // Admin imports
+      imports.add('com.aiko.admin.annotation.AdminMenu');
+      imports.add('com.aiko.admin.annotation.AdminRoute');
+      imports.add('com.aiko.admin.annotation.AdminPermission');
+      imports.add('com.aiko.admin.annotation.AdminModule');
+      break;
   }
 
   // Check for method annotations
@@ -451,6 +497,11 @@ function generateClassAnnotations(parsedClass: ParsedClass, lines: string[], opt
     return;
   }
   
+  // For Redis classes, add @Data if using Lombok
+  if (classType === 'redis' && options.useLombok) {
+    lines.push('@Data');
+  }
+  
   parsedClass.decorators.forEach(dec => {
     switch (dec.name) {
       case 'Entity':
@@ -480,6 +531,41 @@ function generateClassAnnotations(parsedClass: ParsedClass, lines: string[], opt
           const javaPath = dec.args.path.replace(/:(\w+)/g, '{$1}');
           lines.push(`@RequestMapping("${javaPath}")`);
         }
+        break;
+      case 'RedisHash':
+        if (dec.args.value) {
+          lines.push(`@RedisHash("${dec.args.value}")`);
+        } else {
+          lines.push('@RedisHash');
+        }
+        break;
+      case 'RedisRepository':
+      case 'RedisRepo':
+        lines.push('@Repository');
+        break;
+      case 'MqBinding':
+      case 'EnableBinding':
+        if (dec.args.value) {
+          const value = Array.isArray(dec.args.value) ? dec.args.value.join(', ') : dec.args.value;
+          lines.push(`@EnableBinding(${value})`);
+        } else {
+          lines.push('@EnableBinding');
+        }
+        break;
+      case 'EnableGlobalMethodSecurity':
+        const prePostEnabled = dec.args.prePostEnabled ?? true;
+        const securedEnabled = dec.args.securedEnabled ?? true;
+        const jsr250Enabled = dec.args.jsr250Enabled ?? true;
+        lines.push(`@EnableGlobalMethodSecurity(prePostEnabled = ${prePostEnabled}, securedEnabled = ${securedEnabled}, jsr250Enabled = ${jsr250Enabled})`);
+        break;
+      case 'AdminModule':
+        lines.push('@AdminModule');
+        break;
+      case 'AdminMenu':
+        lines.push('@AdminMenu');
+        break;
+      case 'AdminPermission':
+        lines.push('@AdminPermission');
         break;
     }
   });
@@ -523,8 +609,26 @@ function generateEntityFields(parsedClass: ParsedClass, lines: string[]): void {
  * Generate DTO fields with validation annotations
  */
 function generateDtoFields(parsedClass: ParsedClass, lines: string[], _options: TranspilerOptions): void {
+  const classType = getClassType(parsedClass);
+  const isRedis = classType === 'redis' || parsedClass.decorators.some(d => d.name === 'RedisHash');
+  
   parsedClass.fields.forEach(field => {
     const javaType = mapFieldType(field);
+    
+    // Check for Redis decorators first
+    if (isRedis) {
+      field.decorators.forEach(dec => {
+        if (dec.name === 'Id') {
+          lines.push('    @Id');
+        }
+        if (dec.name === 'Indexed') {
+          lines.push('    @Indexed');
+        }
+        if (dec.name === 'RedisValue') {
+          lines.push('    @RedisValue');
+        }
+      });
+    }
     
     // Check for validation decorators
     field.decorators.forEach(dec => {
@@ -562,8 +666,16 @@ function generateDtoFields(parsedClass: ParsedClass, lines: string[], _options: 
 function mapFieldType(field: { name: string; type: string; decorators: any[] }): string {
   const tsType = field.type;
   
+  // Check if it's a Redis field (has @Indexed or is Redis entity)
+  const isRedis = field.decorators.some(d => d.name === 'Indexed' || d.name === 'Id');
+  
   // Check if it's a primary key (id)
   const isId = field.name === 'id' || field.decorators.some(d => d.name === 'TableId');
+  
+  // For Redis, id should be String, not Long
+  if (isRedis && isId) {
+    return 'String';
+  }
   
   // Smart number mapping
   if (tsType === 'number') {
@@ -651,6 +763,27 @@ function generateMethod(
     if (dec.name === 'Transactional') {
       lines.push('    @Transactional');
     }
+    if (dec.name === 'PreAuthorize') {
+      lines.push(`    @PreAuthorize("${dec.args.value}")`);
+    }
+    if (dec.name === 'PostAuthorize') {
+      lines.push(`    @PostAuthorize("${dec.args.value}")`);
+    }
+    if (dec.name === 'Secured') {
+      const roles = Array.isArray(dec.args.value) ? dec.args.value.map(r => `"${r}"`).join(', ') : `"${dec.args.value}"`;
+      lines.push(`    @Secured({${roles}})`);
+    }
+    if (dec.name === 'RolesAllowed') {
+      const roles = Array.isArray(dec.args.value) ? dec.args.value.map(r => `"${r}"`).join(', ') : `"${dec.args.value}"`;
+      lines.push(`    @RolesAllowed({${roles}})`);
+    }
+    if (dec.name === 'MqListener' || dec.name === 'StreamListener') {
+      let value = dec.args.value || dec.args.arg0 || '';
+      lines.push(value ? `    @StreamListener("${value}")` : `    @StreamListener`);
+    }
+    if (dec.name === 'AdminRoute') {
+      lines.push('    @AdminRoute');
+    }
   });
 
   // Return type
@@ -691,6 +824,9 @@ function generateMethod(
  * Generate getters and setters
  */
 function generateGettersSetters(parsedClass: ParsedClass, lines: string[]): void {
+  const classType = getClassType(parsedClass);
+  const isRedis = classType === 'redis' || parsedClass.decorators.some(d => d.name === 'RedisHash');
+  
   parsedClass.fields.forEach(field => {
     // Determine Java type - special handling for id field
     let javaType: string;
@@ -698,7 +834,8 @@ function generateGettersSetters(parsedClass: ParsedClass, lines: string[]): void
       field.decorators.some(d => d.name === 'PrimaryKey' || d.name === 'Id' || d.name === 'TableId');
     
     if (isIdField) {
-      javaType = 'Long'; // Primary keys should always be Long
+      // For Redis entities, id should be String; for others, use Long
+      javaType = isRedis ? 'String' : 'Long';
     } else {
       javaType = mapType(field.type);
     }
@@ -945,8 +1082,23 @@ export function generateJavaFromInterface(
   const lines: string[] = [];
   const imports = new Set<string>();
   
+  // Check if it's a Redis repository interface (by name pattern)
+  const isRedisRepo = parsedInterface.name.includes('Repository');
+  
+  // For interfaces with Repository in name, check if they have Redis-related names
+  const isRedisRelated = parsedInterface.name.includes('Redis') || 
+                         parsedInterface.name.includes('Session');
+  
+  const shouldBeRedisRepo = isRedisRepo && isRedisRelated;
+  
+  // Redis repository imports
+  if (shouldBeRedisRepo) {
+    imports.add('org.springframework.data.redis.repository.RedisRepository');
+    imports.add('org.springframework.stereotype.Repository');
+  }
+  
   // Lombok
-  if (options.useLombok) {
+  if (options.useLombok && !shouldBeRedisRepo) {
     imports.add('lombok.Data');
   }
   
@@ -974,42 +1126,53 @@ export function generateJavaFromInterface(
   }
   
   // Class annotation
-  if (options.useLombok) {
+  if (shouldBeRedisRepo) {
+    lines.push('@Repository');
+  } else if (options.useLombok) {
     lines.push('@Data');
   }
   
-  // Class declaration
-  lines.push(`public class ${parsedInterface.name} {`);
-  
-  // Generate fields from interface properties
-  for (const prop of parsedInterface.properties) {
-    // Add field comment if present
-    if (prop.comment) {
-      lines.push(`    /** ${prop.comment} */`);
-    }
-    
-    const javaType = mapInterfacePropertyType(prop.type);
-    lines.push(`    private ${javaType} ${prop.name};`);
-    lines.push('');
+  // Class declaration - Redis repository extends RedisRepository
+  if (shouldBeRedisRepo) {
+    // Extract entity name from repository name
+    const entityName = parsedInterface.name.replace('Repository', '');
+    lines.push(`public interface ${parsedInterface.name} extends RedisRepository<${entityName}, String> {`);
+  } else {
+    lines.push(`public class ${parsedInterface.name} {`);
   }
   
-  // Generate getters/setters if not using Lombok
-  if (!options.useLombok) {
+  // For Redis repository interfaces, don't generate fields or methods
+  if (!shouldBeRedisRepo) {
+    // Generate fields from interface properties
     for (const prop of parsedInterface.properties) {
+      // Add field comment if present
+      if (prop.comment) {
+        lines.push(`    /** ${prop.comment} */`);
+      }
+      
       const javaType = mapInterfacePropertyType(prop.type);
-      const capitalizedName = prop.name.charAt(0).toUpperCase() + prop.name.slice(1);
-      
-      // Getter
-      lines.push(`    public ${javaType} get${capitalizedName}() {`);
-      lines.push(`        return this.${prop.name};`);
-      lines.push('    }');
+      lines.push(`    private ${javaType} ${prop.name};`);
       lines.push('');
-      
-      // Setter
-      lines.push(`    public void set${capitalizedName}(${javaType} ${prop.name}) {`);
-      lines.push(`        this.${prop.name} = ${prop.name};`);
-      lines.push('    }');
-      lines.push('');
+    }
+    
+    // Generate getters/setters if not using Lombok
+    if (!options.useLombok) {
+      for (const prop of parsedInterface.properties) {
+        const javaType = mapInterfacePropertyType(prop.type);
+        const capitalizedName = prop.name.charAt(0).toUpperCase() + prop.name.slice(1);
+        
+        // Getter
+        lines.push(`    public ${javaType} get${capitalizedName}() {`);
+        lines.push(`        return this.${prop.name};`);
+        lines.push('    }');
+        lines.push('');
+        
+        // Setter
+        lines.push(`    public void set${capitalizedName}(${javaType} ${prop.name}) {`);
+        lines.push(`        this.${prop.name} = ${prop.name};`);
+        lines.push('    }');
+        lines.push('');
+      }
     }
   }
   

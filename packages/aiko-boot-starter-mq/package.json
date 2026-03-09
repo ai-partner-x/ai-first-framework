@@ -1,0 +1,27 @@
+{
+  "name": "@ai-partner-x/aiko-boot-starter-mq",
+  "version": "0.1.0",
+  "description": "Message queue starter for Aiko Boot",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --dts --format esm",
+    "dev": "tsup src/index.ts --dts --format esm --watch",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@ai-partner-x/aiko-boot": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.2"
+  }
+}
