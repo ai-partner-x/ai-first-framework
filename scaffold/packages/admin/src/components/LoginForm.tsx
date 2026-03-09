@@ -26,10 +26,13 @@ export function LoginForm() {
 
   return (
     <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow">
-      <h1 className="text-xl font-semibold text-gray-900 mb-4">登录</h1>
+      <h1 className="text-xl font-semibold text-gray-900 mb-4">Admin 登录</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="username"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             用户名
           </label>
           <input
@@ -43,7 +46,10 @@ export function LoginForm() {
           />
         </div>
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             密码
           </label>
           <input

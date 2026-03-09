@@ -1,16 +1,20 @@
 # Scaffold Monorepo
 
-多项目 monorepo 脚手架，包含 **api**、**admin**、**mobile**、**shared**。
+多项目 monorepo 脚手架，包含 **api**、**admin**、**mobile**、**shared**、**shared-auth**。
 
 ## 目录结构
 
 ```
 scaffold/
 ├── packages/
-│   ├── api       # 后端 API（aiko-boot，当前实现用户登录）
-│   ├── shared    # admin / mobile 公共模块（类型、常量、工具）
-│   ├── admin     # 管理端（留空，Vite + React 壳子）
-│   └── mobile    # 移动端 H5（Next.js）
+│   ├── api          # 后端 API（aiko-boot，当前实现用户登录）
+│   ├── shared       # 公共常量（API 基地址、存储 key 等）
+│   ├── shared-auth  # 前端鉴权公共模块（AuthProvider、useAuth、登录态持久化）
+│   ├── admin        # 管理端（Vite + React，共用 shared-auth 登录）
+│   └── mobile       # 移动端 H5（Next.js，共用 shared-auth 登录）
+├── docs/
+│   ├── auth-shared-design.md       # Auth 公共模块设计说明
+│   └── cli-auth-feature-boundary.md # CLI 生成时「是否需要系统功能」边界（供生成器排除登录用）
 └── package.json
 ```
 
@@ -27,7 +31,7 @@ pnpm init-db    # 首次
 pnpm dev        # 并行启动 api + admin + mobile
 ```
 
-**测试登录**：mobile 的登录页会请求 `http://localhost:3001/api/auth/login`，需先保证 API 已启动（`pnpm dev:api` 或 `pnpm dev` 已包含）。
+**测试登录**：mobile / admin 的登录页会请求 `http://localhost:3001/api/auth/login`，需先保证 API 已启动（`pnpm dev:api` 或 `pnpm dev` 已包含）。两端共用 **@scaffold/shared-auth** 的登录态与持久化（localStorage），详见 [Auth 公共模块设计](docs/auth-shared-design.md)。
 
 ## 前置
 
@@ -64,6 +68,8 @@ pnpm dev        # 并行启动 api + admin + mobile
 - `pnpm dev:api`    — API 默认 http://localhost:3001
 - `pnpm dev:admin`  — Admin 管理端（留空）
 - `pnpm dev:mobile` — Mobile 默认 http://localhost:3002
+
+**API 热更新**（与 user-crud 一致）：`pnpm dev:api` 会同时跑 **codegen watch** 与 **HTTP 服务**。修改 `entity/`、`dto/`、`controller/` 后会自动重新生成 `dist/client`，前端可即时引用新类型与接口；改 `src/server.ts` 会触发服务重启。
 
 ## 构建
 

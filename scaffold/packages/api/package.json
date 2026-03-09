@@ -10,7 +10,9 @@
     }
   },
   "scripts": {
-    "dev": "node --import @swc-node/register/esm-register --watch src/server.ts",
+    "dev": "concurrently -n codegen,server -c blue,green \"pnpm codegen:watch\" \"node --import @swc-node/register/esm-register --watch src/server.ts\"",
+    "dev:server": "node --import @swc-node/register/esm-register --watch src/server.ts",
+    "codegen:watch": "node --import tsx scripts/codegen.ts --watch",
     "init-db": "node --import @swc-node/register/esm-register src/scripts/init-db.ts",
     "codegen": "node --import tsx scripts/codegen.ts",
     "build": "pnpm codegen && tsup",
@@ -29,6 +31,7 @@
     "reflect-metadata": "^0.2.1"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "sql.js": "^1.11.0",
     "@swc-node/register": "^1.11.1",
     "@swc/core": "^1.15.18",

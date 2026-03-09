@@ -1,3 +1,9 @@
-import { generateApiClient } from '@ai-partner-x/aiko-boot-codegen';
+import { generateApiClient, watchApiClient } from '@ai-partner-x/aiko-boot-codegen';
 
-generateApiClient();
+const isWatch = process.argv.includes('--watch') || process.argv.includes('-w');
+
+if (isWatch) {
+  watchApiClient();
+} else {
+  generateApiClient();
+}

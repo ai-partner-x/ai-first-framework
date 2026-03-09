@@ -12,6 +12,7 @@
   "dependencies": {
     "@scaffold/api": "workspace:*",
     "@scaffold/shared": "workspace:*",
+    "@scaffold/shared-auth": "workspace:*",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },
