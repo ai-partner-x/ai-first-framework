@@ -53,7 +53,8 @@ async function main() {
   //   3. OrmAutoConfiguration (@OnApplicationReady, order=-100)
   //        → 自动初始化 SQLite 连接（无需手动调用 createKyselyDatabase）
   //   4. CacheAutoConfiguration (@OnApplicationReady, order=-50)
-  //        → 若 app.config.ts 中包含 cache.type，自动验证并初始化 Redis
+  //        → @ConditionalOnProperty('cache.enabled', { havingValue: 'true' }) 控制是否激活
+  //        → cache.enabled = true 时自动验证并初始化 Redis；false 时跳过，缓存装饰器自动降级
   //        → 对应 Spring Boot 的 CacheManager bean 初始化检查
   //
   // 通过环境变量控制是否启用 Redis（详见 app.config.ts）：

@@ -4,7 +4,9 @@
  * 演示 @ai-partner-x/aiko-boot-starter-cache 与 REST API 的集成：
  * - createApp 自动加载 app.config.ts、扫描 mapper/ service/ controller/ 并注册到 DI 容器
  * - SQLite 提供持久化存储（@ai-partner-x/aiko-boot-starter-orm + Kysely）
- * - 可选：通过环境变量启用 Redis 缓存（app.config.ts 中 cache.* 配置）
+ * - 缓存：app.config.ts 中 cache.enabled = true 触发 CacheAutoConfiguration
+ *         对应 @ConditionalOnProperty('cache.enabled', { havingValue: 'true' })
+ *         REDIS_HOST 未设置时 enabled = false，缓存装饰器自动降级
  *
  * 运行前先初始化数据库：
  *   pnpm init-db

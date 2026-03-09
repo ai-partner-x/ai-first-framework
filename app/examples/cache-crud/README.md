@@ -152,10 +152,15 @@ DELETE http://localhost:3002/api/users/:id
 
 | 环境变量 | 说明 | 默认值 |
 |---|---|---|
-| `REDIS_HOST` | Redis 服务器地址，不设置则跳过连接验证 | _(未设置)_ |
+| `REDIS_HOST` | Redis 服务器地址；设置后 `cache.enabled` 自动为 `true`，触发 `CacheAutoConfiguration` | _(未设置)_ |
 | `REDIS_PORT` | Redis 服务器端口 | `6379` |
 | `REDIS_PASSWORD` | Redis 连接密码，不设置或为空则不认证 | _(未设置)_ |
 | `PORT` | API 服务器监听端口（仅 `pnpm server`） | `3002` |
+
+> **激活机制**：`app.config.ts` 中 `cache.enabled = Boolean(REDIS_HOST)` 控制是否启用缓存。
+> `CacheAutoConfiguration` 使用 `@ConditionalOnProperty('cache.enabled', { havingValue: 'true' })` 作为激活条件：
+> - `REDIS_HOST` 已设置 → `cache.enabled = true` → 条件满足 → 自动初始化 Redis 连接
+> - `REDIS_HOST` 未设置 → `cache.enabled = false` → 条件不满足 → 缓存装饰器自动降级，直接调用原方法
 
 ## 对应 Java Spring Boot
 

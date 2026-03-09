@@ -32,16 +32,14 @@ export default {
   },
 
   // ========== Cache Configuration (cache.*) ==========
-  // 仅在配置了 REDIS_HOST 时才启用，@ConditionalOnProperty('cache.enabled', { havingValue: 'true' }) 控制初始化
-  ...(REDIS_HOST
-    ? {
-        cache: {
-          enabled: true as const,
-          type: 'redis' as const,
-          host: REDIS_HOST,
-          port: REDIS_PORT,
-          password: REDIS_PASSWORD,
-        },
-      }
-    : {}),
+  // cache.enabled = true 时，CacheAutoConfiguration 的
+  // @ConditionalOnProperty('cache.enabled', { havingValue: 'true' }) 触发 Redis 初始化。
+  // 未设置 REDIS_HOST 时 enabled = false，条件不满足，缓存装饰器自动降级（直接调用原方法）。
+  cache: {
+    enabled: Boolean(REDIS_HOST),
+    type: 'redis' as const,
+    host: REDIS_HOST,
+    port: REDIS_PORT,
+    password: REDIS_PASSWORD,
+  },
 } satisfies AppConfig;
