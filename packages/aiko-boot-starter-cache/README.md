@@ -1,4 +1,4 @@
-# @ai-first/cache
+# @ai-partner-x/aiko-boot-starter-cache
 
 Spring Boot 风格的缓存抽象层，对标 **Spring Cache + Spring Data Redis**，为 AI-First Framework 应用提供声明式缓存与 Redis 数据访问能力。
 
@@ -6,12 +6,12 @@ Spring Boot 风格的缓存抽象层，对标 **Spring Cache + Spring Data Redis
 
 ## 功能概述
 
-`@ai-first/cache` 将 Spring Boot 缓存体系完整移植到 TypeScript 生态，提供两个独立的入口点：
+`@ai-partner-x/aiko-boot-starter-cache` 将 Spring Boot 缓存体系完整移植到 TypeScript 生态，提供两个独立的入口点：
 
 | 入口 | 对标 Spring | 职责 |
 |---|---|---|
-| `@ai-first/cache` | `spring-context`（Spring Cache 抽象） | 声明式缓存注解、CacheManager SPI、启动初始化 |
-| `@ai-first/cache/redis` | `spring-data-redis`（Spring Data Redis） | Redis 连接管理、RedisTemplate、数据结构操作 |
+| `@ai-partner-x/aiko-boot-starter-cache` | `spring-context`（Spring Cache 抽象） | 声明式缓存注解、CacheManager SPI、启动初始化 |
+| `@ai-partner-x/aiko-boot-starter-cache/redis` | `spring-data-redis`（Spring Data Redis） | Redis 连接管理、RedisTemplate、数据结构操作 |
 
 **核心能力：**
 
@@ -62,13 +62,13 @@ const cached = await client.get(`user:${id}`);
    // { cache: { type: 'memcached', host: '127.0.0.1', port: 11211 } }
    ```
 
-4. **双入口分层**：`@ai-first/cache` 只依赖缓存抽象（无 ioredis 直接依赖），`@ai-first/cache/redis` 提供 Redis 专属 API，用户按需引入
+4. **双入口分层**：`@ai-partner-x/aiko-boot-starter-cache` 只依赖缓存抽象（无 ioredis 直接依赖），`@ai-partner-x/aiko-boot-starter-cache/redis` 提供 Redis 专属 API，用户按需引入
 
 ---
 
 ## 技术实现
 
-### 入口 1：`@ai-first/cache`（缓存抽象层）
+### 入口 1：`@ai-partner-x/aiko-boot-starter-cache`（缓存抽象层）
 
 #### CacheManager SPI（`src/spi/cache.ts`）
 
@@ -160,7 +160,7 @@ config.type === 'redis'
 
 ---
 
-### 入口 2：`@ai-first/cache/redis`（Spring Data Redis 层）
+### 入口 2：`@ai-partner-x/aiko-boot-starter-cache/redis`（Spring Data Redis 层）
 
 #### Redis 连接配置（`src/config.ts`）
 
@@ -203,7 +203,7 @@ class StringRedisTemplate extends RedisTemplate<string, string> {}  // 字符串
 ### 安装
 
 ```bash
-pnpm add @ai-first/cache
+pnpm add @ai-partner-x/aiko-boot-starter-cache
 ```
 
 ### 方式一：`app.config.ts` 自动配置（推荐）
@@ -252,7 +252,7 @@ export default {
 
 ```typescript
 import 'reflect-metadata';
-import { initializeCaching, CacheInitializationError } from '@ai-first/cache';
+import { initializeCaching, CacheInitializationError } from '@ai-partner-x/aiko-boot-starter-cache';
 
 try {
   await initializeCaching({
@@ -276,7 +276,7 @@ try {
 
 ```typescript
 import { Service, Autowired } from '@ai-partner-x/aiko-boot';
-import { Cacheable, CachePut, CacheEvict } from '@ai-first/cache';
+import { Cacheable, CachePut, CacheEvict } from '@ai-partner-x/aiko-boot-starter-cache';
 
 @Service()
 export class UserService {
@@ -319,14 +319,14 @@ export class UserService {
 
 ### RedisTemplate 直接操作
 
-使用 `@ai-first/cache/redis` 进行底层 Redis 数据结构操作：
+使用 `@ai-partner-x/aiko-boot-starter-cache/redis` 进行底层 Redis 数据结构操作：
 
 ```typescript
 import {
   getRedisClient,
   RedisTemplate,
   StringRedisTemplate,
-} from '@ai-first/cache/redis';
+} from '@ai-partner-x/aiko-boot-starter-cache/redis';
 
 // 在 createApp / initializeCaching 之后获取客户端
 const client = getRedisClient();
@@ -363,7 +363,7 @@ await redisTemplate.delete(['user:1', 'user:2']);
 实现 `Cache` + `CacheManager` 接口，可接入任意缓存后端（如 Memcached、内存缓存、测试 Mock）：
 
 ```typescript
-import { Cache, CacheManager, setCacheManager } from '@ai-first/cache';
+import { Cache, CacheManager, setCacheManager } from '@ai-partner-x/aiko-boot-starter-cache';
 
 class MapCache implements Cache {
   private store = new Map<string, { value: string; expiresAt?: number }>();
@@ -408,7 +408,7 @@ setCacheManager(new MapCacheManager());
 
 ## API 参考
 
-### `@ai-first/cache` 导出
+### `@ai-partner-x/aiko-boot-starter-cache` 导出
 
 | 导出 | 类型 | 说明 |
 |---|---|---|
@@ -429,7 +429,7 @@ setCacheManager(new MapCacheManager());
 | `clearCacheManager()` | 函数 | 清除 CacheManager（测试/关闭时使用） |
 | `Autowired` | 装饰器 | DI 属性注入（re-export from `@ai-partner-x/aiko-boot`） |
 
-### `@ai-first/cache/redis` 导出
+### `@ai-partner-x/aiko-boot-starter-cache/redis` 导出
 
 | 导出 | 类型 | 说明 |
 |---|---|---|
@@ -506,7 +506,7 @@ export class UserRepository extends BaseMapper<User> {
 ```typescript
 // src/service/user.cache.service.ts
 import { Service, Autowired } from '@ai-partner-x/aiko-boot';
-import { Cacheable, CachePut, CacheEvict } from '@ai-first/cache';
+import { Cacheable, CachePut, CacheEvict } from '@ai-partner-x/aiko-boot-starter-cache';
 import { User } from '../entity/user.entity.js';
 import { UserRepository } from '../entity/user.repository.js';
 

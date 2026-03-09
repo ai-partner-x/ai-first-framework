@@ -1,6 +1,6 @@
 # cache-example
 
-> 展示 `@ai-first/cache` 在应用层的真实用法，包含两种运行模式：
+> 展示 `@ai-partner-x/aiko-boot-starter-cache` 在应用层的真实用法，包含两种运行模式：
 > - **`pnpm start`** — 独立脚本演示缓存装饰器行为
 > - **`pnpm server`** — REST API 服务器（Spring Boot 风格，SQLite 持久化 + 可选 Redis 缓存）
 
@@ -176,7 +176,7 @@ DELETE http://localhost:3002/api/users/:id
 
 ```typescript
 import { Service } from '@ai-first/core';
-import { Cacheable, CachePut, CacheEvict, Autowired } from '@ai-first/cache';
+import { Cacheable, CachePut, CacheEvict, Autowired } from '@ai-partner-x/aiko-boot-starter-cache';
 import { User } from '../entity/user.entity.js';
 import { UserRepository } from '../entity/user.repository.js';
 

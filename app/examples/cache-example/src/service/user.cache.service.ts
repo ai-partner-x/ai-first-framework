@@ -21,7 +21,7 @@
  */
 
 import { Service, Autowired } from '@ai-partner-x/aiko-boot';
-import { Cacheable, CachePut, CacheEvict } from '@ai-first/cache';
+import { Cacheable, CachePut, CacheEvict } from '@ai-partner-x/aiko-boot-starter-cache';
 import { User } from '../entity/user.entity.js';
 import { UserRepository } from '../entity/user.repository.js';
 

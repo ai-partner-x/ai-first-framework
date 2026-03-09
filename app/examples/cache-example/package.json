@@ -16,7 +16,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai-first/cache": "workspace:*",
+    "@ai-partner-x/aiko-boot-starter-cache": "workspace:*",
     "@ai-partner-x/aiko-boot": "workspace:*",
     "@ai-partner-x/aiko-boot-starter-orm": "workspace:*",
     "@ai-partner-x/aiko-boot-starter-web": "workspace:*",

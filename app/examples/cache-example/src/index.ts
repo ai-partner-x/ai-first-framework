@@ -1,7 +1,7 @@
 /**
  * Cache Example - 入口（演示脚本）
  *
- * 演示 @ai-first/cache 的两种运行模式：
+ * 演示 @ai-partner-x/aiko-boot-starter-cache 的两种运行模式：
  *
  * 模式一（REDIS_HOST 已配置）：initializeCaching(config) 验证 Redis 连接
  *   - 启动时调用 initializeCaching(config) 验证 Redis 连接（PING）
@@ -32,14 +32,14 @@ import 'reflect-metadata';
 import {
   initializeCaching,
   CacheInitializationError,
-} from '@ai-first/cache';
+} from '@ai-partner-x/aiko-boot-starter-cache';
 // Spring Data Redis 数据层
 import {
   closeRedisConnection,
   getRedisClient,
   RedisTemplate,
   StringRedisTemplate,
-} from '@ai-first/cache/redis';
+} from '@ai-partner-x/aiko-boot-starter-cache/redis';
 // ORM 数据库初始化（UserRepository 基于 Kysely/SQLite）
 import { createKyselyDatabase } from '@ai-partner-x/aiko-boot-starter-orm';
 import { Container } from '@ai-partner-x/aiko-boot';
@@ -161,7 +161,7 @@ async function main() {
   console.log('');
 
   // ==================== RedisTemplate 直接操作（需要 Redis）====================
-  // Spring Data Redis 层：通过 @ai-first/cache/redis 导入 RedisTemplate
+  // Spring Data Redis 层：通过 @ai-partner-x/aiko-boot-starter-cache/redis 导入 RedisTemplate
 
   if (REDIS_HOST) {
     const client = getRedisClient();

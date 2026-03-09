@@ -1,7 +1,7 @@
 /**
  * Cache-Example API Server — Spring Boot 风格自动配置
  *
- * 演示 @ai-first/cache 与 REST API 的集成：
+ * 演示 @ai-partner-x/aiko-boot-starter-cache 与 REST API 的集成：
  * - createApp 自动加载 app.config.ts、扫描 mapper/ service/ controller/ 并注册到 DI 容器
  * - SQLite 提供持久化存储（@ai-partner-x/aiko-boot-starter-orm + Kysely）
  * - 可选：通过环境变量启用 Redis 缓存（app.config.ts 中 cache.* 配置）

@@ -1,21 +1,21 @@
-# AI-First Framework — @ai-first/cache 说明
+# AI-First Framework — @ai-partner-x/aiko-boot-starter-cache 说明
 
 > 本文档描述 `packages/aiko-boot-starter-cache/` 包的功能、API 与使用方式。
 
 **路径：** `packages/aiko-boot-starter-cache/`  
-**包名：** `@ai-first/cache`  
+**包名：** `@ai-partner-x/aiko-boot-starter-cache`  
 **版本：** 0.1.0
 
 ---
 
 ## 功能概述
 
-`@ai-first/cache` 将 Spring Boot 缓存体系完整移植到 TypeScript 生态，提供两个独立的入口点：
+`@ai-partner-x/aiko-boot-starter-cache` 将 Spring Boot 缓存体系完整移植到 TypeScript 生态，提供两个独立的入口点：
 
 | 入口 | 对标 Spring | 职责 |
 |------|-------------|------|
-| `@ai-first/cache` | `spring-context`（Spring Cache 抽象） | 声明式缓存注解、CacheManager SPI、启动初始化 |
-| `@ai-first/cache/redis` | `spring-data-redis`（Spring Data Redis） | Redis 连接管理、RedisTemplate、数据结构操作 |
+| `@ai-partner-x/aiko-boot-starter-cache` | `spring-context`（Spring Cache 抽象） | 声明式缓存注解、CacheManager SPI、启动初始化 |
+| `@ai-partner-x/aiko-boot-starter-cache/redis` | `spring-data-redis`（Spring Data Redis） | Redis 连接管理、RedisTemplate、数据结构操作 |
 
 **核心能力：**
 
@@ -66,13 +66,13 @@
    createApp({ cache: { type: 'memcached', host: '127.0.0.1', port: 11211 } })
    ```
 
-4. **双入口分层**：`@ai-first/cache` 只依赖缓存抽象（无 ioredis 直接依赖），`@ai-first/cache/redis` 提供 Redis 专属 API，用户按需引入
+4. **双入口分层**：`@ai-partner-x/aiko-boot-starter-cache` 只依赖缓存抽象（无 ioredis 直接依赖），`@ai-partner-x/aiko-boot-starter-cache/redis` 提供 Redis 专属 API，用户按需引入
 
 ---
 
 ## 技术实现
 
-### 入口 1：`@ai-first/cache`（缓存抽象层）
+### 入口 1：`@ai-partner-x/aiko-boot-starter-cache`（缓存抽象层）
 
 #### CacheManager SPI（`src/spi/cache.ts`）
 
@@ -97,7 +97,7 @@ interface CacheManager {
 维护单例 `CacheManager`，装饰器通过 `getCacheManager()` 获取，与后端完全解耦：
 
 ```typescript
-import { setCacheManager, getCacheManager, clearCacheManager } from '@ai-first/cache';
+import { setCacheManager, getCacheManager, clearCacheManager } from '@ai-partner-x/aiko-boot-starter-cache';
 
 setCacheManager(new RedisCacheManager(client));   // 注册（通常由 initializeCaching 自动完成）
 getCacheManager();                                 // 装饰器内部调用
@@ -145,7 +145,7 @@ config.type === 'redis'
 
 ---
 
-### 入口 2：`@ai-first/cache/redis`（Spring Data Redis 层）
+### 入口 2：`@ai-partner-x/aiko-boot-starter-cache/redis`（Spring Data Redis 层）
 
 #### Redis 连接配置（`src/config.ts`）
 
@@ -188,7 +188,7 @@ class StringRedisTemplate extends RedisTemplate<string, string> {}  // 字符串
 ### 安装
 
 ```bash
-pnpm add @ai-first/cache
+pnpm add @ai-partner-x/aiko-boot-starter-cache
 ```
 
 ### 方式一：`app.config.ts` 自动配置（推荐）
@@ -237,7 +237,7 @@ export default {
 
 ```typescript
 import 'reflect-metadata';
-import { initializeCaching, CacheInitializationError } from '@ai-first/cache';
+import { initializeCaching, CacheInitializationError } from '@ai-partner-x/aiko-boot-starter-cache';
 
 try {
   await initializeCaching({
@@ -261,7 +261,7 @@ try {
 
 ```typescript
 import { Service, Autowired } from '@ai-partner-x/aiko-boot';
-import { Cacheable, CachePut, CacheEvict } from '@ai-first/cache';
+import { Cacheable, CachePut, CacheEvict } from '@ai-partner-x/aiko-boot-starter-cache';
 
 @Service()
 export class UserCacheService {
@@ -310,7 +310,7 @@ export class UserCacheService {
 缓存方法返回值。调用前先查缓存，命中则直接返回；未命中则执行方法并将结果写入缓存。
 
 ```typescript
-import { Cacheable } from '@ai-first/cache';
+import { Cacheable } from '@ai-partner-x/aiko-boot-starter-cache';
 
 // 基础用法
 @Cacheable({ key: 'user', ttl: 300 })
@@ -352,7 +352,7 @@ public User getUserById(Long id) { ... }
 每次都执行方法，并将返回值写入缓存（不跳过方法执行）。用于写操作后同步更新缓存。
 
 ```typescript
-import { CachePut } from '@ai-first/cache';
+import { CachePut } from '@ai-partner-x/aiko-boot-starter-cache';
 
 @CachePut({ key: 'user', ttl: 300, keyGenerator: (id: number) => String(id) })
 async updateUser(id: number, user: User): Promise<User> {
@@ -371,7 +371,7 @@ public User updateUser(Long id, User user) { ... }
 执行方法后删除指定缓存（也可配置为执行前删除）。
 
 ```typescript
-import { CacheEvict } from '@ai-first/cache';
+import { CacheEvict } from '@ai-partner-x/aiko-boot-starter-cache';
 
 // 删除单个缓存条目
 @CacheEvict({ key: 'user' })
@@ -406,10 +406,10 @@ public void clearAll() { ... }
 
 ### @Autowired（便捷再导出）
 
-`@ai-first/cache` 内置再导出 `@Autowired`（来自 `@ai-partner-x/aiko-boot`），无需单独引入：
+`@ai-partner-x/aiko-boot-starter-cache` 内置再导出 `@Autowired`（来自 `@ai-partner-x/aiko-boot`），无需单独引入：
 
 ```typescript
-import { Cacheable, Autowired } from '@ai-first/cache';
+import { Cacheable, Autowired } from '@ai-partner-x/aiko-boot-starter-cache';
 // 等同于：import { Autowired } from '@ai-partner-x/aiko-boot';
 ```
 
@@ -417,14 +417,14 @@ import { Cacheable, Autowired } from '@ai-first/cache';
 
 ## Redis 连接配置
 
-`@ai-first/cache/redis` 提供 Redis 连接管理 API：
+`@ai-partner-x/aiko-boot-starter-cache/redis` 提供 Redis 连接管理 API：
 
 ```typescript
 import {
   createRedisConnection,
   getRedisClient,
   closeRedisConnection,
-} from '@ai-first/cache/redis';
+} from '@ai-partner-x/aiko-boot-starter-cache/redis';
 
 // 单机模式（默认）
 const client = createRedisConnection({ host: '127.0.0.1', port: 6379 });
@@ -469,10 +469,10 @@ await closeRedisConnection();
 
 ## RedisTemplate\<K, V\>
 
-`@ai-first/cache/redis` 提供 Spring Data Redis 风格的 Redis 操作模板，类型安全。
+`@ai-partner-x/aiko-boot-starter-cache/redis` 提供 Spring Data Redis 风格的 Redis 操作模板，类型安全。
 
 ```typescript
-import { getRedisClient, RedisTemplate, StringRedisTemplate } from '@ai-first/cache/redis';
+import { getRedisClient, RedisTemplate, StringRedisTemplate } from '@ai-partner-x/aiko-boot-starter-cache/redis';
 
 // 通过 createApp / initializeCaching 初始化后获取客户端
 const client = getRedisClient();
@@ -572,7 +572,7 @@ const count = await zsetOps.count('leaderboard', 0, 200);
 实现 `Cache` + `CacheManager` 接口，可接入任意缓存后端（Memcached、内存缓存、测试 Mock 等）：
 
 ```typescript
-import { Cache, CacheManager, setCacheManager } from '@ai-first/cache';
+import { Cache, CacheManager, setCacheManager } from '@ai-partner-x/aiko-boot-starter-cache';
 
 class MapCache implements Cache {
   private store = new Map<string, { value: string; expiresAt?: number }>();
@@ -622,8 +622,8 @@ setCacheManager(new MapCacheManager());
 ```typescript
 import 'reflect-metadata';
 import { Service, Autowired } from '@ai-partner-x/aiko-boot';
-import { Cacheable, CachePut, CacheEvict } from '@ai-first/cache';
-import { getRedisClient, RedisTemplate } from '@ai-first/cache/redis';
+import { Cacheable, CachePut, CacheEvict } from '@ai-partner-x/aiko-boot-starter-cache';
+import { getRedisClient, RedisTemplate } from '@ai-partner-x/aiko-boot-starter-cache/redis';
 
 interface User { id: number; name: string; email: string; }
 
@@ -695,7 +695,7 @@ app.run();
 
 ## API 参考
 
-### `@ai-first/cache` 导出
+### `@ai-partner-x/aiko-boot-starter-cache` 导出
 
 | 导出 | 类型 | 说明 |
 |------|------|------|
@@ -719,7 +719,7 @@ app.run();
 | `CacheEvictOptions` | 类型 | `@CacheEvict` 选项 |
 | `CacheKeyGenerator` | 类型 | key 生成函数类型 |
 
-### `@ai-first/cache/redis` 导出
+### `@ai-partner-x/aiko-boot-starter-cache/redis` 导出
 
 | 导出 | 类型 | 说明 |
 |------|------|------|
@@ -746,6 +746,6 @@ app.run();
 
 ## 依赖
 
-- `ioredis ^5.4.2`（由 `@ai-first/cache/redis` 使用）
+- `ioredis ^5.4.2`（由 `@ai-partner-x/aiko-boot-starter-cache/redis` 使用）
 - `reflect-metadata ^0.2.1`
 - `@ai-partner-x/aiko-boot workspace:*`
