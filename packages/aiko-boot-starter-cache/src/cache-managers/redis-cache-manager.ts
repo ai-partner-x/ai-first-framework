@@ -10,8 +10,8 @@
  *
  * @example
  * ```typescript
- * import { RedisCacheManager } from '@ai-first/aiko-boot-starter-cache/redis';
- * import { setCacheManager } from '@ai-first/aiko-boot-starter-cache';
+ * import { RedisCacheManager } from '@ai-partner-x/aiko-boot-starter-cache/redis';
+ * import { setCacheManager } from '@ai-partner-x/aiko-boot-starter-cache';
  *
  * // 应用启动时：
  * const client = getRedisClient();

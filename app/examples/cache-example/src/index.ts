@@ -1,15 +1,12 @@
 /**
  * Cache Example - 入口（演示脚本）
  *
- * 演示 @ai-partner-x/aiko-boot-starter-cache 的两种运行模式：
+ * 演示使用 Spring Boot 风格自动配置的缓存系统：
  *
- * 模式一（REDIS_HOST 已配置）：initializeCaching(config) 验证 Redis 连接
- *   - 启动时调用 initializeCaching(config) 验证 Redis 连接（PING）
- *   - 失败则抛出 CacheInitializationError，阻止启动
- *   - 对应 Spring Boot: CacheManager bean 初始化检查
- *
- * 模式二（REDIS_HOST 未配置）：缓存装饰器自动降级
- *   - @Cacheable/@CachePut/@CacheEvict 直接调用原方法，不访问 Redis
+ * - createApp() 自动加载 app.config.ts，依次触发：
+ *     1. OrmAutoConfiguration  — 自动初始化 SQLite 数据库连接
+ *     2. CacheAutoConfiguration — 若 REDIS_HOST 已配置，则自动初始化 Redis
+ * - 若 REDIS_HOST 未配置，@Cacheable/@CachePut/@CacheEvict 自动降级，直接调用原方法
  *
  * 运行前先初始化数据库（只需执行一次）：
  *   pnpm init-db
@@ -28,83 +25,47 @@
  */
 
 import 'reflect-metadata';
-// Spring Cache 抽象层
+import { createApp, Container } from '@ai-partner-x/aiko-boot';
+// 触发 @ai-partner-x/aiko-boot-starter-cache 的 AppConfig 类型扩展（config-augment）
+import '@ai-partner-x/aiko-boot-starter-cache';
+// Spring Data Redis 数据层（直接操作 Redis，按需引入）
 import {
-  initializeCaching,
-  CacheInitializationError,
-} from '@ai-partner-x/aiko-boot-starter-cache';
-// Spring Data Redis 数据层
-import {
+  isRedisInitialized,
   closeRedisConnection,
   getRedisClient,
   RedisTemplate,
   StringRedisTemplate,
 } from '@ai-partner-x/aiko-boot-starter-cache/redis';
-// ORM 数据库初始化（UserRepository 基于 Kysely/SQLite）
-import { createKyselyDatabase } from '@ai-partner-x/aiko-boot-starter-orm';
-import { Container } from '@ai-partner-x/aiko-boot';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { dirname } from 'path';
 import { UserCacheService } from './service/user.cache.service.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const REDIS_HOST = process.env.REDIS_HOST;
-const REDIS_PORT = process.env.REDIS_PORT ? Number(process.env.REDIS_PORT) : 6379;
-const REDIS_PASSWORD = process.env.REDIS_PASSWORD || undefined; // 空字符串视为"无密码"
-
 async function main() {
   console.log('=== @app/cache-example ===\n');
 
-  // ==================== 数据库初始化 ====================
+  // ==================== Spring Boot 风格自动配置启动 ====================
   //
-  // UserRepository 基于 @ai-partner-x/aiko-boot-starter-orm Kysely 适配器，需要先建立 DB 连接。
-  // 使用 createKyselyDatabase 初始化 SQLite（与 createApp 内部行为一致）。
+  // createApp() 对应 Spring Boot 的 SpringApplication.run()：
+  //   1. 加载 app.config.ts（包含 database.* 和可选的 cache.* 配置）
+  //   2. 扫描 service/ 等目录，注册 @Service 组件到 DI 容器
+  //   3. OrmAutoConfiguration (@OnApplicationReady, order=-100)
+  //        → 自动初始化 SQLite 连接（无需手动调用 createKyselyDatabase）
+  //   4. CacheAutoConfiguration (@OnApplicationReady, order=-50)
+  //        → 若 app.config.ts 中包含 cache.type，自动验证并初始化 Redis
+  //        → 对应 Spring Boot 的 CacheManager bean 初始化检查
   //
-  // 请先执行 pnpm init-db 创建表和种子数据。
+  // 通过环境变量控制是否启用 Redis（详见 app.config.ts）：
+  //   REDIS_HOST=127.0.0.1 REDIS_PORT=6379 pnpm start
 
-  console.log('--- 初始化 SQLite 数据库连接 ---');
-  await createKyselyDatabase({
-    type: 'sqlite',
-    filename: join(__dirname, '../data/cache_example.db'),
-  });
-  console.log('  ✅ SQLite 连接就绪\n');
-
-  // ==================== 启动验证 ====================
-  //
-  // initializeCaching(config) 创建 Redis 连接并发送 PING 验证：
-  //   - 成功 → 缓存就绪，继续启动
-  //   - 失败 → 抛出 CacheInitializationError（生产环境应在此 process.exit(1)）
-  //
-  // 通常由 CacheAutoConfiguration 在 createApp() 阶段自动完成，
-  // 此处为演示示例故手动调用。
-  //
-  // 对应 Spring Boot: ApplicationContext 启动时的 CacheManager bean 初始化检查
-
-  if (REDIS_HOST) {
-    const pwdHint = REDIS_PASSWORD ? '（已配置密码）' : '（无密码）';
-    console.log(`--- initializeCaching：连接 Redis ${REDIS_HOST}:${REDIS_PORT} ${pwdHint} ---`);
-
-    try {
-      await initializeCaching({ type: 'redis', host: REDIS_HOST, port: REDIS_PORT, password: REDIS_PASSWORD });
-      console.log('  ✅ Redis 连接验证成功，缓存已就绪\n');
-    } catch (e) {
-      if (e instanceof CacheInitializationError) {
-        // 生产环境应在此处终止应用: process.exit(1)
-        console.error('  ❌ 缓存初始化失败（启动阶段）：', e.message);
-        console.error('  → 生产环境应在此处终止应用启动（process.exit(1)）\n');
-        return;
-      }
-      throw e;
-    }
-  } else {
-    console.log('--- 未配置 REDIS_HOST：跳过 initializeCaching，缓存装饰器自动降级 ---');
-    console.log('  提示：设置 REDIS_HOST=127.0.0.1 可开启严格模式\n');
-  }
+  console.log('--- createApp()：加载配置并触发自动配置 ---');
+  await createApp({ srcDir: __dirname });
+  console.log('');
 
   // ==================== DI 容器解析 ====================
   //
-  // @Service 已自动注册为 DI 单例（Injectable + Singleton）
+  // createApp() 扫描 service/ 目录时已将 @Service 类注册为 DI 单例，
   // 通过 Container.resolve() 获取，@Autowired 依赖由 DI 自动注入
   //
   // 对应 Java: @Autowired UserCacheService userCacheService;
@@ -162,8 +123,9 @@ async function main() {
 
   // ==================== RedisTemplate 直接操作（需要 Redis）====================
   // Spring Data Redis 层：通过 @ai-partner-x/aiko-boot-starter-cache/redis 导入 RedisTemplate
+  // CacheAutoConfiguration 已初始化 Redis 连接，通过 getRedisClient() 获取共享客户端
 
-  if (REDIS_HOST) {
+  if (isRedisInitialized()) {
     const client = getRedisClient();
     const redisTemplate = new RedisTemplate<string, unknown>({ client });
     const stringTemplate = new StringRedisTemplate({ client });

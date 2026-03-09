@@ -1,5 +1,5 @@
 /**
- * @ai-first/aiko-boot-starter-cache — Spring Cache 缓存抽象层
+ * @ai-partner-x/aiko-boot-starter-cache — Spring Cache 缓存抽象层
  *
  * 对标 Spring Cache，提供统一的缓存抽象与注解：
  * - @Cacheable — 缓存方法返回值（读通缓存）
@@ -14,7 +14,7 @@
  * - getCacheManager() — 获取当前激活的后端
  *
  * Redis 连接管理与 RedisTemplate 等数据访问 API 位于：
- * @see @ai-first/aiko-boot-starter-cache/redis
+ * @see @ai-partner-x/aiko-boot-starter-cache/redis
  *
  * 对应 Spring 中:
  * ```

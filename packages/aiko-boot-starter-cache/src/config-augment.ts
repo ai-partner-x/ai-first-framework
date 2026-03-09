@@ -1,5 +1,5 @@
 /**
- * @ai-first/aiko-boot-starter-cache 类型扩展
+ * @ai-partner-x/aiko-boot-starter-cache 类型扩展
  * 
  * 通过 module augmentation 扩展 @ai-partner-x/aiko-boot 的 AppConfig
  */

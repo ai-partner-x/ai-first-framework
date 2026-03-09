@@ -8,15 +8,15 @@
  *
  * @example 注册 Redis 后端（通常由 initializeCaching() 自动完成）
  * ```typescript
- * import { setCacheManager } from '@ai-first/aiko-boot-starter-cache';
- * import { RedisCacheManager, getRedisClient } from '@ai-first/aiko-boot-starter-cache/redis';
+ * import { setCacheManager } from '@ai-partner-x/aiko-boot-starter-cache';
+ * import { RedisCacheManager, getRedisClient } from '@ai-partner-x/aiko-boot-starter-cache/redis';
  *
  * setCacheManager(new RedisCacheManager(getRedisClient()));
  * ```
  *
  * @example 注册自定义内存后端（测试用途）
  * ```typescript
- * import { setCacheManager } from '@ai-first/aiko-boot-starter-cache';
+ * import { setCacheManager } from '@ai-partner-x/aiko-boot-starter-cache';
  *
  * setCacheManager(new MyInMemoryCacheManager());
  * ```

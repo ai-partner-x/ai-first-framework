@@ -10,13 +10,13 @@
  * 后端实现（Redis、Memcached、In-Memory 等）可在应用启动时通过
  * setCacheManager() 自由切换，无需修改业务代码。
  *
- * 使用方式：在类上使用 @Service / @Component（来自 @ai-first/core），
- * 方法上使用 @Cacheable / @CachePut / @CacheEvict（来自 @ai-first/aiko-boot-starter-cache）。
+ * 使用方式：在类上使用 @Service / @Component（来自 @ai-partner-x/aiko-boot），
+ * 方法上使用 @Cacheable / @CachePut / @CacheEvict（来自 @ai-partner-x/aiko-boot-starter-cache）。
  *
  * @example
  * ```typescript
- * import { Service } from '@ai-first/core';
- * import { Cacheable, CachePut, CacheEvict, Autowired } from '@ai-first/aiko-boot-starter-cache';
+ * import { Service } from '@ai-partner-x/aiko-boot';
+ * import { Cacheable, CachePut, CacheEvict, Autowired } from '@ai-partner-x/aiko-boot-starter-cache';
  *
  * @Service()
  * class UserCacheService {

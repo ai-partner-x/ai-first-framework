@@ -11,7 +11,7 @@
  *
  * @example 实现自定义内存缓存后端
  * ```typescript
- * import { Cache, CacheManager, setCacheManager } from '@ai-first/aiko-boot-starter-cache';
+ * import { Cache, CacheManager, setCacheManager } from '@ai-partner-x/aiko-boot-starter-cache';
  *
  * class MapCache implements Cache {
  *   private store = new Map<string, { value: string; expiresAt?: number }>();

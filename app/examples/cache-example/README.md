@@ -12,7 +12,7 @@
 - ✅ `@CacheEvict` — 缓存失效（创建/删除）
 - ✅ `RedisTemplate` — 直接 Redis 操作（String / Hash / ZSet）
 - ✅ 无 Redis 时自动降级（装饰器直接调用原方法）
-- ✅ SQLite 持久化（`@ai-first/orm` + Kysely，可切换 PostgreSQL / MySQL）
+- ✅ SQLite 持久化（`@ai-partner-x/aiko-boot-starter-orm` + Kysely，可切换 PostgreSQL / MySQL）
 - ✅ REST API 服务器（`createApp` 自动扫描 controller / service / mapper）
 
 ## 目录结构
@@ -48,7 +48,7 @@ pnpm init-db
 
 ### 二、模式 A — 独立演示脚本（`pnpm start`）
 
-展示缓存装饰器的工作原理，依次执行 `@Cacheable / @CachePut / @CacheEvict` 并打印日志。
+展示 Spring Boot 风格自动配置的完整启动流程：`createApp()` 自动触发 `OrmAutoConfiguration` 和 `CacheAutoConfiguration`，再依次演示 `@Cacheable / @CachePut / @CacheEvict` 并打印日志。
 
 **macOS / Linux（bash / zsh）**
 
@@ -175,7 +175,7 @@ DELETE http://localhost:3002/api/users/:id
 ## 核心代码
 
 ```typescript
-import { Service } from '@ai-first/core';
+import { Service } from '@ai-partner-x/aiko-boot';
 import { Cacheable, CachePut, CacheEvict, Autowired } from '@ai-partner-x/aiko-boot-starter-cache';
 import { User } from '../entity/user.entity.js';
 import { UserRepository } from '../entity/user.repository.js';

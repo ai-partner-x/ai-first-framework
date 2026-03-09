@@ -1,9 +1,9 @@
 /**
  * User Cache Example - 用户缓存示例
  *
- * 展示 @ai-first/aiko-boot-starter-cache 与通用 DI 装饰器的结合用法：
- * - 使用 @Service（来自 @ai-first/core）作为类装饰器
- * - 方法上使用 @Cacheable / @CachePut / @CacheEvict（来自 @ai-first/aiko-boot-starter-cache）
+ * 展示 @ai-partner-x/aiko-boot-starter-cache 与通用 DI 装饰器的结合用法：
+ * - 使用 @Service（来自 @ai-partner-x/aiko-boot）作为类装饰器
+ * - 方法上使用 @Cacheable / @CachePut / @CacheEvict（来自 @ai-partner-x/aiko-boot-starter-cache）
  * - 对应 Java Spring Boot: @Service 类 + @Cacheable 方法
  *
  * 注意：装饰器示例无需 Redis 即可运行（未初始化时自动降级为直接调用）
@@ -17,8 +17,7 @@ import {
   CacheEvict,
   Autowired,
 } from '../src/index.js';
-import { Container } from '@ai-first/di';
-import { Service } from '@ai-first/core';
+import { Container, Service } from '@ai-partner-x/aiko-boot';
 
 // ==================== Entity 定义 ====================
 
@@ -109,7 +108,7 @@ class UserCacheService {
 // ==================== 使用示例 ====================
 
 async function main() {
-  console.log('=== @ai-first/aiko-boot-starter-cache User Cache Example ===\n');
+  console.log('=== @ai-partner-x/aiko-boot-starter-cache User Cache Example ===\n');
 
   // 通过 DI 容器解析（@Service 已注册为单例，@Autowired 依赖自动注入）
   // 对应 Java: @Autowired UserCacheService userCacheService;

@@ -1,7 +1,7 @@
 /**
  * 用户实体
  *
- * 使用 @ai-first/orm 的 @Entity/@TableId/@TableField 装饰器，
+ * 使用 @ai-partner-x/aiko-boot-starter-orm 的 @Entity/@TableId/@TableField 装饰器，
  * 对应 SQLite 表 cache_user。
  *
  * 对应 Java Spring Boot:

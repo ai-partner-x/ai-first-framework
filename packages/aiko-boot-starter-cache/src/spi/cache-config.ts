@@ -5,14 +5,14 @@
  * 具体后端配置直接内联在同一对象中，方便配置管理。
  *
  * 目前支持的后端：
- * - `'redis'` — Spring Data Redis（由 @ai-first/aiko-boot-starter-cache/redis 提供）
+ * - `'redis'` — Spring Data Redis（由 @ai-partner-x/aiko-boot-starter-cache/redis 提供）
  *
  * 未来可扩展更多后端，只需在 CacheConfig 联合类型中添加新的成员即可，
  * 无需修改 initializeCaching / @Cacheable / @CachePut / @CacheEvict 等现有代码。
  *
  * @example Redis 后端（单机）
  * ```typescript
- * import { createApp } from '@ai-first/nextjs';
+ * import { createApp } from '@ai-partner-x/aiko-boot-starter-web';
  *
  * await createApp({
  *   srcDir: import.meta.dirname,
@@ -39,7 +39,7 @@
  *
  * @example 自定义后端（未来扩展示例）
  * ```typescript
- * import { setCacheManager } from '@ai-first/aiko-boot-starter-cache';
+ * import { setCacheManager } from '@ai-partner-x/aiko-boot-starter-cache';
  * import { MyCustomCacheManager } from './my-aiko-boot-starter-cache-manager';
  *
  * // 应用启动前手动注册自定义后端：

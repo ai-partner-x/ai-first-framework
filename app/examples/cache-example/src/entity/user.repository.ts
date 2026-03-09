@@ -1,7 +1,7 @@
 /**
  * 用户数据仓库（SQLite/ORM 数据库层）
  *
- * 使用 @ai-first/orm 的 @Mapper + BaseMapper<User> 提供 CRUD 能力，
+ * 使用 @ai-partner-x/aiko-boot-starter-orm 的 @Mapper + BaseMapper<User> 提供 CRUD 能力，
  * 通过 Kysely 驱动 SQLite（也可切换为 PostgreSQL / MySQL）。
  *
  * 由 DI 容器管理，通过 @Autowired 注入到 UserCacheService。

@@ -1,5 +1,5 @@
 /**
- * @ai-first/aiko-boot-starter-cache/redis — Spring Data Redis 数据层
+ * @ai-partner-x/aiko-boot-starter-cache/redis — Spring Data Redis 数据层
  *
  * 对标 Spring Data Redis，提供 Redis 连接管理与数据访问 API：
  * - RedisConfig / createRedisConnection — 连接配置与管理
@@ -15,7 +15,7 @@
  *
  * @example
  * ```typescript
- * import { RedisTemplate, StringRedisTemplate, getRedisClient } from '@ai-first/aiko-boot-starter-cache/redis';
+ * import { RedisTemplate, StringRedisTemplate, getRedisClient } from '@ai-partner-x/aiko-boot-starter-cache/redis';
  *
  * // 通过 createApp 初始化连接后，直接获取客户端构建模板
  * const client = getRedisClient();

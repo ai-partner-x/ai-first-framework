@@ -8,7 +8,7 @@
  *
  * @example Redis 后端
  * ```typescript
- * import { createApp } from '@ai-first/nextjs';
+ * import { createApp } from '@ai-partner-x/aiko-boot-starter-web';
  *
  * const app = await createApp({
  *   srcDir: import.meta.dirname,
