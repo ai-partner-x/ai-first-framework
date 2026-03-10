@@ -15,6 +15,7 @@ import {
 import { Autowired } from '@ai-partner-x/aiko-boot';
 import { User } from '../entity/user.entity.js';
 import { UserService, UserSearchParams } from '../service/user.service.js';
+import { UserCacheService } from '../service/user.cache.service.js';
 import { 
   CreateUserDto, 
   UpdateUserDto,
@@ -32,9 +33,21 @@ export class UserController {
   @Autowired()
   private userService!: UserService;
 
+  /**
+   * UserCacheService 为基础 CRUD 操作提供缓存层：
+   * - getUserById / getAllUsers 使用 @Cacheable（读通缓存）
+   * - createUser 使用 @CacheEvict（清空列表缓存）
+   * - updateUser 使用 @CachePut（写通缓存）
+   * - deleteUser 使用 @CacheEvict（清除条目缓存）
+   *
+   * 未启用 Redis 时，自动降级为直接调用 UserService，功能不受影响。
+   */
+  @Autowired()
+  private userCacheService!: UserCacheService;
+
   @GetMapping()
   async list(): Promise<User[]> {
-    return this.userService.getAllUsers();
+    return this.userCacheService.getAllUsers();
   }
 
   /**
@@ -93,12 +106,12 @@ export class UserController {
 
   @GetMapping('/:id')
   async getById(@PathVariable('id') id: string): Promise<User | null> {
-    return this.userService.getUserById(Number(id));
+    return this.userCacheService.getUserById(Number(id));
   }
 
   @PostMapping()
   async create(@RequestBody() dto: CreateUserDto): Promise<User> {
-    return this.userService.createUser(dto);
+    return this.userCacheService.createUser(dto);
   }
 
   @PutMapping('/:id')
@@ -106,12 +119,12 @@ export class UserController {
     @PathVariable('id') id: string,
     @RequestBody() dto: UpdateUserDto
   ): Promise<User> {
-    return this.userService.updateUser(Number(id), dto);
+    return this.userCacheService.updateUser(Number(id), dto);
   }
 
   @DeleteMapping('/:id')
   async delete(@PathVariable('id') id: string): Promise<SuccessResponse> {
-    const result = await this.userService.deleteUser(Number(id));
+    const result = await this.userCacheService.deleteUser(Number(id));
     const response: SuccessResponse = { success: result };
     return response;
   }

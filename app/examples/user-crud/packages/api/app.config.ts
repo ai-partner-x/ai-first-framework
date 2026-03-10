@@ -41,4 +41,17 @@ export default {
     enabled: true,
     failFast: false,
   },
+
+  // ========== Cache Configuration (aiko-boot-starter-cache) ==========
+  // 将 enabled 设为 true 并配置 Redis 地址后即可启用缓存
+  // 对应 Spring Boot: spring.cache.type + spring.data.redis.*
+  //
+  // cache: {
+  //   enabled: true,
+  //   type: 'redis',
+  //   host: process.env.REDIS_HOST || '127.0.0.1',
+  //   port: Number(process.env.REDIS_PORT) || 6379,
+  //   // password: process.env.REDIS_PASSWORD,
+  //   // database: 0,
+  // },
 } satisfies AppConfig;
