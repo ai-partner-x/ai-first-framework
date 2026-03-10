@@ -2,11 +2,27 @@
  * 缓存启动验证 — Spring Boot 风格的缓存后端初始化
  *
  * 提供 initializeCaching(config) 用于在应用启动阶段根据 config.type 选择并初始化
- * 缓存后端，对应 Spring Boot 的 `cache.type` 自动配置机制。
+ * 缓存后端，对应 Spring Boot 的 `spring.cache.type` 自动配置机制。
  *
  * 目前支持 `type: 'redis'`，后续扩展新后端只需在 switch 中添加 case 分支。
  *
- * @example Redis 后端（编程式）
+ * 通常无需手动调用此函数——安装 `@ai-partner-x/aiko-boot-starter-cache` 后，
+ * `CacheAutoConfiguration` 会在应用启动时自动读取 `app.config.ts`（或 `app.config.json`）
+ * 中的 `cache.*` 配置并调用此函数：
+ *
+ * @example app.config.ts / app.config.json 中启用 Redis 缓存
+ * ```json
+ * {
+ *   "cache": {
+ *     "enabled": true,
+ *     "type": "redis",
+ *     "host": "127.0.0.1",
+ *     "port": 6379
+ *   }
+ * }
+ * ```
+ *
+ * @example 手动调用（高级用法）
  * ```typescript
  * import { initializeCaching } from '@ai-partner-x/aiko-boot-starter-cache';
  *
@@ -58,13 +74,13 @@ export class CacheInitializationError extends Error {
  * 初始化并验证缓存后端（**必须**在异步启动阶段调用）
  *
  * 根据 `config.type` 自动选择对应的缓存后端，对应 Spring Boot 的
- * `cache.type` 自动配置机制：
+ * `spring.cache.type` 自动配置机制：
  *
  * - `'redis'` — 验证 Redis 连接（PING）后创建 RedisCacheManager 并注册
  *
  * 初始化完成后，@Cacheable / @CachePut / @CacheEvict 将自动通过所选后端提供缓存服务。
- * 通常由 CacheAutoConfiguration 在应用启动时自动调用（需在配置文件中设置 cache.enabled=true），
- * 也可直接调用以进行编程式初始化。
+ * 通常由 CacheAutoConfiguration 在应用启动时自动调用（读取 app.config.ts / app.config.json
+ * 的 `cache.*` 配置），无需手动调用。
  *
  * @param config 缓存后端配置（type 字段决定使用哪个后端）
  *
