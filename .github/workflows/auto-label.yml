@@ -27,7 +27,7 @@ jobs:
               body.includes('aiko-boot-starter-') ||
               body.includes('starter-')
             ) {
-              labels.push('服务端 starter 组件');
+              labels.push('server-starter');
             }
 
             // 服务端基础组件
@@ -38,7 +38,7 @@ jobs:
               title.includes('core') ||
               title.includes('基础组件')
             ) {
-              labels.push('服务端基础组件');
+              labels.push('server-core');
             }
 
             // example-admin

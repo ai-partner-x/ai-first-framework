@@ -2,15 +2,21 @@
 
 此文件定义了 PR 审查时使用的规则和检查项。
 
-## 服务端组件目录
+## PR 类型识别
 
-以下目录的 PR 会触发服务端组件专项审查：
+根据 PR 修改的文件路径，自动识别 PR 类型：
 
-- `packages/aiko-boot/` - 核心框架
-- `packages/aiko-boot-starter-*/` - Starter 插件
-- `packages/aiko-boot-codegen/` - 代码生成器
+| 类型 | 目录 | 规则文件 |
+|------|------|----------|
+| 服务端组件 | `packages/aiko-boot/`, `packages/aiko-boot-starter-*/`, `packages/aiko-boot-codegen/` | server-starter / server-core |
+| 管理后台 | `app/examples/admin/` | example-admin |
+| 移动端 | `app/examples/mobile/` | example-mobile |
+
+---
 
 ## 通用审查规则
+
+适用于所有 PR 的基础审查：
 
 ### 1. 检查结果分析
 - 分析类型检查、ESLint、测试的结果
@@ -35,7 +41,11 @@
 - 是否需要添加单元测试
 - 边界情况是否考虑
 
-## 服务端组件专项审查规则
+---
+
+## server-starter / server-core 专项审查
+
+**触发条件**: PR 修改了 `packages/aiko-boot/` 或 `packages/aiko-boot-starter-*/`
 
 ### 命名规范检查
 - 包名是否符合 `@ai-partner-x/aiko-boot-starter-{功能}` 格式
@@ -66,6 +76,54 @@
 - `index.ts` 是否正确导出所有公共 API
 - 是否导出 `@AutoConfiguration` 标记的类
 - 是否导出类型扩展
+
+---
+
+## example-admin 专项审查
+
+**触发条件**: PR 修改了 `app/examples/admin/`
+
+### 前端规范检查
+- 组件命名是否符合 PascalCase
+- 是否正确使用 React Hooks
+- 状态管理是否合理
+
+### UI/UX 检查
+- 是否遵循设计系统规范
+- 响应式布局是否正确
+- 无障碍访问是否考虑
+
+### 性能检查
+- 是否有不必要的重渲染
+- 图片是否优化
+- 是否正确使用 React.memo / useMemo / useCallback
+
+### 安全检查
+- XSS 防护
+- 敏感数据处理
+
+---
+
+## example-mobile 专项审查
+
+**触发条件**: PR 修改了 `app/examples/mobile/`
+
+### 移动端规范检查
+- 是否遵循 React Native / Flutter 最佳实践
+- 组件是否跨平台兼容
+- 原生模块调用是否正确
+
+### 性能检查
+- 列表是否使用虚拟滚动
+- 图片是否优化
+- 动画是否流畅
+
+### 设备兼容性
+- iOS / Android 差异处理
+- 屏幕尺寸适配
+- 权限处理
+
+---
 
 ## 输出格式要求
 

@@ -74,10 +74,38 @@ jobs:
             echo "EOF"
           } >> $GITHUB_ENV
           
-          # 读取审查规则文件
+          # 读取通用审查规则
           {
-            echo "REVIEW_RULES<<EOF"
-            cat .github/workflows/pr-review-rules.md 2>/dev/null || echo "Rules file not found"
+            echo "COMMON_RULES<<EOF"
+            cat .github/workflows/rules/pr-review-rules-common.md 2>/dev/null || echo "Common rules file not found"
+            echo "EOF"
+          } >> $GITHUB_ENV
+          
+          # 读取服务端核心审查规则
+          {
+            echo "SERVER_CORE_RULES<<EOF"
+            cat .github/workflows/rules/pr-review-rules-server.md 2>/dev/null || echo "Server core rules file not found"
+            echo "EOF"
+          } >> $GITHUB_ENV
+          
+          # 读取服务端 Starter 审查规则
+          {
+            echo "SERVER_STARTER_RULES<<EOF"
+            cat .github/workflows/rules/pr-review-rules-starter.md 2>/dev/null || echo "Server starter rules file not found"
+            echo "EOF"
+          } >> $GITHUB_ENV
+          
+          # 读取管理后台审查规则
+          {
+            echo "ADMIN_RULES<<EOF"
+            cat .github/workflows/rules/pr-review-rules-admin.md 2>/dev/null || echo "Admin rules file not found"
+            echo "EOF"
+          } >> $GITHUB_ENV
+          
+          # 读取移动端审查规则
+          {
+            echo "MOBILE_RULES<<EOF"
+            cat .github/workflows/rules/pr-review-rules-mobile.md 2>/dev/null || echo "Mobile rules file not found"
             echo "EOF"
           } >> $GITHUB_ENV
 
@@ -89,7 +117,11 @@ jobs:
           TYPECHECK_RESULT: ${{ env.TYPECHECK_RESULT }}
           LINT_RESULT: ${{ env.LINT_RESULT }}
           TEST_RESULT: ${{ env.TEST_RESULT }}
-          REVIEW_RULES: ${{ env.REVIEW_RULES }}
+          COMMON_RULES: ${{ env.COMMON_RULES }}
+          SERVER_CORE_RULES: ${{ env.SERVER_CORE_RULES }}
+          SERVER_STARTER_RULES: ${{ env.SERVER_STARTER_RULES }}
+          ADMIN_RULES: ${{ env.ADMIN_RULES }}
+          MOBILE_RULES: ${{ env.MOBILE_RULES }}
         with:
           model: bailian/qwen3.5-plus
           use_github_token: true
@@ -115,10 +147,34 @@ jobs:
             
             ---
             
-            ## 审查规则
+            ## 通用审查规则
             
-            请按照以下规则文件进行审查：
+            所有 PR 都需要遵循以下规则：
             
-            ${{ env.REVIEW_RULES }}
+            ${{ env.COMMON_RULES }}
+            
+            ---
+            
+            ## 专项审查规则
+            
+            根据此 PR 修改的文件路径，选择适用的专项审查规则：
+            
+            ### 如果修改了服务端核心代码（packages/aiko-boot/ 或 packages/aiko-boot-codegen/）
+            
+            ${{ env.SERVER_CORE_RULES }}
+            
+            ### 如果修改了服务端 Starter 代码（packages/aiko-boot-starter-*/）
+            
+            ${{ env.SERVER_STARTER_RULES }}
+            
+            ### 如果修改了管理后台代码（app/examples/admin/）
+            
+            ${{ env.ADMIN_RULES }}
+            
+            ### 如果修改了移动端代码（app/examples/mobile/）
+            
+            ${{ env.MOBILE_RULES }}
+            
+            请只选择适用的规则进行审查，不要审查不相关的规则。
             
             请用中文回复。
