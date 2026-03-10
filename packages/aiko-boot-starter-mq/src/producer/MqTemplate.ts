@@ -1,17 +1,34 @@
 /**
  * MqTemplate - 消息发送模板
- * 对齐 Spring Boot RabbitTemplate 风格
+ * 实现 MqSender 接口，可通过 @Inject(MqTemplate) 注入
  */
 
+import { Injectable } from '@ai-partner-x/aiko-boot/di';
 import { MqAutoConfiguration } from '../config/MqAutoConfiguration.js';
-import type { MqProducer } from './interfaces.js';
+import type { MqMessage } from '../core/MqMessage.js';
 
-export class MqTemplate implements MqProducer {
+@Injectable()
+export class MqTemplate {
   private getAdapter() {
     return MqAutoConfiguration.getAdapter();
   }
 
-  async send<T>(queue: string, payload: T, traceId?: string): Promise<void> {
-    return this.getAdapter().send(queue, payload, traceId);
+  async send(message: MqMessage<unknown>): Promise<void>;
+  async send(topic: string, body: unknown): Promise<void>;
+  async send(topic: string, tag: string, body: unknown): Promise<void>;
+  async send(
+    msgOrTopic: MqMessage<unknown> | string,
+    bodyOrTag?: unknown,
+    body?: unknown
+  ): Promise<void> {
+    let message: MqMessage<unknown>;
+    if (typeof msgOrTopic === 'object') {
+      message = msgOrTopic;
+    } else if (body !== undefined) {
+      message = { topic: msgOrTopic, tag: String(bodyOrTag ?? ''), body };
+    } else {
+      message = { topic: msgOrTopic, tag: '', body: bodyOrTag };
+    }
+    return this.getAdapter().send(message);
   }
 }

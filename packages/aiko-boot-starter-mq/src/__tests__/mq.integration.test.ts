@@ -1,59 +1,50 @@
 /**
- * MQ 集成测试 - 验证发布/消费流程
- * 使用 InMemoryMqAdapter，无需 RabbitMQ
+ * MQ 集成测试
+ * 文档格式：MqMessage(topic/tag/body)、@MqListener 方法级
  */
 
 import 'reflect-metadata';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   MqListener,
-  MqHandler,
-  Payload,
+  getListeners,
   ConsumerContainer,
   MqTemplate,
   MqAutoConfiguration,
   InMemoryMqAdapter,
   loadMqProperties,
-  getMqListenerMetadata,
-  getMqHandlerMethods,
-  getPayloadIndex,
+  MqMessage,
 } from '../index.js';
 
-// 测试前需要设置 MQ_TYPE=memory，loadMqProperties 会读取
-// MqAutoConfiguration.resetForTesting 用于隔离测试
-
-// ============ 装饰器元数据测试 ============
+// ============ 装饰器元数据测试（文档格式） ============
 
 describe('MQ Decorators', () => {
-  it('getMqListenerMetadata returns listener options', () => {
-    @MqListener({ queue: 'test.queue', retry: 2, dlq: 'test.dlq' })
+  it('getListeners returns method-level listener meta', () => {
     class TestListener {
-      @MqHandler()
-      handle(@Payload() _data: unknown) {}
+      @MqListener({ topic: 'test.queue', tag: 'add', group: 'g1' })
+      handle(_data: unknown) {}
     }
-    const meta = getMqListenerMetadata(TestListener);
-    expect(meta).toEqual({ queue: 'test.queue', retry: 2, dlq: 'test.dlq' });
+    const metas = getListeners(TestListener);
+    expect(metas).toHaveLength(1);
+    expect(metas[0]).toMatchObject({
+      topic: 'test.queue',
+      tag: 'add',
+      group: 'g1',
+      method: 'handle',
+    });
   });
 
-  it('getMqHandlerMethods returns handler method names', () => {
-    @MqListener({ queue: 'q' })
-    class TestListener {
-      @MqHandler()
-      handle(_d: unknown) {}
-      other() {}
+  it('getListeners returns multiple methods', () => {
+    class MultiListener {
+      @MqListener({ topic: 'q1' })
+      onA(_: unknown) {}
+      @MqListener({ topic: 'q2', tag: 't2' })
+      onB(_: unknown) {}
     }
-    const methods = getMqHandlerMethods(TestListener);
-    expect(methods).toEqual(['handle']);
-  });
-
-  it('getPayloadIndex returns parameter index', () => {
-    @MqListener({ queue: 'q' })
-    class TestListener {
-      @MqHandler()
-      handle(a: string, @Payload() _b: object, c: number) {}
-    }
-    const index = getPayloadIndex(TestListener.prototype, 'handle');
-    expect(index).toBe(1);
+    const metas = getListeners(MultiListener);
+    expect(metas).toHaveLength(2);
+    expect(metas[0].topic).toBe('q1');
+    expect(metas[1].topic).toBe('q2');
   });
 });
 
@@ -66,14 +57,9 @@ interface TestEvent {
 
 const received: TestEvent[] = [];
 
-@MqListener({
-  queue: 'test.events',
-  retry: 1,
-  dlq: 'test.events.dlq',
-})
 class TestEventListener {
-  @MqHandler()
-  async handleEvent(@Payload() event: TestEvent): Promise<void> {
+  @MqListener({ topic: 'test.events', tag: 'evt' })
+  async onEvent(event: TestEvent): Promise<void> {
     received.push(event);
   }
 }
@@ -92,7 +78,7 @@ describe('MQ Publish/Consume', () => {
     process.env = originalEnv;
   });
 
-  it('publishes and consumes message via InMemoryMqAdapter', async () => {
+  it('publishes and consumes via InMemoryMqAdapter', async () => {
     const props = loadMqProperties();
     expect(props.type).toBe('memory');
 
@@ -111,7 +97,7 @@ describe('MQ Publish/Consume', () => {
     await adapter.close();
   });
 
-  it('full flow with MqAutoConfiguration and MqTemplate', async () => {
+  it('MqTemplate send(topic, body)', async () => {
     process.env.MQ_TYPE = 'memory';
     ConsumerContainer.registerListener(TestEventListener);
 
@@ -126,5 +112,118 @@ describe('MQ Publish/Consume', () => {
 
     const adapter = MqAutoConfiguration.getAdapter();
     await adapter.close();
+  });
+
+  it('MqTemplate send(topic, tag, body)', async () => {
+    process.env.MQ_TYPE = 'memory';
+    ConsumerContainer.registerListener(TestEventListener);
+
+    await MqAutoConfiguration.init();
+
+    const template = new MqTemplate();
+    await template.send('test.events', 'evt', { id: 'evt-3', value: 200 });
+
+    expect(received).toHaveLength(1);
+    expect(received[0]).toEqual({ id: 'evt-3', value: 200 });
+
+    const adapter = MqAutoConfiguration.getAdapter();
+    await adapter.close();
+  });
+
+  it('MqTemplate send(MqMessage)', async () => {
+    process.env.MQ_TYPE = 'memory';
+    ConsumerContainer.registerListener(TestEventListener);
+
+    await MqAutoConfiguration.init();
+
+    const template = new MqTemplate();
+    const msg: MqMessage<TestEvent> = {
+      topic: 'test.events',
+      tag: 'x',
+      body: { id: 'evt-4', value: 300 },
+    };
+    await template.send(msg);
+
+    expect(received).toHaveLength(1);
+    expect(received[0]).toEqual(msg.body);
+
+    const adapter = MqAutoConfiguration.getAdapter();
+    await adapter.close();
+  });
+});
+
+// ============ 错误场景测试 ============
+
+class FailingEventListener {
+  @MqListener({ topic: 'test.failing' })
+  async onFail(_event: TestEvent): Promise<void> {
+    throw new Error('intentional failure');
+  }
+}
+
+describe('MQ Error Scenarios', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv, MQ_TYPE: 'memory' };
+    ConsumerContainer.clearListenersForTesting();
+    MqAutoConfiguration.resetForTesting();
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it('handler throws - message moves to DLQ after max retries', async () => {
+    const props = loadMqProperties();
+    const adapter = new InMemoryMqAdapter(props);
+    await adapter.connect();
+
+    ConsumerContainer.registerListener(FailingEventListener);
+    await ConsumerContainer.registerAll(adapter);
+
+    await adapter.send('test.failing', { id: 'fail-1', value: 1 });
+
+    const dlq = adapter.getDlqMessages('test.failing.dlq');
+    expect(dlq).toHaveLength(1);
+    expect(dlq[0].payload).toEqual({ id: 'fail-1', value: 1 });
+    expect(dlq[0].retryCount).toBe(3);
+
+    await adapter.close();
+  });
+
+  it('getAdapter before init throws', () => {
+    expect(() => MqAutoConfiguration.getAdapter()).toThrow(
+      'MQ not initialized. Call MqAutoConfiguration.init() first.'
+    );
+  });
+
+  it('production with default credentials logs warning', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const prev = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    process.env.MQ_USERNAME = '';
+    process.env.MQ_PASSWORD = '';
+
+    loadMqProperties();
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Using default credentials')
+    );
+
+    process.env.NODE_ENV = prev;
+    delete process.env.MQ_USERNAME;
+    delete process.env.MQ_PASSWORD;
+
+    warnSpy.mockRestore();
+  });
+
+  it('RabbitMqAdapter send without connect throws', async () => {
+    const { RabbitMqAdapter } = await import('../adapters/RabbitMqAdapter.js');
+    const props = loadMqProperties();
+    props.type = 'rabbitmq';
+    const adapter = new RabbitMqAdapter(props);
+    await expect(adapter.send('q', {})).rejects.toThrow('Channel not initialized');
   });
 });

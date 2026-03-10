@@ -9,18 +9,23 @@
 import 'reflect-metadata';
 import type { MqProperties } from './MqProperties.js';
 import { loadMqProperties } from './MqProperties.js';
+import type { MqAdapter } from '../adapters/interfaces.js';
 import { RabbitMqAdapter } from '../adapters/RabbitMqAdapter.js';
 import { InMemoryMqAdapter } from '../adapters/InMemoryMqAdapter.js';
+import { KafkaMqAdapter } from '../adapters/KafkaMqAdapter.js';
+import { RocketMqAdapter } from '../adapters/RocketMqAdapter.js';
 import { ConsumerContainer } from '../consumer/ConsumerContainer.js';
+import { getListeners } from '../decorators/MqListener.js';
 import { logger } from '../logger.js';
 import {
   AutoConfiguration,
+  Bean,
   ConditionalOnProperty,
   OnApplicationReady,
   OnApplicationShutdown,
+  getApplicationContext,
 } from '@ai-partner-x/aiko-boot/boot';
-
-export type MqAdapter = InstanceType<typeof RabbitMqAdapter> | InstanceType<typeof InMemoryMqAdapter>;
+import { MqTemplate } from '../producer/MqTemplate.js';
 
 @AutoConfiguration({ order: 150 })
 @ConditionalOnProperty('mq.enabled', { matchIfMissing: true })
@@ -29,9 +34,11 @@ export class MqAutoConfiguration {
   private static properties: MqProperties | null = null;
   private static initialized = false;
 
-  /**
-   * 应用就绪时自动初始化 MQ（由 createApp 触发）
-   */
+  @Bean()
+  mqTemplate(): MqTemplate {
+    return new MqTemplate();
+  }
+
   @OnApplicationReady({ order: 100 })
   async autoInit(): Promise<void> {
     await MqAutoConfiguration.doInit();
@@ -65,7 +72,11 @@ export class MqAutoConfiguration {
         this.adapter = new InMemoryMqAdapter(this.properties);
         break;
       case 'kafka':
-        throw new Error('Kafka adapter not implemented');
+        this.adapter = new KafkaMqAdapter(this.properties);
+        break;
+      case 'rocketmq':
+        this.adapter = new RocketMqAdapter(this.properties);
+        break;
       case 'redis':
         throw new Error('Redis MQ adapter not implemented');
       default:
@@ -73,6 +84,21 @@ export class MqAutoConfiguration {
     }
 
     await this.adapter.connect();
+
+    // 从框架扫描的组件中自动发现 @MqListener 方法（文档：getListeners）
+    const ctx = getApplicationContext();
+    if (ctx?.components) {
+      for (const classes of ctx.components.values()) {
+        for (const Klass of classes) {
+          const metas = getListeners(Klass as new (...args: unknown[]) => unknown);
+          if (metas.length > 0) {
+            ConsumerContainer.registerListener(Klass as new (...args: unknown[]) => unknown);
+            logger.info(`Auto-discovered MQ listener: ${Klass.name}`);
+          }
+        }
+      }
+    }
+
     await ConsumerContainer.registerAll(this.adapter);
     this.initialized = true;
     logger.info('MQ starter initialized successfully');

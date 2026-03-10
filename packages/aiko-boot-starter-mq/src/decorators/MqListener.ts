@@ -1,24 +1,40 @@
 /**
- * @MqListener 消费者类装饰器
- * 标记监听指定队列的消费者类
+ * @MqListener 消费者方法装饰器
+ * 文档 四 - 完全对标 Java，方法级注解
  */
 
 import 'reflect-metadata';
 
-const MQ_LISTENER_METADATA = Symbol('mq:listener');
+const MQ_LISTENER_KEY = 'aiko-boot-mq:listener';
 
-export interface MqListenerOptions {
-  queue: string;
-  retry?: number;
-  dlq?: string;
+export interface MqListenerMeta {
+  topic: string;
+  tag: string;
+  group: string;
+  method: string;
 }
 
-export function MqListener(options: MqListenerOptions): ClassDecorator {
-  return (target) => {
-    Reflect.defineMetadata(MQ_LISTENER_METADATA, options, target);
+export interface MqListenerOptions {
+  topic: string;
+  tag?: string;
+  group?: string;
+}
+
+export function MqListener(opt: MqListenerOptions): MethodDecorator {
+  return (target, propertyKey) => {
+    const list: MqListenerMeta[] =
+      (Reflect.getMetadata(MQ_LISTENER_KEY, target.constructor) as MqListenerMeta[] | undefined) ?? [];
+    list.push({
+      topic: opt.topic,
+      tag: opt.tag ?? '*',
+      group: opt.group ?? 'default-group',
+      method: String(propertyKey),
+    });
+    Reflect.defineMetadata(MQ_LISTENER_KEY, list, target.constructor);
   };
 }
 
-export function getMqListenerMetadata(target: new (...args: unknown[]) => unknown): MqListenerOptions | undefined {
-  return Reflect.getMetadata(MQ_LISTENER_METADATA, target);
+export function getListeners(target: new (...args: unknown[]) => unknown): MqListenerMeta[] {
+  return (Reflect.getMetadata(MQ_LISTENER_KEY, target) as MqListenerMeta[] | undefined) ?? [];
 }
+
