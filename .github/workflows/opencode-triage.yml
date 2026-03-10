@@ -1,0 +1,58 @@
+name: Issue Triage
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to triage'
+        required: true
+        type: number
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Check account age (skip for manual trigger)
+        id: check
+        if: github.event_name == 'issues'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const user = await github.rest.users.getByUsername({
+              username: context.payload.issue.user.login
+            });
+            const created = new Date(user.data.created_at);
+            const days = (Date.now() - created) / (1000 * 60 * 60 * 24);
+            return days >= 30;
+          result-encoding: string
+
+      - name: Checkout repository
+        if: steps.check.outputs.result == 'true' || github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Run OpenCode Triage
+        if: steps.check.outputs.result == 'true' || github.event_name == 'workflow_dispatch'
+        uses: anomalyco/opencode/github@latest
+        env:
+          BAILIAN_API_KEY: ${{ secrets.BAILIAN_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: bailian/qwen3.5-plus
+          use_github_token: true
+          prompt: |
+            请分析这个 Issue 并进行分类：
+            - 判断 Issue 类型（bug/feature/question/documentation）
+            - 如果有明确的修复方案或相关文档，提供链接和指导
+            - 如果是代码问题，提供错误处理建议
+            - 如果信息不足，礼貌地请求更多细节
+            - 为 Issue 添加适当的标签（如果有的话）
+            
+            请用中文回复。
