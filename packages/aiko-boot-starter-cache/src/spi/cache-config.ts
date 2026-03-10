@@ -1,7 +1,7 @@
 /**
  * 通用缓存配置 — Spring Boot 风格的缓存后端选择
  *
- * 对应 Spring Boot `spring.aiko-boot-starter-cache.type` 属性：通过 `type` 字段决定启用哪个缓存后端，
+ * 对应 Spring Boot `cache.type` 属性：通过 `type` 字段决定启用哪个缓存后端，
  * 具体后端配置直接内联在同一对象中，方便配置管理。
  *
  * 目前支持的后端：
@@ -16,7 +16,7 @@
  *
  * await createApp({
  *   srcDir: import.meta.dirname,
- *   aiko-boot-starter-cache: {
+ *   cache: {
  *     type: 'redis',
  *     host: process.env.REDIS_HOST ?? '127.0.0.1',
  *     port: Number(process.env.REDIS_PORT ?? 6379),
@@ -28,7 +28,7 @@
  * ```typescript
  * await createApp({
  *   srcDir: import.meta.dirname,
- *   aiko-boot-starter-cache: {
+ *   cache: {
  *     type: 'redis',
  *     mode: 'sentinel',
  *     masterName: 'mymaster',
@@ -56,9 +56,9 @@ import type { RedisConfig } from '../config.js';
  *
  * 对应 Spring Boot：
  * ```
- * spring.aiko-boot-starter-cache.type=redis
- * spring.data.redis.host=127.0.0.1
- * spring.data.redis.port=6379
+ * cache.type=redis
+ * cache.host=127.0.0.1
+ * cache.port=6379
  * ```
  *
  * `type: 'redis'` 是必填的判别字段，后续属性直接继承自 RedisConfig
@@ -71,7 +71,7 @@ export type RedisCacheConfig = { type: 'redis' } & RedisConfig;
 /**
  * 通用缓存配置 — 通过 `type` 字段选择后端
  *
- * 对应 Spring Boot 的 `spring.aiko-boot-starter-cache.type`。
+ * 对应 Spring Boot 的 `cache.type`。
  *
  * 当前支持的 type 值：
  * - `'redis'` — 使用 Redis 缓存后端（Spring Data Redis）
