@@ -1,7 +1,8 @@
 import { Service, Transactional, Autowired } from '@ai-partner-x/aiko-boot';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { LocalStrategy } from './strategies/local.strategy.js';
-import { SessionStrategy } from './strategies/session.strategy.js';
+// SessionStrategy will be used in future session-based auth
+// import { SessionStrategy } from './strategies/session.strategy.js';
 import type { User } from '../entities/index.js';
 import type { LoginDto, LoginResult } from '../types.js';
 import { SENSITIVE_FIELDS } from '../types.js';
@@ -29,8 +30,9 @@ export class AuthService {
   @Autowired()
   private localStrategy!: LocalStrategy;
 
-  @Autowired()
-  private sessionStrategy!: SessionStrategy;
+  // SessionStrategy will be used in future session-based auth
+  // @Autowired()
+  // private sessionStrategy!: SessionStrategy;
 
   private userService: UserService | null = null;
 
@@ -54,7 +56,7 @@ export class AuthService {
     }
 
     const isValid = await this.localStrategy.verifyPassword(
-      user.password,
+      user.password || '',
       credentials.password
     );
 
@@ -111,7 +113,7 @@ export class AuthService {
     };
   }
 
-  async logout(token: string): Promise<void> {
+  async logout(_token: string): Promise<void> {
     // Token invalidation logic can be implemented here
     // For example, add token to a blacklist or invalidate in Redis
   }
@@ -127,7 +129,7 @@ export class AuthService {
     }
 
     const isValid = await this.localStrategy.verifyPassword(
-      user.password,
+      user.password || '',
       oldPassword
     );
 

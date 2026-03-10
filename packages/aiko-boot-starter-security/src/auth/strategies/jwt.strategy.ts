@@ -24,7 +24,8 @@ export class JwtStrategy implements IAuthStrategy {
 
   async validate(token: string): Promise<User | null> {
     try {
-      const payload = jwt.verify(token, this.secret) as JwtPayload;
+      const decoded = jwt.verify(token, this.secret);
+      const payload = decoded as unknown as JwtPayload;
       return {
         id: payload.sub,
         username: payload.username,
@@ -38,12 +39,13 @@ export class JwtStrategy implements IAuthStrategy {
   }
 
   async generateToken(user: User): Promise<string> {
-    const payload: JwtPayload = {
+    const payload = {
       sub: user.id,
       username: user.username,
       roles: user.roles ? user.roles.map(function(r) { return r.name; }) : [],
     };
     const expiresIn = ConfigLoader.get<string>('security.jwt.expiresIn', '24h');
-    return jwt.sign(payload, this.secret, { expiresIn: expiresIn });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return jwt.sign(payload, this.secret, { expiresIn } as any);
   }
 }

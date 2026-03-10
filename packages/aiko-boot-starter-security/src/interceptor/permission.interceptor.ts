@@ -60,7 +60,7 @@ export class PermissionInterceptor {
     next();
   }
 
-  async checkPermission(target: any, propertyKey: string, request: any): Promise<boolean> {
+  async checkPermission(target: any, propertyKey: string, _request: any): Promise<boolean> {
     const preAuthorize = getPreAuthorizeMetadata(target, propertyKey);
     const secured = getSecuredMetadata(target, propertyKey);
 

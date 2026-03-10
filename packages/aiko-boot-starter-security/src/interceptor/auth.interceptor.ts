@@ -12,7 +12,7 @@ export class AuthInterceptor {
   @Autowired()
   private securityContext!: SecurityContext;
 
-  async intercept(request: any, response: any, next: any): Promise<void> {
+  async intercept(request: any, _response: any, next: any): Promise<void> {
     const publicPaths = ConfigLoader.get<string[]>('security.publicPaths', []);
     const requestPath = request.path;
 

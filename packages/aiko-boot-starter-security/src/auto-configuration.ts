@@ -48,67 +48,67 @@ export class SecurityAutoConfiguration {
   }
 
   @Bean()
-  @ConditionalOnMissingBean('JwtStrategy')
+  @ConditionalOnMissingBean(JwtStrategy)
   createJwtStrategy(): JwtStrategy {
     return new JwtStrategy();
   }
 
   @Bean()
-  @ConditionalOnMissingBean('OAuth2Strategy')
+  @ConditionalOnMissingBean(OAuth2Strategy)
   createOAuth2Strategy(): OAuth2Strategy {
     return new OAuth2Strategy();
   }
 
   @Bean()
-  @ConditionalOnMissingBean('SessionStrategy')
+  @ConditionalOnMissingBean(SessionStrategy)
   createSessionStrategy(): SessionStrategy {
     return new SessionStrategy();
   }
 
   @Bean()
-  @ConditionalOnMissingBean('LocalStrategy')
+  @ConditionalOnMissingBean(LocalStrategy)
   createLocalStrategy(): LocalStrategy {
     return new LocalStrategy();
   }
 
   @Bean()
-  @ConditionalOnMissingBean('AuthService')
+  @ConditionalOnMissingBean(AuthService)
   createAuthService(): AuthService {
     return new AuthService();
   }
 
   @Bean()
-  @ConditionalOnMissingBean('PermissionService')
+  @ConditionalOnMissingBean(PermissionService)
   createPermissionService(): PermissionService {
     return new PermissionService();
   }
 
   @Bean()
-  @ConditionalOnMissingBean('PermissionGuard')
+  @ConditionalOnMissingBean(PermissionGuard)
   createPermissionGuard(): PermissionGuard {
     return new PermissionGuard();
   }
 
   @Bean()
-  @ConditionalOnMissingBean('PermissionExpressionParser')
+  @ConditionalOnMissingBean(PermissionExpressionParser)
   createPermissionExpressionParser(): PermissionExpressionParser {
     return new PermissionExpressionParser();
   }
 
   @Bean()
-  @ConditionalOnMissingBean('SecurityContext')
+  @ConditionalOnMissingBean(SecurityContext)
   createSecurityContext(): SecurityContext {
     return new SecurityContext();
   }
 
   @Bean()
-  @ConditionalOnMissingBean('AuthInterceptor')
+  @ConditionalOnMissingBean(AuthInterceptor)
   createAuthInterceptor(): AuthInterceptor {
     return new AuthInterceptor();
   }
 
   @Bean()
-  @ConditionalOnMissingBean('PermissionInterceptor')
+  @ConditionalOnMissingBean(PermissionInterceptor)
   createPermissionInterceptor(): PermissionInterceptor {
     return new PermissionInterceptor();
   }

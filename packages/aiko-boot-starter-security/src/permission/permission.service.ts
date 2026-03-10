@@ -1,25 +1,12 @@
-import { Service, Autowired } from '@ai-partner-x/aiko-boot';
+import { Service } from '@ai-partner-x/aiko-boot';
 import type { User, Role, Permission } from '../entities/index.js';
-
-interface UserWithRoles {
-  id: number;
-  roles: Role[];
-}
-
-interface RoleWithPermissions extends Role {
-  permissions: Permission[];
-}
 
 @Service()
 export class PermissionService {
   private userMapper: any = null;
-  private roleMapper: any = null;
-  private permissionMapper: any = null;
 
-  setMappers(userMapper: any, roleMapper: any, permissionMapper: any): void {
+  setMappers(userMapper: any, _roleMapper?: any, _permissionMapper?: any): void {
     this.userMapper = userMapper;
-    this.roleMapper = roleMapper;
-    this.permissionMapper = permissionMapper;
   }
 
   async hasPermission(user: User, permission: string): Promise<boolean> {
