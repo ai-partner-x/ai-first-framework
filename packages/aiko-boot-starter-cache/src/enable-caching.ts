@@ -38,7 +38,18 @@
  */
 
 // Type-only imports — erased at compile time, no runtime ioredis loading.
-import type { default as RedisType } from 'ioredis';
+//
+// `IoRedis` is the module-namespace type of ioredis, derived with `typeof
+// import()`.  Indexing into it gives us the *constructor* types:
+//   • IoRedis['default']  — Redis constructor  (typeof Redis, new(...) => Redis)
+//   • IoRedis['Cluster']  — Cluster constructor (typeof Cluster, new(...) => Cluster)
+// InstanceType<…> then gives the corresponding *instance* types.
+// This avoids the anti-pattern of using `typeof` on a `import type` alias,
+// which names an instance type rather than the constructor.
+type IoRedis = typeof import('ioredis');
+type RedisInstance = InstanceType<IoRedis['default']>;
+type ClusterInstance = InstanceType<IoRedis['Cluster']>;
+
 import type {
   RedisConfig,
   RedisStandaloneConfig,
@@ -135,7 +146,7 @@ async function initializeRedisCaching(config: RedisConfig): Promise<void> {
   // at module load time, so consumers who only use cache decorators can import
   // the package without having ioredis installed.
   const [{ default: Redis }, { createRedisConnection }] = await Promise.all([
-    import('ioredis') as Promise<{ default: typeof RedisType }>,
+    import('ioredis') as Promise<IoRedis>,
     import('./config.js'),
   ]);
 
@@ -179,7 +190,7 @@ async function initializeRedisCaching(config: RedisConfig): Promise<void> {
  * - lazyConnect: true        — don't connect until first command
  * - connectTimeout: 5000     — abort if TCP handshake takes too long
  */
-function createValidationClient(Redis: typeof RedisType, config: RedisConfig): RedisType {
+function createValidationClient(Redis: IoRedis['default'], config: RedisConfig): RedisInstance | ClusterInstance {
   if (config.mode === 'sentinel') {
     const c = config as RedisSentinelConfig;
     return new Redis({
@@ -197,14 +208,14 @@ function createValidationClient(Redis: typeof RedisType, config: RedisConfig): R
 
   if (config.mode === 'cluster') {
     const c = config as RedisClusterConfig;
-    // Cluster uses ioredis Cluster class — cast to RedisType for the return type
+    // Cluster uses ioredis Cluster class — cast to the Cluster instance type
     return new Redis.Cluster(c.nodes, {
       redisOptions: {
         password: c.password,
         maxRetriesPerRequest: 0,
         connectTimeout: 5000,
       },
-    }) as unknown as RedisType;
+    }) as ClusterInstance;
   }
 
   // Standalone (default)
