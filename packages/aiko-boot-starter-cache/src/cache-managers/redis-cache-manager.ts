@@ -74,6 +74,8 @@ class RedisCache implements Cache {
         await this.client.del(...keys.slice(i, i + 50));
       }
     } while (cursor !== '0');
+    // Also delete the bare namespace key used when entryKey is empty (e.g. no-arg methods).
+    await this.client.del(this.name);
   }
 }
 
