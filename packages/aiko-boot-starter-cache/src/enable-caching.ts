@@ -37,13 +37,13 @@
  * 由 CacheAutoConfiguration 在应用启动时自动读取 cache.* 配置并调用 initializeCaching。
  */
 
-import Redis from 'ioredis';
-import {
-  createRedisConnection,
-  type RedisConfig,
-  type RedisStandaloneConfig,
-  type RedisSentinelConfig,
-  type RedisClusterConfig,
+// Type-only imports — erased at compile time, no runtime ioredis loading.
+import type { default as RedisType } from 'ioredis';
+import type {
+  RedisConfig,
+  RedisStandaloneConfig,
+  RedisSentinelConfig,
+  RedisClusterConfig,
 } from './config.js';
 import { RedisCacheManager } from './cache-managers/redis-cache-manager.js';
 import { setCacheManager } from './cache-manager-registry.js';
@@ -122,13 +122,24 @@ export async function initializeCaching(config: CacheConfig): Promise<void> {
 /**
  * 初始化 Redis 缓存后端
  *
- * 1. 用短生命周期客户端发 PING 验证连接（5 秒超时）
- * 2. 验证通过后创建持久客户端
- * 3. 注册 RedisCacheManager 到全局 CacheManager 注册表
+ * 1. 懒加载 ioredis 和 Redis 辅助模块（仅在 'redis' 后端被请求时才执行）
+ * 2. 用短生命周期客户端发 PING 验证连接（5 秒超时）
+ * 3. 验证通过后创建持久客户端
+ * 4. 注册 RedisCacheManager 到全局 CacheManager 注册表
  */
 async function initializeRedisCaching(config: RedisConfig): Promise<void> {
   const configDesc = describeRedisConfig(config);
-  const validationClient = createValidationClient(config);
+
+  // Lazy-load ioredis and Redis connection helpers only when the 'redis'
+  // backend is actually requested. This prevents ioredis from being required
+  // at module load time, so consumers who only use cache decorators can import
+  // the package without having ioredis installed.
+  const [{ default: Redis }, { createRedisConnection }] = await Promise.all([
+    import('ioredis') as Promise<{ default: typeof RedisType }>,
+    import('./config.js'),
+  ]);
+
+  const validationClient = createValidationClient(Redis, config);
 
   try {
     await validationClient.connect();
@@ -158,6 +169,9 @@ async function initializeRedisCaching(config: RedisConfig): Promise<void> {
 /**
  * Create a short-lived Redis client intended only for connection validation.
  *
+ * Accepts the Redis constructor as a parameter (lazy-loaded by the caller) to
+ * avoid importing ioredis at module top-level.
+ *
  * Key settings:
  * - maxRetriesPerRequest: 0  — fail-fast on command retry (no spam)
  * - retryStrategy: null      — no reconnect attempts after first failure
@@ -165,7 +179,7 @@ async function initializeRedisCaching(config: RedisConfig): Promise<void> {
  * - lazyConnect: true        — don't connect until first command
  * - connectTimeout: 5000     — abort if TCP handshake takes too long
  */
-function createValidationClient(config: RedisConfig): Redis {
+function createValidationClient(Redis: typeof RedisType, config: RedisConfig): RedisType {
   if (config.mode === 'sentinel') {
     const c = config as RedisSentinelConfig;
     return new Redis({
@@ -183,14 +197,14 @@ function createValidationClient(config: RedisConfig): Redis {
 
   if (config.mode === 'cluster') {
     const c = config as RedisClusterConfig;
-    // Cluster uses ioredis Cluster class — cast to Redis for the return type
+    // Cluster uses ioredis Cluster class — cast to RedisType for the return type
     return new Redis.Cluster(c.nodes, {
       redisOptions: {
         password: c.password,
         maxRetriesPerRequest: 0,
         connectTimeout: 5000,
       },
-    }) as unknown as Redis;
+    }) as unknown as RedisType;
   }
 
   // Standalone (default)
