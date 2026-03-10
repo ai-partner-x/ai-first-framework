@@ -29,7 +29,7 @@
  * 
  * // 自动配置
  * @AutoConfiguration()
- * @ConditionalOnProperty('aiko-boot-starter-cache.enabled', { havingValue: 'true' })
+ * @ConditionalOnProperty('cache.enabled', { havingValue: 'true' })
  * export class CacheAutoConfiguration {
  *   @Bean()
  *   @ConditionalOnMissingBean(CacheService)
