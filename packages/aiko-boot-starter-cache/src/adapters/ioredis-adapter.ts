@@ -415,11 +415,15 @@ export class IORedisAdapter<K = string, V = unknown> {
       },
 
       async randomMembers(key: K, count: number): Promise<V[]> {
-        const raws = await adapter.client.srandmember(adapter.sk(key), count);
+        if (!Number.isInteger(count) || count <= 0) throw new Error('count must be a positive integer');
+        // Negative count allows duplicates in Redis SRANDMEMBER
+        const raws = await adapter.client.srandmember(adapter.sk(key), -count);
         return (raws as string[]).map(r => adapter.ds(r));
       },
 
       async distinctRandomMembers(key: K, count: number): Promise<Set<V>> {
+        if (!Number.isInteger(count) || count <= 0) throw new Error('count must be a positive integer');
+        // Positive count returns distinct members in Redis SRANDMEMBER
         const raws = await adapter.client.srandmember(adapter.sk(key), count);
         return new Set((raws as string[]).map(r => adapter.ds(r)));
       },
