@@ -32,6 +32,9 @@
  *   port: Number(process.env.REDIS_PORT ?? 6379),
  * });
  * ```
+ *
+ * 推荐通过配置文件启用自动配置（设置 cache.enabled=true + cache.type='redis'），
+ * 由 CacheAutoConfiguration 在应用启动时自动读取 cache.* 配置并调用 initializeCaching。
  */
 
 import Redis from 'ioredis';
