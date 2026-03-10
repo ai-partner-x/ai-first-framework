@@ -1,0 +1,18 @@
+{
+  "name": "admin-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "dev:api": "pnpm -F @admin-app/api dev",
+    "dev:web": "pnpm -F @admin-app/web dev",
+    "build": "pnpm -r build",
+    "init-db": "pnpm -F @admin-app/api init-db"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["better-sqlite3", "esbuild"]
+  }
+}
