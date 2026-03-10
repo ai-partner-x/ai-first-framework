@@ -135,7 +135,7 @@ async function initializeRedisCaching(config: RedisConfig): Promise<void> {
   // at module load time, so consumers who only use cache decorators can import
   // the package without having ioredis installed.
   const [{ default: Redis }, { createRedisConnection }] = await Promise.all([
-    import('ioredis') as Promise<{ default: typeof RedisType }>,
+    import('ioredis') as Promise<{ default: typeof import('ioredis').default }>,
     import('./config.js'),
   ]);
 
@@ -179,7 +179,7 @@ async function initializeRedisCaching(config: RedisConfig): Promise<void> {
  * - lazyConnect: true        — don't connect until first command
  * - connectTimeout: 5000     — abort if TCP handshake takes too long
  */
-function createValidationClient(Redis: typeof RedisType, config: RedisConfig): RedisType {
+function createValidationClient(Redis: typeof import('ioredis').default, config: RedisConfig): RedisType {
   if (config.mode === 'sentinel') {
     const c = config as RedisSentinelConfig;
     return new Redis({
