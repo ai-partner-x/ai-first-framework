@@ -443,9 +443,6 @@ importers:
       '@ai-partner-x/aiko-boot':
         specifier: workspace:*
         version: link:../aiko-boot
-      ioredis:
-        specifier: ^5.4.2
-        version: 5.10.0
       reflect-metadata:
         specifier: ^0.2.1
         version: 0.2.2
@@ -456,6 +453,9 @@ importers:
       '@types/node':
         specifier: ^20.11.0
         version: 20.19.37
+      ioredis:
+        specifier: ^5.4.2
+        version: 5.10.0
       tsup:
         specifier: ^8.0.0
         version: 8.5.1(@swc/core@1.15.18)(jiti@2.6.1)(postcss@8.5.8)(tsx@4.21.0)(typescript@5.9.3)

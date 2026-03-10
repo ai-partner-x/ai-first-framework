@@ -66,6 +66,13 @@ export class CacheProperties {
   /** 是否启用缓存，设置为 true 时才会自动初始化缓存连接 */
   enabled?: boolean;
 
+  /**
+   * 严格模式：当 cache.enabled=true 但配置不完整时，是否抛出错误（而非仅打印警告并跳过初始化）。
+   * 默认 false（宽松模式：配置缺失时跳过并打印警告）。
+   * 设置为 true 可防止缓存静默失败。
+   */
+  strict?: boolean;
+
   /** 缓存后端类型，目前支持 'redis' */
   type?: 'redis';
 
@@ -131,9 +138,14 @@ export class CacheAutoConfiguration {
    */
   @OnApplicationReady({ order: -50 })
   async initializeCache(): Promise<void> {
-    const config = this.buildCacheConfig();
+    const strict = ConfigLoader.get<boolean>('cache.strict', false);
+    const config = this.buildCacheConfig(strict);
     if (!config) {
-      console.warn('[aiko-cache] Cache configuration incomplete, skipping initialization');
+      const msg = '[aiko-cache] Cache configuration incomplete, skipping initialization';
+      if (strict) {
+        throw new CacheInitializationError(msg);
+      }
+      console.warn(msg);
       return;
     }
 
@@ -167,8 +179,9 @@ export class CacheAutoConfiguration {
 
   /**
    * 从配置文件构建 CacheConfig
+   * @param strict - 严格模式：配置不完整时抛出错误而非返回 null
    */
-  private buildCacheConfig(): CacheConfig | null {
+  private buildCacheConfig(strict = false): CacheConfig | null {
     const type = ConfigLoader.get<string>('cache.type');
     if (!type) return null;
 
@@ -179,7 +192,9 @@ export class CacheAutoConfiguration {
         const masterName = ConfigLoader.get<string>('cache.masterName');
         const sentinels = ConfigLoader.get<{ host: string; port: number }[]>('cache.sentinels');
         if (!masterName || !sentinels?.length) {
-          console.warn('[aiko-cache] Sentinel mode requires masterName and sentinels');
+          const msg = '[aiko-cache] Sentinel mode requires masterName and sentinels';
+          if (strict) throw new CacheInitializationError(msg);
+          console.warn(msg);
           return null;
         }
         return {
@@ -195,7 +210,9 @@ export class CacheAutoConfiguration {
       if (mode === 'cluster') {
         const nodes = ConfigLoader.get<{ host: string; port: number }[]>('cache.nodes');
         if (!nodes?.length) {
-          console.warn('[aiko-cache] Cluster mode requires nodes');
+          const msg = '[aiko-cache] Cluster mode requires nodes';
+          if (strict) throw new CacheInitializationError(msg);
+          console.warn(msg);
           return null;
         }
         return {
