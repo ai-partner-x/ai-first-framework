@@ -20,6 +20,74 @@ jobs:
       pull-requests: write
       issues: write
     steps:
+      - name: Check for merge command
+        id: check_merge
+        if: github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment'
+        run: |
+          COMMENT_BODY="${{ github.event.comment.body }}"
+          if echo "$COMMENT_BODY" | grep -qE '/oc\s+merge'; then
+            echo "should_merge=true" >> $GITHUB_OUTPUT
+            echo "Merge command detected"
+          else
+            echo "should_merge=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Merge PR
+        if: steps.check_merge.outputs.should_merge == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.issue.number;
+            
+            // 检查 PR 状态
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+            
+            if (pr.merged) {
+              console.log('PR is already merged');
+              return;
+            }
+            
+            if (!pr.mergeable) {
+              console.log('PR has conflicts and cannot be merged');
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: '❌ 无法合并：PR 存在冲突，请先解决冲突。'
+              });
+              return;
+            }
+            
+            // 执行合并
+            try {
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                merge_method: 'squash'  // 使用 squash 合并
+              });
+              
+              console.log('PR merged successfully');
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: '✅ PR 已通过 OpenCode 命令合并。'
+              });
+            } catch (error) {
+              console.log('Merge failed:', error.message);
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `❌ 合并失败：${error.message}`
+              });
+            }
+
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
