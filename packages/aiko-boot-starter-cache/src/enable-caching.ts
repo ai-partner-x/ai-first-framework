@@ -2,17 +2,17 @@
  * 缓存启动验证 — Spring Boot 风格的缓存后端初始化
  *
  * 提供 initializeCaching(config) 用于在应用启动阶段根据 config.type 选择并初始化
- * 缓存后端，对应 Spring Boot 的 `spring.aiko-boot-starter-cache.type` 自动配置机制。
+ * 缓存后端，对应 Spring Boot 的 `cache.type` 自动配置机制。
  *
  * 目前支持 `type: 'redis'`，后续扩展新后端只需在 switch 中添加 case 分支。
  *
  * @example Redis 后端
  * ```typescript
- * import { createApp } from '@ai-partner-x/aiko-boot-starter-web';
+ * import { createApp } from '@ai-partner-x/aiko-boot';
  *
  * const app = await createApp({
  *   srcDir: import.meta.dirname,
- *   aiko-boot-starter-cache: {
+ *   cache: {
  *     type: 'redis',
  *     host: process.env.REDIS_HOST ?? '127.0.0.1',
  *     port: Number(process.env.REDIS_PORT ?? 6379),
@@ -58,12 +58,12 @@ export class CacheInitializationError extends Error {
  * 初始化并验证缓存后端（**必须**在异步启动阶段调用）
  *
  * 根据 `config.type` 自动选择对应的缓存后端，对应 Spring Boot 的
- * `spring.aiko-boot-starter-cache.type` 自动配置机制：
+ * `cache.type` 自动配置机制：
  *
  * - `'redis'` — 验证 Redis 连接（PING）后创建 RedisCacheManager 并注册
  *
  * 初始化完成后，@Cacheable / @CachePut / @CacheEvict 将自动通过所选后端提供缓存服务。
- * 通常由 createApp({ aiko-boot-starter-cache: config }) 自动调用，无需手动调用。
+ * 通常由 createApp({ cache: config }) 自动调用，无需手动调用。
  *
  * @param config 缓存后端配置（type 字段决定使用哪个后端）
  *
