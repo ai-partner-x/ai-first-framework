@@ -74,6 +74,15 @@ export class IORedisAdapter<K = string, V = unknown> {
     return this.valueSerializer.deserialize(raw);
   }
 
+  /**
+   * Deserialize a guaranteed non-null Redis string to V.
+   * Use this instead of dv() when the caller already knows the raw value is not null,
+   * to avoid the unnecessary `as V[]` forced casts in collection operations.
+   */
+  protected ds(raw: string): V {
+    return this.valueSerializer.deserialize(raw);
+  }
+
   // ==================== Global Key Operations ====================
 
   async hasKey(key: K): Promise<boolean> {
@@ -237,7 +246,7 @@ export class IORedisAdapter<K = string, V = unknown> {
       leftPop: (async (key: K, count?: number): Promise<V | null | V[]> => {
         if (count !== undefined) {
           const raws = await adapter.client.lpop(adapter.sk(key), count);
-          return (raws ?? []).map((r: string) => adapter.dv(r)) as V[];
+          return (raws ?? []).map((r: string) => adapter.ds(r));
         }
         return adapter.dv(await adapter.client.lpop(adapter.sk(key)));
       }) as ListOperations<K, V>['leftPop'],
@@ -245,7 +254,7 @@ export class IORedisAdapter<K = string, V = unknown> {
       rightPop: (async (key: K, count?: number): Promise<V | null | V[]> => {
         if (count !== undefined) {
           const raws = await adapter.client.rpop(adapter.sk(key), count);
-          return (raws ?? []).map((r: string) => adapter.dv(r)) as V[];
+          return (raws ?? []).map((r: string) => adapter.ds(r));
         }
         return adapter.dv(await adapter.client.rpop(adapter.sk(key)));
       }) as ListOperations<K, V>['rightPop'],
@@ -256,7 +265,7 @@ export class IORedisAdapter<K = string, V = unknown> {
 
       async range(key: K, start: number, end: number): Promise<V[]> {
         const raws = await adapter.client.lrange(adapter.sk(key), start, end);
-        return raws.map((r: string) => adapter.dv(r)) as V[];
+        return raws.map((r: string) => adapter.ds(r));
       },
 
       async size(key: K): Promise<number> {
@@ -373,7 +382,7 @@ export class IORedisAdapter<K = string, V = unknown> {
       pop: (async (key: K, count?: number): Promise<V | null | V[]> => {
         if (count !== undefined) {
           const raws = await adapter.client.spop(adapter.sk(key), count);
-          return (raws as string[]).map(r => adapter.dv(r)) as V[];
+          return (raws as string[]).map(r => adapter.ds(r));
         }
         return adapter.dv(await (adapter.client.spop(adapter.sk(key)) as Promise<string | null>));
       }) as SetOperations<K, V>['pop'],
@@ -384,7 +393,7 @@ export class IORedisAdapter<K = string, V = unknown> {
 
       async members(key: K): Promise<Set<V>> {
         const raws = await adapter.client.smembers(adapter.sk(key));
-        return new Set(raws.map(r => adapter.dv(r)) as V[]);
+        return new Set(raws.map(r => adapter.ds(r)));
       },
 
       isMember: (async (key: K, ...values: V[]): Promise<boolean | Map<V, boolean>> => {
@@ -406,18 +415,22 @@ export class IORedisAdapter<K = string, V = unknown> {
       },
 
       async randomMembers(key: K, count: number): Promise<V[]> {
-        const raws = await adapter.client.srandmember(adapter.sk(key), count);
-        return (raws as string[]).map(r => adapter.dv(r)) as V[];
+        if (!Number.isInteger(count) || count <= 0) throw new Error('count must be a positive integer');
+        // Negative count allows duplicates in Redis SRANDMEMBER
+        const raws = await adapter.client.srandmember(adapter.sk(key), -count);
+        return (raws as string[]).map(r => adapter.ds(r));
       },
 
       async distinctRandomMembers(key: K, count: number): Promise<Set<V>> {
+        if (!Number.isInteger(count) || count <= 0) throw new Error('count must be a positive integer');
+        // Positive count returns distinct members in Redis SRANDMEMBER
         const raws = await adapter.client.srandmember(adapter.sk(key), count);
-        return new Set((raws as string[]).map(r => adapter.dv(r)) as V[]);
+        return new Set((raws as string[]).map(r => adapter.ds(r)));
       },
 
       async intersect(key: K, ...otherKeys: K[]): Promise<Set<V>> {
         const raws = await adapter.client.sinter(adapter.sk(key), ...otherKeys.map(k => adapter.sk(k)));
-        return new Set(raws.map(r => adapter.dv(r)) as V[]);
+        return new Set(raws.map(r => adapter.ds(r)));
       },
 
       async intersectAndStore(key: K, otherKey: K, destKey: K): Promise<number> {
@@ -426,7 +439,7 @@ export class IORedisAdapter<K = string, V = unknown> {
 
       async union(key: K, ...otherKeys: K[]): Promise<Set<V>> {
         const raws = await adapter.client.sunion(adapter.sk(key), ...otherKeys.map(k => adapter.sk(k)));
-        return new Set(raws.map(r => adapter.dv(r)) as V[]);
+        return new Set(raws.map(r => adapter.ds(r)));
       },
 
       async unionAndStore(key: K, otherKey: K, destKey: K): Promise<number> {
@@ -435,7 +448,7 @@ export class IORedisAdapter<K = string, V = unknown> {
 
       async difference(key: K, ...otherKeys: K[]): Promise<Set<V>> {
         const raws = await adapter.client.sdiff(adapter.sk(key), ...otherKeys.map(k => adapter.sk(k)));
-        return new Set(raws.map(r => adapter.dv(r)) as V[]);
+        return new Set(raws.map(r => adapter.ds(r)));
       },
 
       async differenceAndStore(key: K, otherKey: K, destKey: K): Promise<number> {
@@ -455,11 +468,12 @@ export class IORedisAdapter<K = string, V = unknown> {
 
       async addAll(key: K, tuples: TypedTuple<V>[]): Promise<number> {
         if (tuples.length === 0) return 0;
-        const args: (string | number)[] = [];
+        // Build alternating score-member pairs (score1, member1, score2, member2, ...) for ioredis zadd
+        const scoreMembers: (string | number)[] = [];
         for (const { value, score } of tuples) {
-          args.push(score, adapter.sv(value));
+          scoreMembers.push(score, adapter.sv(value));
         }
-        return adapter.client.zadd(adapter.sk(key), ...(args as Parameters<typeof adapter.client.zadd>[1][]));
+        return adapter.client.zadd(adapter.sk(key), ...scoreMembers);
       },
 
       async remove(key: K, ...values: V[]): Promise<number> {
@@ -476,56 +490,56 @@ export class IORedisAdapter<K = string, V = unknown> {
 
       async range(key: K, start: number, end: number): Promise<V[]> {
         const raws = await adapter.client.zrange(adapter.sk(key), start, end);
-        return raws.map(r => adapter.dv(r)) as V[];
+        return raws.map(r => adapter.ds(r));
       },
 
       async rangeWithScores(key: K, start: number, end: number): Promise<TypedTuple<V>[]> {
         const raws = await adapter.client.zrange(adapter.sk(key), start, end, 'WITHSCORES');
         const result: TypedTuple<V>[] = [];
         for (let i = 0; i < raws.length; i += 2) {
-          result.push({ value: adapter.dv(raws[i]) as V, score: parseFloat(raws[i + 1]) });
+          result.push({ value: adapter.ds(raws[i]), score: parseFloat(raws[i + 1]) });
         }
         return result;
       },
 
       async rangeByScore(key: K, min: number, max: number): Promise<V[]> {
         const raws = await adapter.client.zrangebyscore(adapter.sk(key), min, max);
-        return raws.map(r => adapter.dv(r)) as V[];
+        return raws.map(r => adapter.ds(r));
       },
 
       async rangeByScoreWithScores(key: K, min: number, max: number): Promise<TypedTuple<V>[]> {
         const raws = await adapter.client.zrangebyscore(adapter.sk(key), min, max, 'WITHSCORES');
         const result: TypedTuple<V>[] = [];
         for (let i = 0; i < raws.length; i += 2) {
-          result.push({ value: adapter.dv(raws[i]) as V, score: parseFloat(raws[i + 1]) });
+          result.push({ value: adapter.ds(raws[i]), score: parseFloat(raws[i + 1]) });
         }
         return result;
       },
 
       async reverseRange(key: K, start: number, end: number): Promise<V[]> {
         const raws = await adapter.client.zrevrange(adapter.sk(key), start, end);
-        return raws.map(r => adapter.dv(r)) as V[];
+        return raws.map(r => adapter.ds(r));
       },
 
       async reverseRangeWithScores(key: K, start: number, end: number): Promise<TypedTuple<V>[]> {
         const raws = await adapter.client.zrevrange(adapter.sk(key), start, end, 'WITHSCORES');
         const result: TypedTuple<V>[] = [];
         for (let i = 0; i < raws.length; i += 2) {
-          result.push({ value: adapter.dv(raws[i]) as V, score: parseFloat(raws[i + 1]) });
+          result.push({ value: adapter.ds(raws[i]), score: parseFloat(raws[i + 1]) });
         }
         return result;
       },
 
       async reverseRangeByScore(key: K, min: number, max: number): Promise<V[]> {
         const raws = await adapter.client.zrevrangebyscore(adapter.sk(key), max, min);
-        return raws.map(r => adapter.dv(r)) as V[];
+        return raws.map(r => adapter.ds(r));
       },
 
       async reverseRangeByScoreWithScores(key: K, min: number, max: number): Promise<TypedTuple<V>[]> {
         const raws = await adapter.client.zrevrangebyscore(adapter.sk(key), max, min, 'WITHSCORES');
         const result: TypedTuple<V>[] = [];
         for (let i = 0; i < raws.length; i += 2) {
-          result.push({ value: adapter.dv(raws[i]) as V, score: parseFloat(raws[i + 1]) });
+          result.push({ value: adapter.ds(raws[i]), score: parseFloat(raws[i + 1]) });
         }
         return result;
       },

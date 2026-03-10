@@ -26,12 +26,20 @@
   },
   "dependencies": {
     "@ai-partner-x/aiko-boot": "workspace:*",
-    "ioredis": "^5.4.2",
     "reflect-metadata": "^0.2.1",
     "tslib": "^2.8.1"
   },
+  "peerDependencies": {
+    "ioredis": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ioredis": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "ioredis": "^5.4.2",
     "tsup": "^8.0.0",
     "typescript": "^5.3.0"
   },

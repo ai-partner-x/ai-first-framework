@@ -18,10 +18,10 @@
  *
  * 对应 Spring 中:
  * ```
- * import org.springframework.aiko-boot-starter-cache.annotation.Cacheable;
- * import org.springframework.aiko-boot-starter-cache.annotation.CachePut;
- * import org.springframework.aiko-boot-starter-cache.annotation.CacheEvict;
- * import org.springframework.aiko-boot-starter-cache.CacheManager;
+ * import org.springframework.cache.annotation.Cacheable;
+ * import org.springframework.cache.annotation.CachePut;
+ * import org.springframework.cache.annotation.CacheEvict;
+ * import org.springframework.cache.CacheManager;
  * ```
  */
 
@@ -31,8 +31,10 @@
 export type { Cache, CacheManager } from './spi/cache.js';
 
 // ==================== Cache Config (后端选择) ====================
-// CacheConfig 是 createApp({ aiko-boot-starter-cache: ... }) 接受的通用配置类型；
+// CacheConfig 是传递给 initializeCaching(config) 的通用缓存配置类型；
 // 通过 type 字段（如 'redis'）决定初始化哪个后端。
+// 自动配置路径（推荐）：在配置文件中设置 cache.enabled=true + cache.type='redis'，
+// 由 CacheAutoConfiguration 读取 cache.* 配置并自动调用 initializeCaching。
 export type { CacheConfig, RedisCacheConfig } from './spi/cache-config.js';
 
 export {

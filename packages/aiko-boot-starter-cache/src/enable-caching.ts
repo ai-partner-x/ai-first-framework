@@ -2,32 +2,59 @@
  * 缓存启动验证 — Spring Boot 风格的缓存后端初始化
  *
  * 提供 initializeCaching(config) 用于在应用启动阶段根据 config.type 选择并初始化
- * 缓存后端，对应 Spring Boot 的 `spring.aiko-boot-starter-cache.type` 自动配置机制。
+ * 缓存后端，对应 Spring Boot 的 `spring.cache.type` 自动配置机制。
  *
  * 目前支持 `type: 'redis'`，后续扩展新后端只需在 switch 中添加 case 分支。
  *
- * @example Redis 后端
- * ```typescript
- * import { createApp } from '@ai-partner-x/aiko-boot-starter-web';
+ * 通常无需手动调用此函数——安装 `@ai-partner-x/aiko-boot-starter-cache` 后，
+ * `CacheAutoConfiguration` 会在应用启动时自动读取 `app.config.ts`（或 `app.config.json`）
+ * 中的 `cache.*` 配置并调用此函数：
  *
- * const app = await createApp({
- *   srcDir: import.meta.dirname,
- *   aiko-boot-starter-cache: {
- *     type: 'redis',
- *     host: process.env.REDIS_HOST ?? '127.0.0.1',
- *     port: Number(process.env.REDIS_PORT ?? 6379),
- *   },
+ * @example app.config.ts / app.config.json 中启用 Redis 缓存
+ * ```json
+ * {
+ *   "cache": {
+ *     "enabled": true,
+ *     "type": "redis",
+ *     "host": "127.0.0.1",
+ *     "port": 6379
+ *   }
+ * }
+ * ```
+ *
+ * @example 手动调用（高级用法）
+ * ```typescript
+ * import { initializeCaching } from '@ai-partner-x/aiko-boot-starter-cache';
+ *
+ * await initializeCaching({
+ *   type: 'redis',
+ *   host: process.env.REDIS_HOST ?? '127.0.0.1',
+ *   port: Number(process.env.REDIS_PORT ?? 6379),
  * });
  * ```
+ *
+ * 推荐通过配置文件启用自动配置（设置 cache.enabled=true + cache.type='redis'），
+ * 由 CacheAutoConfiguration 在应用启动时自动读取 cache.* 配置并调用 initializeCaching。
  */
 
-import Redis from 'ioredis';
-import {
-  createRedisConnection,
-  type RedisConfig,
-  type RedisStandaloneConfig,
-  type RedisSentinelConfig,
-  type RedisClusterConfig,
+// Type-only imports — erased at compile time, no runtime ioredis loading.
+//
+// `IoRedis` is the module-namespace type of ioredis, derived with `typeof
+// import()`.  Indexing into it gives us the *constructor* types:
+//   • IoRedis['default']  — Redis constructor  (typeof Redis, new(...) => Redis)
+//   • IoRedis['Cluster']  — Cluster constructor (typeof Cluster, new(...) => Cluster)
+// InstanceType<…> then gives the corresponding *instance* types.
+// This avoids the anti-pattern of using `typeof` on a `import type` alias,
+// which names an instance type rather than the constructor.
+type IoRedis = typeof import('ioredis');
+type RedisInstance = InstanceType<IoRedis['default']>;
+type ClusterInstance = InstanceType<IoRedis['Cluster']>;
+
+import type {
+  RedisConfig,
+  RedisStandaloneConfig,
+  RedisSentinelConfig,
+  RedisClusterConfig,
 } from './config.js';
 import { RedisCacheManager } from './cache-managers/redis-cache-manager.js';
 import { setCacheManager } from './cache-manager-registry.js';
@@ -58,12 +85,13 @@ export class CacheInitializationError extends Error {
  * 初始化并验证缓存后端（**必须**在异步启动阶段调用）
  *
  * 根据 `config.type` 自动选择对应的缓存后端，对应 Spring Boot 的
- * `spring.aiko-boot-starter-cache.type` 自动配置机制：
+ * `spring.cache.type` 自动配置机制：
  *
  * - `'redis'` — 验证 Redis 连接（PING）后创建 RedisCacheManager 并注册
  *
  * 初始化完成后，@Cacheable / @CachePut / @CacheEvict 将自动通过所选后端提供缓存服务。
- * 通常由 createApp({ aiko-boot-starter-cache: config }) 自动调用，无需手动调用。
+ * 通常由 CacheAutoConfiguration 在应用启动时自动调用（读取 app.config.ts / app.config.json
+ * 的 `cache.*` 配置），无需手动调用。
  *
  * @param config 缓存后端配置（type 字段决定使用哪个后端）
  *
@@ -105,13 +133,24 @@ export async function initializeCaching(config: CacheConfig): Promise<void> {
 /**
  * 初始化 Redis 缓存后端
  *
- * 1. 用短生命周期客户端发 PING 验证连接（5 秒超时）
- * 2. 验证通过后创建持久客户端
- * 3. 注册 RedisCacheManager 到全局 CacheManager 注册表
+ * 1. 懒加载 ioredis 和 Redis 辅助模块（仅在 'redis' 后端被请求时才执行）
+ * 2. 用短生命周期客户端发 PING 验证连接（5 秒超时）
+ * 3. 验证通过后创建持久客户端
+ * 4. 注册 RedisCacheManager 到全局 CacheManager 注册表
  */
 async function initializeRedisCaching(config: RedisConfig): Promise<void> {
   const configDesc = describeRedisConfig(config);
-  const validationClient = createValidationClient(config);
+
+  // Lazy-load ioredis and Redis connection helpers only when the 'redis'
+  // backend is actually requested. This prevents ioredis from being required
+  // at module load time, so consumers who only use cache decorators can import
+  // the package without having ioredis installed.
+  const [{ default: Redis }, { createRedisConnection }] = await Promise.all([
+    import('ioredis') as Promise<IoRedis>,
+    import('./config.js'),
+  ]);
+
+  const validationClient = createValidationClient(Redis, config);
 
   try {
     await validationClient.connect();
@@ -141,6 +180,9 @@ async function initializeRedisCaching(config: RedisConfig): Promise<void> {
 /**
  * Create a short-lived Redis client intended only for connection validation.
  *
+ * Accepts the Redis constructor as a parameter (lazy-loaded by the caller) to
+ * avoid importing ioredis at module top-level.
+ *
  * Key settings:
  * - maxRetriesPerRequest: 0  — fail-fast on command retry (no spam)
  * - retryStrategy: null      — no reconnect attempts after first failure
@@ -148,7 +190,7 @@ async function initializeRedisCaching(config: RedisConfig): Promise<void> {
  * - lazyConnect: true        — don't connect until first command
  * - connectTimeout: 5000     — abort if TCP handshake takes too long
  */
-function createValidationClient(config: RedisConfig): Redis {
+function createValidationClient(Redis: IoRedis['default'], config: RedisConfig): RedisInstance | ClusterInstance {
   if (config.mode === 'sentinel') {
     const c = config as RedisSentinelConfig;
     return new Redis({
@@ -166,14 +208,14 @@ function createValidationClient(config: RedisConfig): Redis {
 
   if (config.mode === 'cluster') {
     const c = config as RedisClusterConfig;
-    // Cluster uses ioredis Cluster class — cast to Redis for the return type
+    // Cluster uses ioredis Cluster class — cast to the Cluster instance type
     return new Redis.Cluster(c.nodes, {
       redisOptions: {
         password: c.password,
         maxRetriesPerRequest: 0,
         connectTimeout: 5000,
       },
-    }) as unknown as Redis;
+    }) as ClusterInstance;
   }
 
   // Standalone (default)

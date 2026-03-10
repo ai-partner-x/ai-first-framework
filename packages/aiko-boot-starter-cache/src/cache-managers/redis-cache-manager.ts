@@ -5,8 +5,8 @@
  * 每个缓存命名空间（name）在 Redis 中以 `name::entryKey` 形式存储。
  *
  * 对应 Spring Data Redis 的：
- *   - org.springframework.data.redis.aiko-boot-starter-cache.RedisCacheManager
- *   - org.springframework.data.redis.aiko-boot-starter-cache.RedisCache
+ *   - org.springframework.data.redis.cache.RedisCacheManager
+ *   - org.springframework.data.redis.cache.RedisCache
  *
  * @example
  * ```typescript
@@ -69,10 +69,13 @@ class RedisCache implements Cache {
     do {
       const [nextCursor, keys] = await this.client.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
       cursor = nextCursor;
-      if (keys.length > 0) {
-        await this.client.del(...keys);
+      // Batch deletions (≤50 keys per DEL call) to avoid oversized single requests.
+      for (let i = 0; i < keys.length; i += 50) {
+        await this.client.del(...keys.slice(i, i + 50));
       }
     } while (cursor !== '0');
+    // Also delete the bare namespace key used when entryKey is empty (e.g. no-arg methods).
+    await this.client.del(this.name);
   }
 }
 

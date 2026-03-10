@@ -59,8 +59,8 @@ export const CACHE_EVICT_METADATA = Symbol('cacheEvict');
 
 // ==================== Types ====================
 
-/** 缓存 key 生成函数，接收方法参数，返回缓存 key 字符串 */
-export type CacheKeyGenerator = (...args: unknown[]) => string;
+/** 缓存 key 生成函数，接收方法参数，返回缓存 key 字符串（支持异步） */
+export type CacheKeyGenerator = (...args: unknown[]) => string | Promise<string>;
 
 /** @Cacheable / @CachePut 选项 */
 export interface CacheableOptions {
@@ -77,17 +77,17 @@ export interface CacheableOptions {
    */
   ttl?: number;
   /**
-   * 自定义条目 key 生成器（接收方法参数）
+   * 自定义条目 key 生成器（接收方法参数，支持异步）
    * 默认将所有参数 JSON 序列化后拼接
    *
    * 对应 Spring: @Cacheable(key = "#id")
    */
   keyGenerator?: CacheKeyGenerator;
   /**
-   * 缓存条件（接收方法参数），返回 false 时不缓存
+   * 缓存条件（接收方法参数，支持异步），返回 false 时不缓存
    * 对应 Spring: @Cacheable(condition = "#id > 0")
    */
-  condition?: (...args: unknown[]) => boolean;
+  condition?: (...args: unknown[]) => boolean | Promise<boolean>;
 }
 
 /** @CacheEvict 选项 */
@@ -118,11 +118,22 @@ export interface CacheEvictOptions {
 /**
  * 根据方法参数生成条目 key 字符串。
  * 当无参数时返回空字符串，Cache 实现可将其退化为命名空间本身。
+ * 支持同步和异步 keyGenerator。
  */
-function buildEntryKey(args: unknown[], keyGenerator?: CacheKeyGenerator): string {
-  return keyGenerator
-    ? keyGenerator(...args)
-    : args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(':');
+async function buildEntryKey(args: unknown[], keyGenerator?: CacheKeyGenerator): Promise<string> {
+  if (keyGenerator) {
+    return await keyGenerator(...args);
+  }
+  return args
+    .map(a => {
+      if (typeof a !== 'object' || a === null) return String(a);
+      try {
+        return JSON.stringify(a);
+      } catch {
+        return '[Unstringifiable]';
+      }
+    })
+    .join(':');
 }
 
 /**
@@ -173,16 +184,21 @@ export function Cacheable(options: CacheableOptions) {
         return originalMethod.apply(this, args);
       }
 
-      if (options.condition && !options.condition(...args)) {
+      if (options.condition && !(await options.condition(...args))) {
         return originalMethod.apply(this, args);
       }
 
       const cache = manager.getCache(options.key);
-      const entryKey = buildEntryKey(args, options.keyGenerator);
+      const entryKey = await buildEntryKey(args, options.keyGenerator);
 
       const cached = await cache.get(entryKey);
       if (cached !== null) {
-        return JSON.parse(cached) as unknown;
+        try {
+          return JSON.parse(cached) as unknown;
+        } catch {
+          // 缓存数据损坏或格式不兼容，降级为直接调用原方法
+          return originalMethod.apply(this, args);
+        }
       }
 
       const result = await originalMethod.apply(this, args);
@@ -230,13 +246,13 @@ export function CachePut(options: CacheableOptions) {
         return result;
       }
 
-      if (options.condition && !options.condition(...args)) {
+      if (options.condition && !(await options.condition(...args))) {
         return result;
       }
 
       if (result !== undefined && result !== null) {
         const cache = manager.getCache(options.key);
-        const entryKey = buildEntryKey(args, options.keyGenerator);
+        const entryKey = await buildEntryKey(args, options.keyGenerator);
         await cache.put(entryKey, JSON.stringify(result), options.ttl);
       }
 
@@ -283,9 +299,12 @@ export function CacheEvict(options: CacheEvictOptions) {
         const cache = manager.getCache(options.key);
 
         if (options.allEntries) {
+          if (options.keyGenerator) {
+            console.warn('@CacheEvict: allEntries=true 时 keyGenerator 将被忽略');
+          }
           await cache.clear();
         } else {
-          const entryKey = buildEntryKey(args, options.keyGenerator);
+          const entryKey = await buildEntryKey(args, options.keyGenerator);
           await cache.evict(entryKey);
         }
       };

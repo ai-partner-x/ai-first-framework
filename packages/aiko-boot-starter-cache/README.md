@@ -246,7 +246,7 @@ export default {
 } satisfies AppConfig;
 ```
 
-> **提示**：`cache.*` 属性缺失时，`@ConditionalOnProperty('cache.type')` 会跳过 `CacheAutoConfiguration`，缓存装饰器自动降级，无需 Redis 即可本地开发。
+> **提示**：`cache.enabled` 未设为 `true` 时，`@ConditionalOnProperty('cache.enabled', { havingValue: 'true' })` 会跳过 `CacheAutoConfiguration`，缓存装饰器自动降级，无需 Redis 即可本地开发。
 
 ### 方式二：手动初始化
 

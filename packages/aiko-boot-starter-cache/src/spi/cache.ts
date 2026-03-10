@@ -2,8 +2,8 @@
  * Spring Cache SPI — 缓存扩展点接口
  *
  * 参照 Spring Cache 的设计：
- *   - org.springframework.aiko-boot-starter-cache.Cache          → Cache
- *   - org.springframework.aiko-boot-starter-cache.CacheManager   → CacheManager
+ *   - org.springframework.cache.Cache          → Cache
+ *   - org.springframework.cache.CacheManager   → CacheManager
  *
  * 任何缓存后端（Redis、Memcached、Caffeine 等）只需实现这两个接口，
  * 然后通过 setCacheManager() 注册到全局注册表，即可被
@@ -54,7 +54,7 @@
 /**
  * Cache — 单个缓存命名空间的操作接口
  *
- * 对应 Spring Cache 的 `org.springframework.aiko-boot-starter-cache.Cache`。
+ * 对应 Spring Cache 的 `org.springframework.cache.Cache`。
  *
  * 实现时，物理存储 key 通常由 `名称::条目key` 组成，例如 Redis 实现
  * 将 `entryKey = "1"` 存储为 `user::1`。但这属于实现细节，接口本身只暴露
@@ -110,7 +110,7 @@ export interface Cache {
 /**
  * CacheManager — 缓存管理器扩展接口
  *
- * 对应 Spring Cache 的 `org.springframework.aiko-boot-starter-cache.CacheManager`。
+ * 对应 Spring Cache 的 `org.springframework.cache.CacheManager`。
  *
  * 每种缓存后端（Redis、Memcached、Caffeine、In-Memory 等）提供一个
  * `CacheManager` 实现，并在应用启动时通过 `setCacheManager()` 注册。
