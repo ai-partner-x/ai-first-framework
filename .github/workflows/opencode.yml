@@ -219,16 +219,63 @@ jobs:
         env:
           BAILIAN_API_KEY: ${{ secrets.BAILIAN_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TYPECHECK_RESULT: ${{ env.TYPECHECK_RESULT }}
+          LINT_RESULT: ${{ env.LINT_RESULT }}
+          TEST_RESULT: ${{ env.TEST_RESULT }}
         with:
           model: bailian/qwen3.5-plus
           use_github_token: true
           prompt: |
-            审查这个 PR，给出审查结论：
-            - 检查代码质量问题
-            - 查找潜在 Bug
-            - 提出改进建议
+            请审查这个 PR，并按以下要求输出：
             
-            最后必须给出审查结论：
+            ## 自动检查结果
+            
+            TypeScript 类型检查：
+            ```
+            ${{ env.TYPECHECK_RESULT }}
+            ```
+            
+            ESLint 检查：
+            ```
+            ${{ env.LINT_RESULT }}
+            ```
+            
+            单元测试：
+            ```
+            ${{ env.TEST_RESULT }}
+            ```
+            
+            ## 审查要求
+            
+            1. 检查代码质量问题
+            2. 查找潜在 Bug
+            3. 提出改进建议
+            
+            ## 输出格式（必须遵守）
+            
+            你的回复必须包含以下两个部分：
+            
+            ### 第一部分：审查详情
+            
+            - 🔴 必须修复：[列出严重问题]
+            - 🟡 建议改进：[列出建议]
+            - ✅ 优点：[列出优点]
+            
+            ### 第二部分：审查结论（必填）
+            
+            ---
             ## 审查结论：[✅ 批准 / ⚠️ 有条件批准 / ❌ 拒绝]
-            **决策理由：** [xxx]
-            **行动项：** [xxx]
+            
+            **决策理由：** [具体说明为什么选择这个结论]
+            
+            **行动项：**
+            - [ ] [具体行动项1]
+            - [ ] [具体行动项2]
+            ---
+            
+            结论选项说明：
+            - ✅ 批准：代码无问题，可直接合并
+            - ⚠️ 有条件批准：有小问题但不阻塞合并
+            - ❌ 拒绝：有严重问题必须修复
+            
+            请用中文回复。
