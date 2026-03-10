@@ -252,6 +252,27 @@ PR 创建/更新
 4. **最佳实践** - TypeScript 规范、框架使用
 5. **测试覆盖** - 单元测试、边界情况
 
+### 服务端组件专项审查
+
+当 PR 涉及以下目录时，会按 Aiko Boot 插件开发规范进行专项审查：
+
+| 目录 | 说明 |
+|------|------|
+| `packages/aiko-boot/` | 核心框架 |
+| `packages/aiko-boot-starter-*/` | Starter 插件 |
+| `packages/aiko-boot-codegen/` | 代码生成器 |
+
+#### 审查项目
+
+| 检查项 | 说明 |
+|--------|------|
+| **命名规范** | 包名、配置前缀、类命名是否符合约定 |
+| **条件装配** | `@ConditionalOnProperty`、`@ConditionalOnMissingBean` 使用 |
+| **生命周期** | `@OnApplicationReady`、`@OnApplicationShutdown` 使用 |
+| **类型扩展** | `config-augment.ts` 扩展 `AppConfig` 接口 |
+| **日志输出** | emoji 前缀标识模块 |
+| **导出规范** | `index.ts` 正确导出公共 API |
+
 ### 输出格式
 
 AI 会按以下格式发布审查评论：
