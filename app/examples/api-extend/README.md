@@ -13,7 +13,7 @@ pnpm install
 pnpm --filter "@ai-partner-x/*" build
 
 # 进入示例目录，启动开发服务器（支持热重载）
-cd app/examples/api-new-feature
+cd app/examples/api-extend
 pnpm dev
 ```
 

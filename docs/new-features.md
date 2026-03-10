@@ -4,7 +4,7 @@
 >
 > 这些能力均已集成到新一代 **Aiko Boot** 框架（`@ai-partner-x/aiko-boot-starter-web` + `@ai-partner-x/aiko-boot`），支持 Spring Boot 风格的自动配置（AutoConfiguration）和配置化能力（`@ConfigurationProperties`）。
 >
-> 完整示例代码见 [`app/examples/api-new-feature/`](../app/examples/api-new-feature/)。
+> 完整示例代码见 [`app/examples/api-new-feature/`](../app/examples/api-extend/)。
 
 ---
 
