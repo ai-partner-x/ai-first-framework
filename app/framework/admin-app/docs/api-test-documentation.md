@@ -13,19 +13,20 @@
   ```json
   {
     "username": "admin",
-    "password": "123456"
+    "password": "Admin@123"
   }
   ```
 - **响应示例**：
   ```json
   {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "user": {
+    "userInfo": {
       "id": 1,
       "username": "admin",
-      "name": "管理员",
-      "avatar": ""
+      "realName": "管理员",
+      "roles": ["SUPER_ADMIN"],
+      "permissions": ["sys:user:list", "sys:role:list", "sys:menu:list"]
     }
   }
   ```
@@ -63,10 +64,11 @@
   {
     "username": "test",
     "password": "123456",
-    "name": "测试用户",
+    "realName": "测试用户",
     "email": "test@example.com",
     "phone": "13800138000",
-    "status": 1
+    "status": 1,
+    "roleIds": [1, 2]
   }
   ```
 
@@ -75,10 +77,11 @@
 - **请求参数**：
   ```json
   {
-    "name": "测试用户",
+    "realName": "测试用户",
     "email": "test@example.com",
     "phone": "13800138000",
-    "status": 1
+    "status": 1,
+    "roleIds": [1]
   }
   ```
 
@@ -200,7 +203,9 @@
 - **Swagger**：如果项目集成了 Swagger，可以直接访问 http://localhost:3003/swagger
 
 ## 注意事项
-1. 所有接口需要在请求头中携带 `Authorization: Bearer <token>`
-2. 密码需要使用 MD5 加密或其他加密方式
+1. 所有接口需要在请求头中携带 `Authorization: Bearer <accessToken>`
+2. 密码在传输过程中建议使用 HTTPS 加密，后端使用 bcryptjs 进行哈希存储
 3. 分页查询的默认页码是 1，默认每页大小是 10
 4. 菜单类型分为：目录（1）、菜单（2）、按钮（3）
+5. 角色权限通过 `sys_user_role` 和 `sys_role_menu` 两张关联表进行管理
+6. 登录成功后返回的 `accessToken` 有效期为 2 小时，`refreshToken` 有效期为 7 天
