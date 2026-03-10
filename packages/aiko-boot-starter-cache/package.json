@@ -34,7 +34,7 @@
   },
   "peerDependenciesMeta": {
     "ioredis": {
-      "optional": false
+      "optional": true
     }
   },
   "devDependencies": {
