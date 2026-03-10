@@ -1,0 +1,10 @@
+# SQLite 数据库文件（由 pnpm init-db 生成）
+*.db
+*.db-shm
+*.db-wal
+
+# 构建产物
+dist/
+
+# 依赖
+node_modules/
