@@ -3,12 +3,14 @@
  */
 import 'reflect-metadata';
 import { Service } from '@ai-partner-x/aiko-boot';
+import { JsonFormat } from '@ai-partner-x/aiko-boot-starter-web';
 
-export interface TaskLogEntry {
-  type: string;
-  status: 'done' | 'failed';
-  completedAt: string;
-  durationMs: number;
+export class TaskLogEntry {
+  type!: string;
+  status!: 'done' | 'failed';
+  @JsonFormat({ pattern: 'yyyy-MM-dd HH:mm:ss.SSS', timezone: 'UTC' })
+  completedAt!: Date;
+  durationMs!: number;
   detail?: Record<string, unknown>;
 }
 
@@ -17,7 +19,8 @@ export class TaskLogService {
   private readonly logs: TaskLogEntry[] = [];
 
   addLog(entry: TaskLogEntry): void {
-    this.logs.push(entry);
+    const item = Object.assign(new TaskLogEntry(), entry);
+    this.logs.push(item);
     console.log(`[TaskLog] ${entry.status.toUpperCase()} | ${entry.type} | ${entry.durationMs}ms`);
   }
 

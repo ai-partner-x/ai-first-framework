@@ -22,7 +22,7 @@ export class ReportService {
     this.taskLogService.addLog({
       type: 'sales-report',
       status: 'done',
-      completedAt: new Date().toISOString(),
+      completedAt: new Date(),
       durationMs: Date.now() - start,
       detail: { month },
     });
@@ -43,7 +43,7 @@ export class ReportService {
     this.taskLogService.addLog({
       type: 'failing-report',
       status: 'failed',
-      completedAt: new Date().toISOString(),
+      completedAt: new Date(),
       durationMs: 200,
       detail: { reportType, error: 'data source unavailable' },
     });

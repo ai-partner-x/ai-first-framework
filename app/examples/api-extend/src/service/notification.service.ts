@@ -22,7 +22,7 @@ export class NotificationService {
     this.taskLogService.addLog({
       type: 'welcome-email',
       status: 'done',
-      completedAt: new Date().toISOString(),
+      completedAt: new Date(),
       durationMs: Date.now() - start,
       detail: { to, userId },
     });
@@ -37,7 +37,7 @@ export class NotificationService {
     this.taskLogService.addLog({
       type: 'password-reset-email',
       status: 'done',
-      completedAt: new Date().toISOString(),
+      completedAt: new Date(),
       durationMs: Date.now() - start,
       detail: { to },
     });
