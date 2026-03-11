@@ -37,7 +37,7 @@ function defaultSerializer<T>(): RedisSerializer<T> {
 
 // ==================== IORedisAdapter ====================
 
-export interface IORedisAdapterOptions<K = string, V = unknown> {
+export interface IORedisAdapterOptions<K = string, V extends string | Record<string, unknown> = Record<string, unknown>> {
   /** ioredis 实例 */
   client: Redis;
   /** key 序列化器，默认使用字符串透传 */
@@ -50,7 +50,7 @@ export interface IORedisAdapterOptions<K = string, V = unknown> {
  * IORedisAdapter - 适配器核心，封装 ioredis 命令
  * 提供 Spring Boot RedisTemplate 风格的操作接口
  */
-export class IORedisAdapter<K = string, V = unknown> {
+export class IORedisAdapter<K = string, V extends string | Record<string, unknown> = Record<string, unknown>> {
   protected client: Redis;
   protected keySerializer: RedisSerializer<K>;
   protected valueSerializer: RedisSerializer<V>;
@@ -387,9 +387,9 @@ export class IORedisAdapter<K = string, V = unknown> {
     async function pop(key: K, count?: number): Promise<V | null | V[]> {
       if (count !== undefined) {
         const raws = await adapter.client.spop(adapter.sk(key), count);
-        return (raws as string[]).map(r => adapter.ds(r));
+        return (raws ?? []).map((r: string) => adapter.ds(r));
       }
-      return adapter.dv(await (adapter.client.spop(adapter.sk(key)) as Promise<string | null>));
+      return adapter.dv(await adapter.client.spop(adapter.sk(key)));
     }
 
     async function isMember(key: K, value: V): Promise<boolean>;
@@ -431,21 +431,21 @@ export class IORedisAdapter<K = string, V = unknown> {
       },
 
       async randomMember(key: K): Promise<V | null> {
-        return adapter.dv(await (adapter.client.srandmember(adapter.sk(key)) as Promise<string | null>));
+        return adapter.dv(await adapter.client.srandmember(adapter.sk(key)));
       },
 
       async randomMembers(key: K, count: number): Promise<V[]> {
         if (!Number.isInteger(count) || count <= 0) throw new Error('count must be a positive integer');
         // Negative count allows duplicates in Redis SRANDMEMBER
         const raws = await adapter.client.srandmember(adapter.sk(key), -count);
-        return (raws as string[]).map(r => adapter.ds(r));
+        return (raws ?? []).map((r: string) => adapter.ds(r));
       },
 
       async distinctRandomMembers(key: K, count: number): Promise<Set<V>> {
         if (!Number.isInteger(count) || count <= 0) throw new Error('count must be a positive integer');
         // Positive count returns distinct members in Redis SRANDMEMBER
         const raws = await adapter.client.srandmember(adapter.sk(key), count);
-        return new Set((raws as string[]).map(r => adapter.ds(r)));
+        return new Set((raws ?? []).map((r: string) => adapter.ds(r)));
       },
 
       async intersect(key: K, ...otherKeys: K[]): Promise<Set<V>> {

@@ -35,14 +35,14 @@ import type { HashOperations } from './operations/hash-operations.js';
 import type { SetOperations } from './operations/set-operations.js';
 import type { ZSetOperations } from './operations/zset-operations.js';
 
-export interface RedisTemplateOptions<K, V> extends IORedisAdapterOptions<K, V> {}
+export interface RedisTemplateOptions<K, V extends string | Record<string, unknown>> extends IORedisAdapterOptions<K, V> {}
 
 /**
  * RedisTemplate<K, V> - Spring Boot 风格的 Redis 操作模板
  *
  * 对应 Spring Data Redis 的 org.springframework.data.redis.core.RedisTemplate
  */
-export class RedisTemplate<K = string, V = unknown> {
+export class RedisTemplate<K = string, V extends string | Record<string, unknown> = Record<string, unknown>> {
   protected adapter: IORedisAdapter<K, V>;
 
   constructor(options: RedisTemplateOptions<K, V>) {
