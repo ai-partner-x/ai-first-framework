@@ -170,14 +170,27 @@ function registerController(
     // upload routes are left without multer so they return a normal 400/500 rather
     // than silently consuming unbounded memory.
     const uploadMiddleware = (Object.keys(partParams).length > 0 && multipart !== undefined)
-      ? multer({
-          storage: multer.memoryStorage(),
-          limits: {
-            fileSize: multipart?.maxFileSize,
-          },
-        }).fields(
-          Object.values(partParams).map(p => ({ name: p.name, maxCount: 1 }))
-        )
+      ? (() => {
+          const partParamList = Object.values(partParams);
+          const seenNames = new Map<string, number>();
+          for (const p of partParamList) {
+            const count = (seenNames.get(p.name) ?? 0) + 1;
+            if (count > 1) {
+              throw new Error(
+                `Duplicate @RequestPart name '${p.name}' in ` +
+                `${ControllerClass.name}.${String(methodName)}. ` +
+                'Each @RequestPart on a method must have a unique name.',
+              );
+            }
+            seenNames.set(p.name, count);
+          }
+          return multer({
+            storage: multer.memoryStorage(),
+            limits: {
+              fileSize: multipart?.maxFileSize,
+            },
+          }).fields(partParamList.map(p => ({ name: p.name, maxCount: 1 })));
+        })()
       : null;
 
     const handler: Handler = async (req, res, _next) => {

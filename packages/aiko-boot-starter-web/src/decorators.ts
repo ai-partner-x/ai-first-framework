@@ -504,13 +504,14 @@ export function formatDate(date: Date, pattern: string, timezone?: string): stri
  *   string by JSON.stringify as usual).
  * - Non-plain built-in objects (Buffer, Map, Set, Error, etc.) are returned
  *   unchanged to preserve their native JSON serialisation behaviour.
- * - Circular references are detected via a WeakSet; the already-visited object
- *   is returned as-is to avoid infinite recursion.
+ * - Circular / shared references are detected via a WeakMap; the
+ *   already-transformed copy is returned so every reference to the same
+ *   source object yields a consistently-formatted result.
  *
  * @param value The value to transform (typically the controller return value)
- * @param visited Internal WeakSet used to detect circular references (do not pass)
+ * @param visited Internal WeakMap used to memoize transformed copies and detect circular references (do not pass)
  */
-export function applyJsonFormat(value: unknown, visited: WeakSet<object> = new WeakSet()): unknown {
+export function applyJsonFormat(value: unknown, visited: WeakMap<object, unknown> = new WeakMap()): unknown {
   if (value === null || value === undefined) return value;
   if (Array.isArray(value)) {
     return value.map(item => applyJsonFormat(item, visited));
@@ -529,11 +530,10 @@ export function applyJsonFormat(value: unknown, visited: WeakSet<object> = new W
       return value;
     }
 
-    // Guard against circular references
+    // Return the already-transformed copy for circular/shared references
     if (visited.has(value)) {
-      return value;
+      return visited.get(value);
     }
-    visited.add(value);
 
     const proto = Object.getPrototypeOf(value);
     const formats: Record<string, JsonFormatOptions> =
@@ -542,6 +542,8 @@ export function applyJsonFormat(value: unknown, visited: WeakSet<object> = new W
         : {};
 
     const result: Record<string, unknown> = {};
+    // Register result in the map before recursing so circular refs resolve to the partial copy
+    visited.set(value, result);
     for (const key of Object.keys(value as Record<string, unknown>)) {
       const val = (value as Record<string, unknown>)[key];
       const fmt = formats[key];

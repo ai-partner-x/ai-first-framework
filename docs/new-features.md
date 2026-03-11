@@ -346,7 +346,7 @@ curl http://localhost:3001/api/form/tenant-info
 
 ---
 
-## 四、JSON 序列化格式化 — `@JsonFormat`
+## 三、JSON 序列化格式化 — `@JsonFormat`
 
 ### 功能概述
 
@@ -550,7 +550,7 @@ curl http://localhost:3001/api/users/1
 
 ---
 
-## 五、异步与响应式支持 — `@Async`
+## 四、异步与响应式支持 — `@Async`
 
 ### 功能概述
 
@@ -688,7 +688,7 @@ export class ReportService {
 
 ---
 
-## 六、功能对照表
+## 五、功能对照表
 
 | 功能 | 装饰器 / 类型 | 所在包 | Spring Boot 对应 |
 |---|---|---|---|
@@ -706,7 +706,7 @@ export class ReportService {
 
 ---
 
-## 七、安装与运行示例
+## 六、安装与运行示例
 
 ```bash
 # 1. 安装依赖（仓库根目录）

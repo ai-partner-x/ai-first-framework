@@ -78,7 +78,7 @@ export function parseSizeToBytes(size: string): number {
   const match = /^(\d+(?:\.\d+)?)\s*(B|KB|MB|GB)?$/.exec(str);
   if (!match) {
     throw new Error(
-      `[aiko-web] Invalid size string "${size}" in spring.servlet.multipart config. ` +
+      `[aiko-web] Invalid size string "${size}". ` +
       'Use formats like "1MB", "512KB", "10GB".',
     );
   }
@@ -279,5 +279,11 @@ export function getExpressApp(): Express | null {
  * ```
  */
 export function useExpressApp(app: Express): void {
+  if (_preConfiguredApp !== null) {
+    throw new Error(
+      '[aiko-web] useExpressApp() has already been called. ' +
+      'Pass the Express instance only once before createApp() is invoked.',
+    );
+  }
   _preConfiguredApp = app;
 }
