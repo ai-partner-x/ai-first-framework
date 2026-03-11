@@ -54,7 +54,7 @@ export function ShellBar({
   const { data: identity } = useGetIdentity()
   const { mutate: logout } = useLogout()
 
-  const displayName = userName ?? identity?.name ?? identity?.email ?? "用户"
+  const displayName = userName ?? identity?.account ?? identity?.email ?? "用户"
   const displayEmail = identity?.email
 
   const handleLogout = async () => {

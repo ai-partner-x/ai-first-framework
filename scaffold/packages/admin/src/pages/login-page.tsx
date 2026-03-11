@@ -12,7 +12,7 @@ export function LoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { mutate: login } = useLogin()
-  const [email, setEmail] = useState("")
+  const [account, setAccount] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -22,7 +22,7 @@ export function LoginPage() {
     setError(null)
     setIsSubmitting(true)
     try {
-      const result = await login({ email, password })
+      const result = await login({ account, password })
       if (result.success) {
         const to =
           searchParams.get("to") != null
@@ -52,15 +52,15 @@ export function LoginPage() {
         </div>
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">{t("auth.email")}</Label>
+            <Label htmlFor="account">{t("auth.email")}</Label>
             <Input
-              id="email"
-              type="email"
+              id="account"
+              type="text"
               placeholder="admin@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={account}
+              onChange={(e) => setAccount(e.target.value)}
               required
-              autoComplete="email"
+              autoComplete="username"
               disabled={isSubmitting}
               className="w-full"
             />

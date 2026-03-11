@@ -2,13 +2,17 @@ import { ReactNode } from "react"
 
 export type AuthUser = {
   id?: string
-  name?: string
-  email: string
+  /** 登录账号/用户名（替代原 name 字段） */
+  account: string
+  /** 可选：邮箱 */
+  email?: string
   avatar?: string | ReactNode
+  /** 允许携带额外的用户数据（例如 roles、dept、tenant 等） */
+  [key: string]: unknown
 }
 
 export type LoginParams = {
-  email: string
+  account: string
   password?: string
 }
 

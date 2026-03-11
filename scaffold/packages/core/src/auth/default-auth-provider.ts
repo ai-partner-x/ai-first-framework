@@ -1,4 +1,4 @@
-import { promiseResultCache } from "../utils/promise-result-cache"
+import { promiseResultCache, promiseResultCacheClear } from "../utils/promise-result-cache"
 import { AuthProviderConfig, AuthUser } from "./types"
 import { authConfig } from "./auth-config"
 
@@ -7,10 +7,13 @@ const IDENTITY_CACHE_KEY = "auth/identity"
 
 const defaultAuthProvider: AuthProviderConfig = {
   // 表单登录，根据实现情况调整
-  login: async ({ email }) => {
-    const user: AuthUser = { email, name: email.split("@")[0] }
+  login: async ({ account }) => {
+    const user: AuthUser = {
+      account
+    }
     try {
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user))
+      promiseResultCacheClear(IDENTITY_CACHE_KEY)
       return { success: true, user, redirectTo: "/" }
     } catch {
       return {
