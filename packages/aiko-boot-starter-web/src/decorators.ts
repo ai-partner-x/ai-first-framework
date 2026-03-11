@@ -430,12 +430,12 @@ export function formatDate(date: Date, pattern: string, timezone?: string): stri
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        hour12: false,
+        hourCycle: 'h23', // Ensure hours are in 0–23 range to avoid 24:00 edge cases
       }).formatToParts(date).forEach(p => { parts[p.type] = p.value; });
       y  = parseInt(parts.year, 10);
       mo = parseInt(parts.month, 10);
       d  = parseInt(parts.day, 10);
-      h  = parseInt(parts.hour, 10) % 24; // Normalizes hour 24→0: some ICU/V8 builds represent midnight as '24:00:00' rather than '00:00:00'
+      h  = parseInt(parts.hour, 10);
       mi = parseInt(parts.minute, 10);
       s  = parseInt(parts.second, 10);
       ms = date.getMilliseconds(); // Milliseconds are sub-second precision; timezones offset by whole minutes only, so this value is timezone-independent
@@ -538,6 +538,12 @@ export function applyJsonFormat(value: unknown, visited: WeakMap<object, unknown
       value instanceof Error
     ) {
       return value;
+    }
+
+    // If the object defines a toJSON method, honor it and then apply formatting
+    const anyValue = value as any;
+    if (typeof anyValue.toJSON === 'function') {
+      return applyJsonFormat(anyValue.toJSON.call(anyValue), visited);
     }
 
     // Return the already-transformed copy for circular/shared references

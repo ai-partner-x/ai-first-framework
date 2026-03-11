@@ -257,7 +257,17 @@ export function Async(options: AsyncOptions = {}) {
           await original.apply(ctx, args);
         } catch (error) {
           const handler = options.onError ?? defaultAsyncErrorHandler;
-          handler(error, propertyKey);
+          try {
+            await handler(error, propertyKey);
+          } catch (handlerError) {
+            if (handler !== defaultAsyncErrorHandler) {
+              try {
+                await defaultAsyncErrorHandler(handlerError, propertyKey);
+              } catch {
+                // Swallow to ensure @Async never crashes the process
+              }
+            }
+          }
         }
       });
       // Return a resolved Promise so callers can safely call .catch() on the result

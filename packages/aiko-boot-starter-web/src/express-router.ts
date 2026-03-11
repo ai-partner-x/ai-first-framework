@@ -33,6 +33,9 @@ import { Container, injectAutowiredProperties } from '@ai-partner-x/aiko-boot/di
 import multer from 'multer';
 import { writeFile } from 'fs/promises';
 
+/** Default maximum file size (1 MB) applied when multipart is enabled but maxFileSize is not configured. */
+const DEFAULT_MAX_FILE_SIZE = 1024 * 1024;
+
 export interface ExpressRouterOptions {
   /**
    * Controller 实例列表（仅在不使用 DI 时需要）
@@ -166,10 +169,21 @@ function registerController(
 
     // Build multer middleware when the handler has @RequestPart parameters AND
     // multipart uploads are enabled (multipart !== undefined).
-    // When multipart is undefined the feature is considered disabled and file
-    // upload routes are left without multer so they return a normal 400/500 rather
-    // than silently consuming unbounded memory.
-    const uploadMiddleware = (Object.keys(partParams).length > 0 && multipart !== undefined)
+    // Fail fast during route registration if @RequestPart is used but multipart
+    // is not configured, so the error is clear rather than silently producing
+    // undefined parameters at runtime.
+    const hasRequestParts = Object.keys(partParams).length > 0;
+
+    if (hasRequestParts && multipart === undefined) {
+      throw new Error(
+        `[aiko-boot] Multipart processing is disabled but route ` +
+        `${ControllerClass.name}.${String(methodName)} uses @RequestPart. ` +
+        'Please enable multipart support (e.g. spring.servlet.multipart.enabled=true) ' +
+        'and configure ExpressRouterOptions.multipart.',
+      );
+    }
+
+    const uploadMiddleware = (hasRequestParts && multipart !== undefined)
       ? (() => {
           const partParamList = Object.values(partParams);
           const seenNames = new Map<string, number>();
@@ -187,7 +201,8 @@ function registerController(
           return multer({
             storage: multer.memoryStorage(),
             limits: {
-              fileSize: multipart?.maxFileSize,
+              // Default to DEFAULT_MAX_FILE_SIZE if maxFileSize is not specified, to avoid unbounded memory usage.
+              fileSize: multipart?.maxFileSize ?? DEFAULT_MAX_FILE_SIZE,
             },
           }).fields(partParamList.map(p => ({ name: p.name, maxCount: 1 })));
         })()
