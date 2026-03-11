@@ -20,6 +20,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "@scaffold/api/client": ["../api/dist/client/index.ts"],
       "@scaffold/core": ["../core/src/index.ts"]
     }
   },
