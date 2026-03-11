@@ -514,7 +514,17 @@ export function formatDate(date: Date, pattern: string, timezone?: string): stri
 export function applyJsonFormat(value: unknown, visited: WeakMap<object, unknown> = new WeakMap()): unknown {
   if (value === null || value === undefined) return value;
   if (Array.isArray(value)) {
-    return value.map(item => applyJsonFormat(item, visited));
+    // Handle arrays with memoization to support circular/shared references
+    if (visited.has(value as object)) {
+      return visited.get(value as object);
+    }
+    const out: unknown[] = [];
+    // Register the array copy before recursing to break cycles
+    visited.set(value as object, out);
+    for (const item of value) {
+      out.push(applyJsonFormat(item, visited));
+    }
+    return out;
   }
   if (value instanceof Date) {
     return value;
