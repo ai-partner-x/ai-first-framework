@@ -1,35 +1,136 @@
-import { useAuth } from '@scaffold/shared-auth';
-import { LoginForm } from './components/LoginForm';
+import { useEffect, useState } from "react"
+import {
+  Navigate,
+  RouterProvider,
+  createBrowserRouter,
+  type RouteObject,
+} from "react-router"
+import { useTranslation } from "react-i18next"
+import { AppConfigProvider } from "./providers/app-config"
 
-export default function App() {
-  const { user, logout } = useAuth();
+import { ThemeProvider } from "./components/admin-ui/theme/theme-provider"
+import { Toaster } from "./components/admin-ui/notification/toaster"
+import { MenuLayout } from "./layouts/menu-layout"
+import { TileLayout } from "./layouts/tile-layout"
+import { HomePage } from "./pages/home-page"
+import { routes } from "./routes"
+import "./App.css"
+import { SignInForm } from "./components/admin-ui/form/sign-in-form"
+import { AuthProvider, authClientMiddleware, useAuth, setAppAuthConfig } from "@scaffold/core"
+import { AuthorizationProvider, setAppAuthorizationConfig } from "@scaffold/core"
+import { ErrorComponent } from "./components/admin-ui/layout/error-component"
+import { withSuspense } from "./routes/withSuspense"
+import { LOGIN_URL } from "./app.config"
 
-  if (!user) {
+const LAYOUT_STORAGE_KEY = "admin-layout-mode"
+
+const defaultTitleIcon = (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+  </svg>
+)
+
+/** 登录页：根据 auth state 同步渲染，已登录则重定向到首页 */
+function LoginPageRoute() {
+  const { state } = useAuth()
+  if (state.isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <LoginForm />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <span className="inline-flex h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary" />
       </div>
-    );
+    )
+  }
+  if (state.isAuthenticated) {
+    return <Navigate to="/" replace />
+  }
+  return <SignInForm />
+}
+
+/** 根布局：负责 layoutMode 与基础布局切换（菜单 / Tile） */
+function RootLayout() {
+  const [layoutMode, setLayoutMode] = useState<"menu" | "tile">(() => {
+    const saved = localStorage.getItem(LAYOUT_STORAGE_KEY)
+    return (saved === "menu" || saved === "tile" ? saved : "tile") as "menu" | "tile"
+  })
+
+  useEffect(() => {
+    localStorage.setItem(LAYOUT_STORAGE_KEY, layoutMode)
+  }, [layoutMode])
+
+  const handleLayoutModeChange = (mode: "menu" | "tile") => {
+    setLayoutMode(mode)
   }
 
+  const LayoutWrapper =
+    layoutMode === "menu" ? (
+      <MenuLayout onLayoutModeChange={handleLayoutModeChange} />
+    ) : (
+      <TileLayout onLayoutModeChange={handleLayoutModeChange} />
+    )
+
   return (
-    <div className="min-h-screen flex flex-col bg-gray-100">
-      <header className="bg-white shadow px-4 py-3 flex justify-between items-center">
-        <span className="text-gray-800 font-medium">Scaffold Admin</span>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-600">{user.username}</span>
-          <button
-            type="button"
-            onClick={() => logout()}
-            className="text-sm text-blue-600 hover:underline"
-          >
-            退出
-          </button>
-        </div>
-      </header>
-      <main className="flex-1 flex items-center justify-center p-4">
-        <p className="text-gray-600">已登录，后续管理功能待实现</p>
-      </main>
-    </div>
-  );
+    <>
+      {LayoutWrapper}
+    </>
+  )
+}
+
+const appRoutes: RouteObject[] = [
+  {
+    path: "/",
+    element: <RootLayout />,
+    children: [
+      { index: true, middleware: [authClientMiddleware], element: <HomePage /> } as RouteObject,
+      ...(routes as RouteObject[]),
+      { path: "*", element: <ErrorComponent /> },
+    ],
+  },
+]
+
+if (!LOGIN_URL.startsWith("http")) {
+  appRoutes.unshift({
+    path: LOGIN_URL,
+    element: withSuspense(LoginPageRoute),
+  })
+}
+
+const router = createBrowserRouter(appRoutes)
+
+function AppShell() {
+  const { t } = useTranslation()
+  // set app auth config
+  setAppAuthConfig({
+    fallbackUrl: LOGIN_URL,
+  })
+  setAppAuthorizationConfig({
+    fallbackUrl: '/not-found',
+  })
+  return (
+    <ThemeProvider>
+      <AppConfigProvider
+        title={{ icon: defaultTitleIcon, text: t("common.appTitle") }}
+      >
+        <AuthProvider>
+          <AuthorizationProvider>
+            <RouterProvider router={router} />
+          </AuthorizationProvider>
+        </AuthProvider>
+        <Toaster />
+      </AppConfigProvider>
+    </ThemeProvider>
+  )
+}
+
+export default function App() {
+  return <AppShell />
 }
