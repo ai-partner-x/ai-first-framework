@@ -213,10 +213,11 @@ function defaultAsyncErrorHandler(error: unknown, methodName: string): void {
 /**
  * @Async - Execute a method as a background task (like Spring Boot @Async)
  *
- * The decorated method returns `void` immediately.  The original async logic is
- * scheduled with `setImmediate` so that it runs after the current event-loop tick,
- * detached from the caller's execution path.  This mirrors Spring's fire-and-forget
- * semantics when a `@Async` method returns `void`.
+ * The decorated method returns a resolved `Promise` immediately.  The original
+ * async logic is scheduled with `setImmediate` so that it runs after the current
+ * event-loop tick, detached from the caller's execution path.  This mirrors Spring's
+ * fire-and-forget semantics: `await`-ing the decorated method does **not** wait for
+ * the background task to complete.
  *
  * Error handling:
  * - By default, any uncaught error is written to `console.error`.

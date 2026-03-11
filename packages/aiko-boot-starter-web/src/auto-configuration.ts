@@ -18,7 +18,6 @@
  *       multipart: {
  *         enabled: true,
  *         maxFileSize: '5MB',
- *         maxRequestSize: '20MB',
  *       },
  *     },
  *   },
@@ -200,7 +199,7 @@ export class WebAutoConfiguration {
           maxFileSize: parseSizeToBytes(maxFileSizeStr),
         };
       } catch (e: any) {
-        console.error(`[aiko-web] Misconfigured spring.servlet.multipart.maxFileSize: ${e.message}. File size limits will not be enforced.`);
+        console.error(`[aiko-web] Misconfigured spring.servlet.multipart.maxFileSize: ${e.message}. Multipart file uploads will be disabled due to this misconfiguration.`);
       }
     }
 

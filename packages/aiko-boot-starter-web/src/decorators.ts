@@ -209,7 +209,11 @@ export interface MultipartFile {
 
 /**
  * @RequestPart - Extract a part from a multipart/form-data request (like Spring Boot @RequestPart)
- * Used with file uploads. The route automatically gets multer middleware applied.
+ *
+ * Used with file uploads. Multer middleware is applied to the route only when multipart uploads
+ * are enabled/configured (e.g. via `ExpressRouterOptions.multipart` or framework auto-configuration
+ * such as `WebAutoConfiguration` / `spring.servlet.multipart.enabled`). If multipart is not
+ * enabled, the `@RequestPart` parameter will not be populated.
  *
  * @param name - The name of the form field (defaults to 'file')
  *
@@ -493,7 +497,9 @@ export function formatDate(date: Date, pattern: string, timezone?: string): stri
  *   annotated with @JsonFormat is converted to a string (or number) according
  *   to the decorator options.
  * - Arrays: each element is recursively transformed.
- * - Plain objects / primitives: returned as-is (nested objects are still walked).
+ * - Plain objects: shallow-copied into a new plain object whose own enumerable
+ *   properties are recursively transformed (nested objects are still walked).
+ * - Primitives (`string`, `number`, `boolean`): returned unchanged.
  * - `Date` values without an annotation: returned unchanged (serialized to ISO
  *   string by JSON.stringify as usual).
  * - Non-plain built-in objects (Buffer, Map, Set, Error, etc.) are returned

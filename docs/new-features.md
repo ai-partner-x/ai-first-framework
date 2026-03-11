@@ -74,7 +74,11 @@ export function RequestPart(name?: string) {
 export class MultipartProperties {
   enabled?: boolean = true;
   maxFileSize?: string = '1MB';     // spring.servlet.multipart.max-file-size
-  maxRequestSize?: string = '10MB'; // spring.servlet.multipart.max-request-size
+  /**
+   * 注意：此配置项不会被框架自动强制执行。
+   * 如需限制整体请求体大小，请通过 server.maxHttpPostSize 配置。
+   */
+  maxRequestSize?: string = '10MB'; // spring.servlet.multipart.max-request-size (not enforced)
 }
 ```
 
@@ -87,8 +91,10 @@ export class MultipartProperties {
 const maxHttpPostSizeStr = ConfigLoader.get<string>('server.maxHttpPostSize', '10mb');
 
 // multipart 单文件大小限制：来自 spring.servlet.multipart.maxFileSize
+const multipartMaxFileSizeStr =
+  ConfigLoader.get<string>('spring.servlet.multipart.maxFileSize', '1MB');
 const multipartOptions = multipartEnabled
-  ? { maxFileSize: parseSizeToBytes(maxFileSizeStr) }  // "1MB" → 1048576
+  ? { maxFileSize: parseSizeToBytes(multipartMaxFileSizeStr) }  // "1MB" → 1048576
   : undefined;  // undefined 表示禁用 multer 中间件
 
 app.use(express.json({ limit: resolvedBodyLimit }));
@@ -128,8 +134,7 @@ export default {
     servlet: {
       multipart: {
         enabled: true,
-        maxFileSize: '5MB',       // 单个文件上限
-        maxRequestSize: '20MB',   // 整个请求上限
+        maxFileSize: '5MB',       // 单个文件上限（spring.servlet.multipart.max-file-size）
       },
     },
   },
@@ -587,7 +592,10 @@ export interface AsyncOptions {
 ```typescript
 export function Async(options: AsyncOptions = {}) {
   return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    Reflect.defineMetadata(ASYNC_METADATA, { ...options }, target, propertyKey);
+    // Store a boolean flag so lifecycle/event readers can treat it as boolean.
+    Reflect.defineMetadata(ASYNC_METADATA, true, target, propertyKey);
+    // Store the options object under a separate key.
+    Reflect.defineMetadata(ASYNC_OPTIONS_METADATA, { ...options }, target, propertyKey);
 
     const original = descriptor.value;
     descriptor.value = function (this: any, ...args: any[]) {
@@ -600,7 +608,9 @@ export function Async(options: AsyncOptions = {}) {
           handler(error, propertyKey);
         }
       });
-      // 立即返回 void — fire-and-forget
+      // Return a resolved Promise so callers can safely call .catch() on the result
+      // without triggering a TypeError (fire-and-forget semantics are still preserved).
+      return Promise.resolve();
     };
     return descriptor;
   };
@@ -727,7 +737,6 @@ export default {
       multipart: {
         enabled: true,
         maxFileSize: '5MB',
-        maxRequestSize: '20MB',
       },
     },
   },
