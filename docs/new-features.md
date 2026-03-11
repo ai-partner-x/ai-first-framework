@@ -4,7 +4,7 @@
 >
 > 这些能力均已集成到新一代 **Aiko Boot** 框架（`@ai-partner-x/aiko-boot-starter-web` + `@ai-partner-x/aiko-boot`），支持 Spring Boot 风格的自动配置（AutoConfiguration）和配置化能力（`@ConfigurationProperties`）。
 >
-> 完整示例代码见 [`app/examples/api-new-feature/`](../app/examples/api-extend/)。
+> 完整示例代码见 [`app/examples/api-extend/`](../app/examples/api-extend/)。
 
 ---
 
@@ -78,33 +78,35 @@ export class MultipartProperties {
 }
 ```
 
-`WebAutoConfiguration` 启动时读取该配置并将大小限制传递给 multer：
+`WebAutoConfiguration` 启动时读取该配置并将大小限制传递给 multer，同时用 `server.maxHttpPostSize` 控制 JSON body-parser 的限制：
 
 ```typescript
 // packages/aiko-boot-starter-web/src/auto-configuration.ts (WebAutoConfiguration)
-const multipartOptions = multipartEnabled
-  ? {
-      maxFileSize:    parseSizeToBytes(maxFileSizeStr),    // "1MB" → 1048576
-      maxRequestSize: parseSizeToBytes(maxRequestSizeStr),
-    }
-  : undefined;
 
+// JSON body-parser 大小限制：来自 server.maxHttpPostSize（默认 10mb）
+const maxHttpPostSizeStr = ConfigLoader.get<string>('server.maxHttpPostSize', '10mb');
+
+// multipart 单文件大小限制：来自 spring.servlet.multipart.maxFileSize
+const multipartOptions = multipartEnabled
+  ? { maxFileSize: parseSizeToBytes(maxFileSizeStr) }  // "1MB" → 1048576
+  : undefined;  // undefined 表示禁用 multer 中间件
+
+app.use(express.json({ limit: resolvedBodyLimit }));
 app.use(createExpressRouter(validControllers, {
   prefix: contextPath,
   verbose,
-  multipart: multipartOptions,   // 传递给 multer limits
+  multipart: multipartOptions,   // undefined = 禁用上传; { maxFileSize } = 启用
 }));
 ```
 
 #### 路由注册时的自动 multer 挂载（`packages/aiko-boot-starter-web/src/express-router.ts`）
 
 ```typescript
-const uploadMiddleware = Object.keys(partParams).length > 0
+const uploadMiddleware = (Object.keys(partParams).length > 0 && multipart !== undefined)
   ? multer({
       storage: multer.memoryStorage(),
       limits: {
-        fileSize:  multipart?.maxFileSize,    // from spring.servlet.multipart.max-file-size
-        fieldSize: multipart?.maxRequestSize, // from spring.servlet.multipart.max-request-size
+        fileSize: multipart?.maxFileSize,    // from spring.servlet.multipart.max-file-size
       },
     }).fields(
       Object.values(partParams).map(p => ({ name: p.name, maxCount: 1 }))
@@ -163,9 +165,13 @@ export class UploadController {
     @RequestPart('document')  document:  MultipartFile,
     @RequestPart('thumbnail') thumbnail: MultipartFile,
   ): Promise<object> {
-    await document.transferTo(`/tmp/${document.getOriginalFilename()}`);
-    await thumbnail.transferTo(`/tmp/${thumbnail.getOriginalFilename()}`);
-    return { saved: [document.getOriginalFilename(), thumbnail.getOriginalFilename()] };
+    // Use path.basename() to strip any path separators from the client-supplied
+    // filename and prevent path-traversal attacks.
+    const docName  = path.basename(document.getOriginalFilename()  ?? 'document');
+    const thumbName = path.basename(thumbnail.getOriginalFilename() ?? 'thumbnail');
+    await document.transferTo(`/tmp/uploads/${docName}`);
+    await thumbnail.transferTo(`/tmp/uploads/${thumbName}`);
+    return { saved: [docName, thumbName] };
   }
 }
 ```
@@ -576,7 +582,7 @@ export interface AsyncOptions {
 }
 ```
 
-#### `@Async` 装饰器实现（`packages/aiko-boot/src/decorators.ts`）
+#### `@Async` 装饰器实现（`packages/aiko-boot/src/boot/lifecycle.ts`）
 
 ```typescript
 export function Async(options: AsyncOptions = {}) {
@@ -700,7 +706,7 @@ pnpm install
 pnpm --filter "@ai-partner-x/*" build
 
 # 3. 进入示例目录并启动
-cd app/examples/user-crud/packages/api
+cd app/examples/api-extend
 pnpm dev
 # → http://localhost:3001
 ```

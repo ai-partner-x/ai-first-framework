@@ -222,10 +222,10 @@ curl http://localhost:3003/api/form/tenant-info
 ## 代码结构
 
 ```
-app/examples/api-new-feature/
+app/examples/api-extend/
 ├── app.config.ts                       # Aiko Boot 配置（port、multipart、logging）
 ├── src/
-│   ├── server.ts                       # createApp() 自动配置 + Auth 中间件
+│   ├── server.ts                       # useExpressApp() + createApp() 自动配置
 │   ├── service/
 │   │   ├── task-log.service.ts         # 内存日志单例（@Async 任务写入）
 │   │   ├── notification.service.ts     # @Async 邮件发送示例
@@ -233,7 +233,8 @@ app/examples/api-new-feature/
 │   └── controller/
 │       ├── async.controller.ts         # Feature 1: @Async
 │       ├── upload.controller.ts        # Feature 2/3: @RequestPart + MultipartFile
-│       └── form.controller.ts          # Feature 4/5: @ModelAttribute + @RequestAttribute
+│       ├── form.controller.ts          # Feature 4/5: @ModelAttribute + @RequestAttribute
+│       └── json-format.controller.ts   # Feature 6: @JsonFormat
 ```
 
 ## 相关包

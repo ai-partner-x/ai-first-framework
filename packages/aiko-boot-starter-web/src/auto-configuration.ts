@@ -54,7 +54,13 @@ export class MultipartProperties {
   enabled?: boolean = true;
   /** 单个上传文件最大大小，默认 1MB (Spring Boot: spring.servlet.multipart.max-file-size) */
   maxFileSize?: string = '1MB';
-  /** 整个 multipart 请求最大大小，默认 10MB (Spring Boot: spring.servlet.multipart.max-request-size) */
+  /**
+   * 整个 multipart 请求最大大小，默认 10MB (Spring Boot: spring.servlet.multipart.max-request-size)
+   *
+   * 注意：此配置项**不会**被框架自动强制执行于 multipart/form-data 请求。
+   * 如需限制整体请求体大小，请通过 server.maxHttpPostSize 配置 JSON body-parser 的 limit，
+   * 或在应用层自行添加请求体大小检查中间件。
+   */
   maxRequestSize?: string = '10MB';
 }
 
@@ -90,8 +96,6 @@ export function parseSizeToBytes(size: string): number {
 export class ServletProperties {
   /** 上下文路径，默认 /api (Spring Boot: server.servlet.context-path) */
   contextPath?: string = '/api';
-  /** 文件上传配置 (Spring Boot: spring.servlet.multipart.*) */
-  multipart?: MultipartProperties = new MultipartProperties();
 }
 
 /**
@@ -146,6 +150,11 @@ export class ExpressHttpServer implements HttpServer {
 }
 
 /**
+ * 通过 useExpressApp() 预注册的 Express 实例（在路由挂载前由用户配置好）
+ */
+let _preConfiguredApp: Express | null = null;
+
+/**
  * Web 自动配置类
  * 
  * 自动创建 Express 服务器并注册到 ApplicationContext
@@ -169,33 +178,42 @@ export class WebAutoConfiguration {
     const contextPath = ConfigLoader.get<string>('server.servlet.contextPath', '/api');
     const verbose = context.verbose;
 
+    // JSON body-parser 大小限制来自 server.maxHttpPostSize（类 Spring Boot server.tomcat.max-http-post-size）
+    const maxHttpPostSizeStr = ConfigLoader.get<string>('server.maxHttpPostSize', '10mb');
+    let resolvedBodyLimit = '10mb';
+    try {
+      // Validate the configured value is parseable; keep the raw string for body-parser
+      parseSizeToBytes(maxHttpPostSizeStr);
+      resolvedBodyLimit = maxHttpPostSizeStr;
+    } catch (e: any) {
+      console.error(`[aiko-web] Misconfigured server.maxHttpPostSize: ${e.message}. Falling back to 10mb.`);
+    }
+
     // 读取 multipart 文件上传配置 (spring.servlet.multipart.*)
     const multipartEnabled    = ConfigLoader.get<boolean>('spring.servlet.multipart.enabled', true);
     const maxFileSizeStr      = ConfigLoader.get<string>('spring.servlet.multipart.maxFileSize', '1MB');
-    const maxRequestSizeStr   = ConfigLoader.get<string>('spring.servlet.multipart.maxRequestSize', '10MB');
-    // maxRequestSize 直接用作 Express body-parser 的 limit
-    const resolvedBodyLimit = maxRequestSizeStr;
 
-    let multipartOptions: { maxFileSize: number; maxRequestSize: number } | undefined;
+    let multipartOptions: { maxFileSize: number } | undefined;
     if (multipartEnabled) {
       try {
         multipartOptions = {
-          maxFileSize:    parseSizeToBytes(maxFileSizeStr),
-          maxRequestSize: parseSizeToBytes(maxRequestSizeStr),
+          maxFileSize: parseSizeToBytes(maxFileSizeStr),
         };
       } catch (e: any) {
-        console.error(`[aiko-web] Misconfigured spring.servlet.multipart size: ${e.message}. File size limits will not be enforced.`);
+        console.error(`[aiko-web] Misconfigured spring.servlet.multipart.maxFileSize: ${e.message}. File size limits will not be enforced.`);
       }
     }
 
-    // 创建 Express 应用
-    const app = express();
+    // 创建 Express 应用，优先使用调用方通过 useExpressApp() 预注册的实例。
+    // 预注册实例允许用户在路由挂载前注册自定义中间件（如 Auth、urlencoded 解析器）。
+    const app = _preConfiguredApp ?? express();
+    _preConfiguredApp = null; // 使用后立即清空，避免跨请求复用
 
     // CORS (默认启用)
     const corsModule = await import('cors');
     app.use(corsModule.default());
     
-    // Body parser (limit from spring.servlet.multipart.maxRequestSize > server.maxHttpPostSize)
+    // Body parser (JSON 请求体大小限制由 server.maxHttpPostSize 配置，默认 10mb)
     app.use(express.json({ limit: resolvedBodyLimit }));
 
     // 收集 Controller 并注册路由
@@ -234,4 +252,33 @@ export function getExpressApp(): Express | null {
     return server.instance as Express;
   }
   return null;
+}
+
+/**
+ * 预注册一个已配置好中间件的 Express 实例，供 WebAutoConfiguration 使用。
+ *
+ * 调用此函数后再调用 createApp()，WebAutoConfiguration 会在已有 Express 实例上
+ * 追加 CORS、body-parser、路由和全局错误处理器，而不是创建全新实例。
+ * 这样用户在路由挂载**之前**注册的中间件（如 auth、urlencoded 解析器）就能正常工作。
+ *
+ * @example
+ * ```typescript
+ * import express from 'express';
+ * import { useExpressApp } from '@ai-partner-x/aiko-boot-starter-web';
+ * import { createApp } from '@ai-partner-x/aiko-boot';
+ *
+ * const expressApp = express();
+ * expressApp.use(express.urlencoded({ extended: true }));
+ * expressApp.use((req, _res, next) => {
+ *   (req as any).currentUser = { id: 1, name: 'Alice' };
+ *   next();
+ * });
+ *
+ * useExpressApp(expressApp);
+ * const app = await createApp({ srcDir: __dirname });
+ * await app.run();
+ * ```
+ */
+export function useExpressApp(app: Express): void {
+  _preConfiguredApp = app;
 }

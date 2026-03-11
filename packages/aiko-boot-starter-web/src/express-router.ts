@@ -45,14 +45,14 @@ export interface ExpressRouterOptions {
   verbose?: boolean;
   /**
    * 文件上传限制（由 spring.servlet.multipart.* 配置驱动）
-   * 未设置时 multer 不限制单个文件大小。
-   * 整个请求的大小限制由 Express body-parser（server.maxHttpPostSize）统一控制。
+   * 未设置（undefined）时视为 multipart 功能已禁用，含 @RequestPart 的路由不会挂载 multer 中间件。
+   * 单个文件大小限制（maxFileSize）由 multer limits.fileSize 控制。
+   * 整个 multipart 请求的大小限制不由本 Router 自动配置；
+   * 如需限制请在应用层通过 express.json / server.maxHttpPostSize 等中间件自行设置。
    */
   multipart?: {
     /** 单个文件最大字节数 (spring.servlet.multipart.max-file-size) */
     maxFileSize?: number;
-    /** 整个请求最大字节数 — 传给 Express body-parser limit (spring.servlet.multipart.max-request-size) */
-    maxRequestSize?: number;
   };
 }
 
@@ -164,10 +164,12 @@ function registerController(
     const modelAttrs      = getModelAttributes(ControllerClass.prototype, methodName);
     const requestAttrs    = getRequestAttributes(ControllerClass.prototype, methodName);
 
-    // Build multer middleware when the handler has @RequestPart parameters
-    // Note: multer `fileSize` limits each individual file.
-    // Total request size is controlled by Express body-parser (server.maxHttpPostSize).
-    const uploadMiddleware = Object.keys(partParams).length > 0
+    // Build multer middleware when the handler has @RequestPart parameters AND
+    // multipart uploads are enabled (multipart !== undefined).
+    // When multipart is undefined the feature is considered disabled and file
+    // upload routes are left without multer so they return a normal 400/500 rather
+    // than silently consuming unbounded memory.
+    const uploadMiddleware = (Object.keys(partParams).length > 0 && multipart !== undefined)
       ? multer({
           storage: multer.memoryStorage(),
           limits: {

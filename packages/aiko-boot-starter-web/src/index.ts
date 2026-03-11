@@ -80,6 +80,7 @@ export {
   getServerConfig,
   setServerConfig,
   getExpressApp,
+  useExpressApp,
   ExpressHttpServer,
 } from './auto-configuration.js';
 

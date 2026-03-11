@@ -33,6 +33,8 @@ import type { AsyncOptions } from '../types.js';
 const EVENT_LISTENER_METADATA = 'aiko-boot:eventListener';
 const LIFECYCLE_METADATA = 'aiko-boot:lifecycle';
 const ASYNC_METADATA = 'aiko-boot:async';
+// Separate key for AsyncOptions so ASYNC_METADATA remains a plain boolean flag
+const ASYNC_OPTIONS_METADATA = 'aiko-boot:asyncOptions';
 
 // 生命周期类型
 export type LifecycleEvent = 
@@ -241,7 +243,10 @@ function defaultAsyncErrorHandler(error: unknown, methodName: string): void {
  */
 export function Async(options: AsyncOptions = {}) {
   return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    Reflect.defineMetadata(ASYNC_METADATA, { ...options }, target, propertyKey);
+    // Store a boolean flag so lifecycle/event readers can treat it as boolean.
+    Reflect.defineMetadata(ASYNC_METADATA, true, target, propertyKey);
+    // Store the options object under a separate key.
+    Reflect.defineMetadata(ASYNC_OPTIONS_METADATA, { ...options }, target, propertyKey);
 
     const original = descriptor.value;
     descriptor.value = function (this: any, ...args: any[]) {
@@ -254,7 +259,9 @@ export function Async(options: AsyncOptions = {}) {
           handler(error, propertyKey);
         }
       });
-      // Return void immediately — fire-and-forget
+      // Return a resolved Promise so callers can safely call .catch() on the result
+      // without triggering a TypeError (fire-and-forget semantics are still preserved).
+      return Promise.resolve();
     };
     return descriptor;
   };
@@ -271,7 +278,7 @@ export function isAsync(target: any, methodName: string): boolean {
  * Returns the AsyncOptions recorded by @Async on the given method, or undefined.
  */
 export function getAsyncOptions(target: any, methodName: string): AsyncOptions | undefined {
-  return Reflect.getMetadata(ASYNC_METADATA, target, methodName);
+  return Reflect.getMetadata(ASYNC_OPTIONS_METADATA, target, methodName);
 }
 
 /**

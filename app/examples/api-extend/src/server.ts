@@ -11,21 +11,43 @@
  *
  * 配置:
  *   - app.config.ts → server.port / server.servlet.contextPath
- *   - app.config.ts → spring.servlet.multipart.maxFileSize / maxRequestSize
+ *   - app.config.ts → spring.servlet.multipart.maxFileSize
  *
  * @RequestAttribute 说明:
- *   Express 中间件需要在路由注册前向 req 对象写入属性。
- *   这里使用 getExpressApp() 在 ApplicationReady 后取得 Express 实例，
- *   再将自定义中间件 prepend 到最前面。
+ *   @RequestAttribute 读取的属性必须由在路由**之前**运行的 Express 中间件写入 req。
+ *   使用 useExpressApp() 向 WebAutoConfiguration 传入一个已预配置好中间件的 Express 实例，
+ *   使自定义中间件（如模拟 Auth）在路由注册前即挂载到 Express，从而正确注入 req 属性。
  */
 import 'reflect-metadata';
 import { createApp } from '@ai-partner-x/aiko-boot';
-import { getExpressApp } from '@ai-partner-x/aiko-boot-starter-web';
+import { useExpressApp } from '@ai-partner-x/aiko-boot-starter-web';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import express, { type Request, type Response, type NextFunction } from 'express';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// ─── 创建 Express 实例，在路由注册前注册自定义中间件 ─────────────────────────
+const expressApp = express();
+
+// urlencoded body 解析（供 @ModelAttribute form 演示使用）
+expressApp.use(express.urlencoded({ extended: true }));
+
+/**
+ * 模拟 Auth 中间件：向 req 对象写入 currentUser 和 tenantId。
+ * 真实项目中这里会验证 JWT token 并查询用户信息。
+ * @RequestAttribute 的控制器参数可直接读取这些属性，无需感知中间件实现。
+ */
+expressApp.use((_req: Request, _res: Response, next: NextFunction) => {
+  const req = _req as Request & { currentUser?: object; tenantId?: string };
+  req.currentUser = { id: 1, name: 'Alice', role: 'admin' };
+  req.tenantId = 'tenant-42';
+  next();
+});
+
+// 将已预配置好中间件的 Express 实例注册给 WebAutoConfiguration，
+// 使路由（CORS / body-parser / router / 错误处理器）追加在上述中间件之后。
+useExpressApp(expressApp);
 
 // ─── 创建应用（自动加载 app.config.ts，扫描 controller/ + service/，启动 Express） ──
 const app = await createApp({
@@ -33,28 +55,6 @@ const app = await createApp({
   configPath: join(__dirname, '..'),   // app.config.ts 在项目根目录
   scanDirs: ['controller', 'service'],
 });
-
-// ─── 在 AutoConfiguration 注册路由后追加自定义中间件（模拟 Auth） ────────────
-// 使用 getExpressApp() 获取已由 WebAutoConfiguration 创建的 Express 实例，
-// 追加 urlencoded 解析器和模拟认证中间件。
-// 如需在路由前注入属性，可通过自定义 @AutoConfiguration 扩展。
-const expressApp = getExpressApp();
-if (expressApp) {
-  // urlencoded body 解析（供 @ModelAttribute form 演示使用）
-  expressApp.use(express.urlencoded({ extended: true }));
-
-  /**
-   * 模拟 Auth 中间件：向 req 对象写入 currentUser 和 tenantId。
-   * 真实项目中这里会验证 JWT token 并查询用户信息。
-   * @RequestAttribute 的控制器参数可直接读取这些属性，无需感知中间件实现。
-   */
-  expressApp.use((_req: Request, _res: Response, next: NextFunction) => {
-    const req = _req as Request & { currentUser?: object; tenantId?: string };
-    req.currentUser = { id: 1, name: 'Alice', role: 'admin' };
-    req.tenantId = 'tenant-42';
-    next();
-  });
-}
 
 // ─── 启动 HTTP 服务器 ──────────────────────────────────────────────────────
 await app.run();

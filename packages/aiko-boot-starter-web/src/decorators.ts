@@ -496,21 +496,39 @@ export function formatDate(date: Date, pattern: string, timezone?: string): stri
  * - Plain objects / primitives: returned as-is (nested objects are still walked).
  * - `Date` values without an annotation: returned unchanged (serialized to ISO
  *   string by JSON.stringify as usual).
- * - Non-plain built-in objects (Map, Set, Buffer, etc.) are not transformed and
- *   will appear as empty `{}` if returned directly; avoid returning them from
- *   controllers — use arrays or plain DTOs instead.
+ * - Non-plain built-in objects (Buffer, Map, Set, Error, etc.) are returned
+ *   unchanged to preserve their native JSON serialisation behaviour.
+ * - Circular references are detected via a WeakSet; the already-visited object
+ *   is returned as-is to avoid infinite recursion.
  *
  * @param value The value to transform (typically the controller return value)
+ * @param visited Internal WeakSet used to detect circular references (do not pass)
  */
-export function applyJsonFormat(value: unknown): unknown {
+export function applyJsonFormat(value: unknown, visited: WeakSet<object> = new WeakSet()): unknown {
   if (value === null || value === undefined) return value;
   if (Array.isArray(value)) {
-    return value.map(item => applyJsonFormat(item));
+    return value.map(item => applyJsonFormat(item, visited));
   }
   if (value instanceof Date) {
     return value;
   }
   if (typeof value === 'object') {
+    // Return non-plain built-in types unchanged to preserve their default serialisation
+    if (
+      Buffer.isBuffer(value) ||
+      value instanceof Map ||
+      value instanceof Set ||
+      value instanceof Error
+    ) {
+      return value;
+    }
+
+    // Guard against circular references
+    if (visited.has(value)) {
+      return value;
+    }
+    visited.add(value);
+
     const proto = Object.getPrototypeOf(value);
     const formats: Record<string, JsonFormatOptions> =
       proto && proto !== Object.prototype
@@ -530,7 +548,7 @@ export function applyJsonFormat(value: unknown): unknown {
             : val.toISOString();
         }
       } else {
-        result[key] = applyJsonFormat(val);
+        result[key] = applyJsonFormat(val, visited);
       }
     }
     return result;
