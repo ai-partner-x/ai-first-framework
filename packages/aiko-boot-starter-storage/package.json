@@ -1,7 +1,7 @@
 {
-  "name": "@ai-partner-x/aiko-boot-starter-orm",
+  "name": "@ai-partner-x/aiko-boot-starter-storage",
   "version": "0.1.0",
-  "description": "Aiko Boot - ORM Starter with MyBatis-Plus compatible decorators",
+  "description": "Aiko Boot - Storage Starter with multi-provider support (Local, S3, OSS, COS)",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,42 +18,48 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "test": "vitest run",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
   "dependencies": {
     "@ai-partner-x/aiko-boot": "workspace:*",
-    "better-sqlite3": "^12.6.2",
-    "kysely": "^0.28.11",
-    "reflect-metadata": "^0.2.1"
+    "reflect-metadata": "^0.2.1",
+    "tslib": "^2.8.1"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/pg": "^8.11.0",
-    "mysql2": "^3.11.0",
-    "pg": "^8.13.0",
+    "@types/ali-oss": "^6.16.11",
     "tsup": "^8.0.0",
     "typescript": "^5.3.0"
   },
   "peerDependencies": {
-    "mysql2": ">=2.0.0",
-    "pg": ">=8.0.0"
+    "@aws-sdk/client-s3": ">=3.0.0",
+    "@aws-sdk/s3-request-presigner": ">=3.0.0",
+    "ali-oss": ">=6.0.0",
+    "cos-nodejs-sdk-v5": ">=2.0.0"
   },
   "peerDependenciesMeta": {
-    "mysql2": {
+    "@aws-sdk/client-s3": {
       "optional": true
     },
-    "pg": {
+    "@aws-sdk/s3-request-presigner": {
+      "optional": true
+    },
+    "ali-oss": {
+      "optional": true
+    },
+    "cos-nodejs-sdk-v5": {
       "optional": true
     }
   },
   "keywords": [
     "aiko-boot",
-    "boot-starter-orm",
-    "orm",
-    "mybatis-plus",
-    "postgres",
-    "decorator",
+    "boot-starter-storage",
+    "storage",
+    "s3",
+    "oss",
+    "cos",
+    "file-upload",
     "typescript"
   ]
 }

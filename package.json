@@ -9,12 +9,14 @@
     "pnpm": ">=9.0.0"
   },
   "scripts": {
+    "create": "node packages/aiko-boot-create/dist/cli.js",
     "build": "pnpm -r build",
     "dev": "pnpm -r --parallel dev",
     "test": "pnpm -r test",
     "lint": "eslint 'packages/**/*.{ts,tsx}'",
     "type-check": "pnpm -r type-check",
-    "clean": "pnpm -r clean && rm -rf node_modules"
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "rebuild:sqlite": "cd node_modules/.pnpm/better-sqlite3@12.6.2/node_modules/better-sqlite3 && npm run build-release"
   },
   "devDependencies": {
     "@ai-partner-x/eslint-plugin-aiko-boot": "workspace:*",

@@ -3,3 +3,5 @@ packages:
   - 'app/framework/*'
   - 'app/examples/*'
   - 'app/examples/*/packages/*'
+  - 'scaffold'
+  - 'scaffold/packages/*'

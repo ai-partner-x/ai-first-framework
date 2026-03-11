@@ -4,7 +4,7 @@
  * 支持 PostgreSQL、SQLite、MySQL 等多种数据库
  */
 
-import { Kysely, PostgresDialect, SqliteDialect, MysqlDialect } from 'kysely';
+import { Kysely, PostgresDialect, SqliteDialect, MysqlDialect, type MysqlPool } from 'kysely';
 
 export type DatabaseType = 'postgres' | 'sqlite' | 'mysql';
 
@@ -83,8 +83,9 @@ export async function createKyselyDatabase(config: DatabaseConnectionConfig): Pr
         password: config.password,
         database: config.database,
       });
+      // mysql2 的 Pool 与 Kysely 的 MysqlPool 接口在类型上不完全一致，但运行时兼容，故做类型断言
       globalKyselyInstance = new Kysely({
-        dialect: new MysqlDialect({ pool }),
+        dialect: new MysqlDialect({ pool: pool as MysqlPool }),
       });
       break;
     }
