@@ -236,7 +236,44 @@ export default {
 } satisfies AppConfig;
 ```
 
-> **提示**：`cache.enabled` 属性控制是否启用 `CacheAutoConfiguration`：当 `cache.enabled` ≠ `'true'` 时，`@ConditionalOnProperty('cache.enabled', { havingValue: 'true' })` 会跳过 `CacheAutoConfiguration`，缓存装饰器自动降级，无需 Redis 即可本地开发。
+Redis Cluster（集群）：
+
+```typescript
+// app.config.ts
+export default {
+  cache: {
+    enabled: true,
+    type: 'redis',
+    mode: 'cluster',
+    nodes: [
+      { host: '127.0.0.1', port: 7000 },
+      { host: '127.0.0.1', port: 7001 },
+      { host: '127.0.0.1', port: 7002 },
+    ],
+  },
+} satisfies AppConfig;
+```
+
+#### CacheProperties 配置项
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|--------|------|--------|------|
+| `enabled` | `boolean` | `false` | 是否启用缓存，设置为 `true` 时才会自动初始化缓存连接 |
+| `strict` | `boolean` | `false` | 严格模式：当 `cache.enabled=true` 但配置不完整时，是否抛出错误（而非仅打印警告并跳过初始化） |
+| `type` | `'redis'` | — | 缓存后端类型，目前支持 `'redis'` |
+| `mode` | `'standalone' \| 'sentinel' \| 'cluster'` | `'standalone'` | Redis 连接模式 |
+| `host` | `string` | `'127.0.0.1'` | Redis 主机（单机模式） |
+| `port` | `number` | `6379` | Redis 端口（单机模式） |
+| `password` | `string` | — | 连接密码 |
+| `database` | `number` | `0` | 数据库索引 |
+| `connectTimeout` | `number` | `10000` | 连接超时（毫秒） |
+| `commandTimeout` | `number` | — | 命令超时（毫秒） |
+| `tls` | `boolean` | `false` | 是否启用 TLS |
+| `masterName` | `string` | — | Sentinel 主节点名称（Sentinel 模式） |
+| `sentinels` | `Array<{host: string, port: number}>` | — | Sentinel 节点列表（Sentinel 模式） |
+| `nodes` | `Array<{host: string, port: number}>` | — | 集群节点列表（Cluster 模式） |
+
+> **提示**：`cache.enabled` 未设置或为 `false` 时，`@ConditionalOnProperty('cache.enabled')` 会跳过 `CacheAutoConfiguration`，缓存装饰器自动降级，无需 Redis 即可本地开发。
 
 ### 方式二：手动初始化
 
@@ -516,6 +553,28 @@ const vals = await ops.multiGet(['k1', 'k2']);
 const len = await ops.size('name');          // 字符串长度
 ```
 
+#### ValueOperations 完整方法列表
+
+| 方法 | 说明 | 对应 Spring |
+|------|------|-------------|
+| `set(key, value)` | 设置值（不过期） | `set(K key, V value)` |
+| `set(key, value, ttlSeconds)` | 设置值（带过期时间） | `set(K key, V value, long timeout, TimeUnit unit)` |
+| `setIfAbsent(key, value)` | 若 key 不存在则设置值，返回是否设置成功 | `setIfAbsent(K key, V value)` |
+| `setIfAbsent(key, value, ttlSeconds)` | 若 key 不存在则设置值（带过期时间） | `setIfAbsent(K key, V value, long timeout, TimeUnit unit)` |
+| `setIfPresent(key, value)` | 若 key 存在则设置值，返回是否设置成功 | `setIfPresent(K key, V value)` |
+| `multiSet(map)` | 批量设置值 | `multiSet(Map<? extends K, ? extends V> map)` |
+| `multiSetIfAbsent(map)` | 当所有 key 均不存在时批量设置，返回是否全部设置成功 | `multiSetIfAbsent(Map<? extends K, ? extends V> map)` |
+| `get(key)` | 获取值 | `get(Object key)` |
+| `getAndSet(key, value)` | 设置新值并返回旧值 | `getAndSet(K key, V value)` |
+| `getAndDelete(key)` | 获取并删除 key，返回旧值 | `getAndDelete(K key)` |
+| `multiGet(keys)` | 批量获取值 | `multiGet(Collection<K> keys)` |
+| `append(key, value)` | 追加字符串到末尾，返回追加后的字符串长度 | `append(K key, String value)` |
+| `size(key)` | 获取字符串长度 | `size(K key)` |
+| `increment(key)` | 自增 1，返回自增后的值 | `increment(K key)` |
+| `increment(key, delta)` | 自增指定步长，返回自增后的值 | `increment(K key, long delta)` |
+| `decrement(key)` | 自减 1，返回自减后的值 | `decrement(K key)` |
+| `decrement(key, delta)` | 自减指定步长，返回自减后的值 | `decrement(K key, long delta)` |
+
 ### opsForHash() — Hash 操作
 
 ```typescript
@@ -531,6 +590,24 @@ await hashOps.delete('user:1', 'age');
 const exists = await hashOps.hasKey('user:1', 'name');
 ```
 
+#### HashOperations 完整方法列表
+
+| 方法 | 说明 | 对应 Spring |
+|------|------|-------------|
+| `get(key, hashKey)` | 获取 Hash 中指定字段的值 | `get(H key, Object hashKey)` |
+| `multiGet(key, hashKeys)` | 批量获取 Hash 中指定字段的值 | `multiGet(H key, Collection<HK> hashKeys)` |
+| `entries(key)` | 获取 Hash 中所有字段和值 | `entries(H key)` |
+| `keys(key)` | 获取 Hash 中所有字段名 | `keys(H key)` |
+| `values(key)` | 获取 Hash 中所有值 | `values(H key)` |
+| `put(key, hashKey, value)` | 设置 Hash 中指定字段的值 | `put(H key, HK hashKey, HV value)` |
+| `putAll(key, map)` | 批量设置 Hash 中字段的值 | `putAll(H key, Map<? extends HK, ? extends HV> m)` |
+| `putIfAbsent(key, hashKey, value)` | 若字段不存在则设置值，返回是否设置成功 | `putIfAbsent(H key, HK hashKey, HV value)` |
+| `delete(key, ...hashKeys)` | 删除 Hash 中指定字段，返回删除的数量 | `delete(H key, Object... hashKeys)` |
+| `hasKey(key, hashKey)` | 判断 Hash 中指定字段是否存在 | `hasKey(H key, Object hashKey)` |
+| `size(key)` | 获取 Hash 字段数量 | `size(H key)` |
+| `increment(key, hashKey, delta)` | Hash 字段数值自增，返回自增后的值 | `increment(H key, HK hashKey, long delta)` |
+| `incrementFloat(key, hashKey, delta)` | Hash 字段数值自增（浮点），返回自增后的值 | `increment(H key, HK hashKey, double delta)` |
+
 ### opsForList() — List 操作
 
 ```typescript
@@ -544,6 +621,28 @@ const size = await listOps.size('queue');
 await listOps.set('queue', 0, 'updated');
 ```
 
+#### ListOperations 完整方法列表
+
+| 方法 | 说明 | 对应 Spring |
+|------|------|-------------|
+| `leftPush(key, value)` | 从左侧插入，返回列表长度 | `leftPush(K key, V value)` |
+| `leftPushAll(key, ...values)` | 从左侧批量插入，返回列表长度 | `leftPushAll(K key, V... values)` |
+| `leftPushIfPresent(key, value)` | 若 key 存在则从左侧插入，返回列表长度 | `leftPushIfPresent(K key, V value)` |
+| `rightPush(key, value)` | 从右侧插入，返回列表长度 | `rightPush(K key, V value)` |
+| `rightPushAll(key, ...values)` | 从右侧批量插入，返回列表长度 | `rightPushAll(K key, V... values)` |
+| `rightPushIfPresent(key, value)` | 若 key 存在则从右侧插入，返回列表长度 | `rightPushIfPresent(K key, V value)` |
+| `leftPop(key)` | 从左侧弹出单个元素或 null | `leftPop(K key)` |
+| `leftPop(key, count)` | 从左侧弹出多个元素 | `leftPop(K key, long count)` |
+| `rightPop(key)` | 从右侧弹出单个元素或 null | `rightPop(K key)` |
+| `rightPop(key, count)` | 从右侧弹出多个元素 | `rightPop(K key, long count)` |
+| `rightPopAndLeftPush(sourceKey, destKey)` | 从一个列表右端弹出并推入另一个列表左端 | `rightPopAndLeftPush(K sourceKey, K destinationKey)` |
+| `range(key, start, end)` | 获取范围内的元素（0 到 -1 表示全部） | `range(K key, long start, long end)` |
+| `size(key)` | 获取列表长度 | `size(K key)` |
+| `index(key, index)` | 获取指定索引的元素 | `index(K key, long index)` |
+| `set(key, index, value)` | 设置指定索引的元素 | `set(K key, long index, V value)` |
+| `remove(key, count, value)` | 删除列表中指定数量与值匹配的元素 | `remove(K key, long count, Object value)` |
+| `trim(key, start, end)` | 裁剪列表，只保留 [start, end] 范围内的元素 | `trim(K key, long start, long end)` |
+
 ### opsForSet() — Set 操作
 
 ```typescript
@@ -555,6 +654,29 @@ const has = await setOps.isMember('tags', 'redis');
 const size = await setOps.size('tags');
 await setOps.remove('tags', 'nosql');
 ```
+
+#### SetOperations 完整方法列表
+
+| 方法 | 说明 | 对应 Spring |
+|------|------|-------------|
+| `add(key, ...values)` | 向集合中添加一个或多个成员，返回成功添加的数量 | `add(K key, V... values)` |
+| `remove(key, ...values)` | 从集合中移除一个或多个成员，返回成功移除的数量 | `remove(K key, Object... values)` |
+| `pop(key)` | 随机弹出并移除单个成员 | `pop(K key)` |
+| `pop(key, count)` | 随机弹出并移除多个成员 | `pop(K key, long count)` |
+| `move(key, value, destKey)` | 将成员从一个集合移动到另一个集合，返回是否移动成功 | `move(K key, V value, K destKey)` |
+| `members(key)` | 获取集合中所有成员 | `members(K key)` |
+| `isMember(key, value)` | 判断单个成员是否在集合中 | `isMember(K key, Object o)` |
+| `isMember(key, ...values)` | 判断多个成员是否在集合中，返回 Map | `isMember(K key, Object... objects)` |
+| `size(key)` | 获取集合成员数量 | `size(K key)` |
+| `randomMember(key)` | 随机获取一个成员（不移除） | `randomMember(K key)` |
+| `randomMembers(key, count)` | 随机获取多个成员（可重复，不移除） | `randomMembers(K key, long count)` |
+| `distinctRandomMembers(key, count)` | 随机获取多个不重复成员（不移除） | `distinctRandomMembers(K key, long count)` |
+| `intersect(key, ...otherKeys)` | 求多个集合的交集 | `intersect(K key, K otherKey)` |
+| `intersectAndStore(key, otherKey, destKey)` | 求交集并存储到目标 key，返回目标集合大小 | `intersectAndStore(K key, K otherKey, K destKey)` |
+| `union(key, ...otherKeys)` | 求多个集合的并集 | `union(K key, K otherKey)` |
+| `unionAndStore(key, otherKey, destKey)` | 求并集并存储到目标 key，返回目标集合大小 | `unionAndStore(K key, K otherKey, K destKey)` |
+| `difference(key, ...otherKeys)` | 求第一个集合与其他集合的差集 | `difference(K key, K otherKey)` |
+| `differenceAndStore(key, otherKey, destKey)` | 求差集并存储到目标 key，返回目标集合大小 | `differenceAndStore(K key, K otherKey, K destKey)` |
 
 ### opsForZSet() — 有序集合操作
 
@@ -569,6 +691,32 @@ const top3WithScores = await zsetOps.reverseRangeWithScores('leaderboard', 0, 2)
 const rank = await zsetOps.reverseRank('leaderboard', 'player1');
 const count = await zsetOps.count('leaderboard', 0, 200);
 ```
+
+#### ZSetOperations 完整方法列表
+
+| 方法 | 说明 | 对应 Spring |
+|------|------|-------------|
+| `add(key, value, score)` | 添加元素（带分数），返回是否新增 | `add(K key, V value, double score)` |
+| `addAll(key, tuples)` | 批量添加元素，返回新增元素的数量 | `add(K key, Set<TypedTuple<V>> tuples)` |
+| `remove(key, ...values)` | 移除一个或多个元素，返回移除的数量 | `remove(K key, Object... values)` |
+| `removeRangeByScore(key, min, max)` | 移除分数在 [min, max] 范围内的元素 | `removeRangeByScore(K key, double min, double max)` |
+| `removeRange(key, start, end)` | 移除排名在 [start, end] 范围内的元素 | `removeRange(K key, long start, long end)` |
+| `range(key, start, end)` | 获取排名在 [start, end] 范围内的元素（升序） | `range(K key, long start, long end)` |
+| `rangeWithScores(key, start, end)` | 获取排名在 [start, end] 范围内的元素及其分数（升序） | `rangeWithScores(K key, long start, long end)` |
+| `rangeByScore(key, min, max)` | 获取分数在 [min, max] 范围内的元素（升序） | `rangeByScore(K key, double min, double max)` |
+| `rangeByScoreWithScores(key, min, max)` | 获取分数在 [min, max] 范围内的元素及其分数（升序） | `rangeByScoreWithScores(K key, double min, double max)` |
+| `reverseRange(key, start, end)` | 获取排名在 [start, end] 范围内的元素（降序） | `reverseRange(K key, long start, long end)` |
+| `reverseRangeWithScores(key, start, end)` | 获取排名在 [start, end] 范围内的元素及其分数（降序） | `reverseRangeWithScores(K key, long start, long end)` |
+| `reverseRangeByScore(key, min, max)` | 获取分数在 [min, max] 范围内的元素（降序） | `reverseRangeByScore(K key, double min, double max)` |
+| `reverseRangeByScoreWithScores(key, min, max)` | 获取分数在 [min, max] 范围内的元素及其分数（降序） | `reverseRangeByScoreWithScores(K key, double min, double max)` |
+| `score(key, value)` | 获取元素的分数，不存在返回 null | `score(K key, Object o)` |
+| `rank(key, value)` | 获取元素的升序排名（0-based），不存在返回 null | `rank(K key, Object o)` |
+| `reverseRank(key, value)` | 获取元素的降序排名（0-based），不存在返回 null | `reverseRank(K key, Object o)` |
+| `count(key, min, max)` | 获取分数在 [min, max] 范围内的元素数量 | `count(K key, double min, double max)` |
+| `size(key)` | 获取有序集合的成员数量 | `size(K key)` |
+| `incrementScore(key, value, delta)` | 对指定元素的分数增加 delta，返回增加后的分数 | `incrementScore(K key, V value, double delta)` |
+| `intersectAndStore(key, otherKey, destKey)` | 求多个有序集合的交集并存储，返回目标集合大小 | `intersectAndStore(K key, K otherKey, K destKey)` |
+| `unionAndStore(key, otherKey, destKey)` | 求多个有序集合的并集并存储，返回目标集合大小 | `unionAndStore(K key, K otherKey, K destKey)` |
 
 ---
 
@@ -673,7 +821,6 @@ import type { AppConfig } from '@ai-partner-x/aiko-boot';
 
 export default {
   cache: {
-    enabled: true,
     type: 'redis',
     host: process.env.REDIS_HOST ?? '127.0.0.1',
     port: Number(process.env.REDIS_PORT ?? 6379),
