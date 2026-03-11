@@ -64,7 +64,7 @@ export function AuthProvider({
       user: identity ?? null,
       isAuthenticated: !!identity,
       isLoading: identityLoading,
-      redirectTo: identity ? undefined : "/login",
+      redirectTo: identity ? undefined : authConfig.fallbackUrl,
     }),
     [identity, identityLoading]
   )
