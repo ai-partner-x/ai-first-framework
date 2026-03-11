@@ -393,7 +393,7 @@ export class IORedisAdapter<K = string, V = unknown> {
     }
 
     async function isMember(key: K, value: V): Promise<boolean>;
-    async function isMember(key: K, ...values: V[]): Promise<boolean | Map<V, boolean>>;
+    async function isMember(key: K, ...values: [V, ...V[]]): Promise<boolean | Map<V, boolean>>;
     async function isMember(key: K, ...values: V[]): Promise<boolean | Map<V, boolean>> {
       if (values.length === 1) {
         return (await adapter.client.sismember(adapter.sk(key), adapter.sv(values[0]))) === 1;

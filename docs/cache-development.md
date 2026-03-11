@@ -273,7 +273,7 @@ export default {
 | `sentinels` | `Array<{host: string, port: number}>` | — | Sentinel 节点列表（Sentinel 模式） |
 | `nodes` | `Array<{host: string, port: number}>` | — | 集群节点列表（Cluster 模式） |
 
-> **提示**：`cache.enabled` 未设置或为 `false` 时，`@ConditionalOnProperty('cache.enabled')` 会跳过 `CacheAutoConfiguration`，缓存装饰器自动降级，无需 Redis 即可本地开发。
+> **提示**：`CacheAutoConfiguration` 通过 `@ConditionalOnProperty('cache.enabled', { havingValue: 'true' })` 受控，只有当 `cache.enabled` 显式配置为 `true` 时才会启用；当 `cache.enabled` 未设置或不为 `true`（包括为 `false`）时，会跳过 `CacheAutoConfiguration`，缓存装饰器自动降级，无需 Redis 即可本地开发。
 
 ### 方式二：手动初始化
 
@@ -341,7 +341,7 @@ export class UserCacheService {
 
 ### 不使用 `initializeCaching` 时的行为（自动降级）
 
-未调用 `initializeCaching` / `createApp({ cache })` 时，`@Cacheable` / `@CachePut` / `@CacheEvict` 检测到 CacheManager 未注册，**自动降级为直接调用原方法**，不访问 Redis，适合开发/测试环境。
+未调用 `initializeCaching(config)` 或未通过 `app.config.* (cache.*)` + `CacheAutoConfiguration` 启用缓存时，`@Cacheable` / `@CachePut` / `@CacheEvict` 检测到 CacheManager 未注册，**自动降级为直接调用原方法**，不访问 Redis，适合开发/测试环境。
 
 ---
 
@@ -505,7 +505,7 @@ await closeRedisConnection();
 | `connectTimeout` | `number` | `10000` | 连接超时（ms） |
 | `tls` | `boolean` | `false` | 启用 TLS |
 
-> **注意**：通过 `createApp({ cache })` 或 `initializeCaching(config)` 初始化后，使用 `getRedisClient()` 获取全局客户端，无需手动调用 `createRedisConnection()`。
+> **注意**：通过 `app.config.* (cache.*)` + `CacheAutoConfiguration` 或 `initializeCaching(config)` 初始化后，使用 `getRedisClient()` 获取全局客户端，无需手动调用 `createRedisConnection()`。
 
 ---
 
@@ -821,6 +821,7 @@ import type { AppConfig } from '@ai-partner-x/aiko-boot';
 
 export default {
   cache: {
+    enabled: true,
     type: 'redis',
     host: process.env.REDIS_HOST ?? '127.0.0.1',
     port: Number(process.env.REDIS_PORT ?? 6379),
