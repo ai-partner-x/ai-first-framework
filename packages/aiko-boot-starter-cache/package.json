@@ -1,0 +1,54 @@
+{
+  "name": "@ai-partner-x/aiko-boot-starter-cache",
+  "version": "0.1.0",
+  "description": "AI-First Framework - Cache with Spring Boot compatible decorators (Spring Cache + Spring Data Redis)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./redis": {
+      "import": "./dist/redis.js",
+      "types": "./dist/redis.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@ai-partner-x/aiko-boot": "workspace:*",
+    "reflect-metadata": "^0.2.1",
+    "tslib": "^2.8.1"
+  },
+  "peerDependencies": {
+    "ioredis": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ioredis": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "ioredis": "^5.4.2",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0"
+  },
+  "keywords": [
+    "ai-first",
+    "redis",
+    "spring-boot",
+    "cache",
+    "decorator",
+    "typescript"
+  ]
+}

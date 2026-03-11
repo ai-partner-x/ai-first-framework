@@ -10,7 +10,9 @@
     }
   },
   "scripts": {
-    "dev": "node --import @swc-node/register/esm-register --watch src/server.ts",
+    "dev": "concurrently -n codegen,server -c blue,green \"pnpm codegen:watch\" \"node --import @swc-node/register/esm-register --watch src/server.ts\"",
+    "dev:server": "node --import @swc-node/register/esm-register --watch src/server.ts",
+    "codegen:watch": "node --import tsx scripts/codegen.ts --watch",
     "init-db": "node --import @swc-node/register/esm-register src/scripts/init-db.ts",
     "codegen": "node --import tsx scripts/codegen.ts",
     "java": "npx aiko-codegen transpile src -p com.example.usercrud",
@@ -19,11 +21,11 @@
     "lint": "eslint src"
   },
   "dependencies": {
-    "@ai-partner-x/aiko-boot-codegen": "workspace:*",
     "@ai-partner-x/aiko-boot": "workspace:*",
-    "@ai-partner-x/aiko-boot-starter-web": "workspace:*",
+    "@ai-partner-x/aiko-boot-codegen": "workspace:*",
     "@ai-partner-x/aiko-boot-starter-orm": "workspace:*",
     "@ai-partner-x/aiko-boot-starter-validation": "workspace:*",
+    "@ai-partner-x/aiko-boot-starter-web": "workspace:*",
     "better-sqlite3": "^12.6.2",
     "cors": "^2.8.5",
     "express": "^4.18.0",
@@ -38,6 +40,7 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^20.11.0",
+    "concurrently": "^9.2.1",
     "ts-node": "^10.9.2",
     "tsup": "^8.0.0",
     "tsx": "^4.7.0",

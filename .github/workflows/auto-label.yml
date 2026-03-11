@@ -1,0 +1,76 @@
+name: Auto Label Issue
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Auto label based on content analysis
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const title = issue.title.toLowerCase();
+            const body = issue.body?.toLowerCase() || '';
+            const labels = [];
+
+            // 服务端 Starter 组件
+            if (
+              title.includes('starter') ||
+              body.includes('aiko-boot-starter-') ||
+              body.includes('starter-')
+            ) {
+              labels.push('server-starter');
+            }
+
+            // 服务端基础组件
+            if (
+              title.includes('aiko-boot') && !title.includes('starter') ||
+              body.includes('packages/aiko-boot/') && !body.includes('starter') ||
+              title.includes('核心') ||
+              title.includes('core') ||
+              title.includes('基础组件')
+            ) {
+              labels.push('server-core');
+            }
+
+            // example-admin
+            if (
+              title.includes('admin') ||
+              body.includes('example-admin') ||
+              body.includes('app/admin')
+            ) {
+              labels.push('example-admin');
+            }
+
+            // example-mobile
+            if (
+              title.includes('mobile') ||
+              body.includes('example-mobile') ||
+              body.includes('app/mobile')
+            ) {
+              labels.push('example-mobile');
+            }
+
+            // 如果没有匹配到任何标签，添加 needs-review
+            if (labels.length === 0) {
+              labels.push('needs-review');
+            }
+
+            // 添加标签
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labels
+              });
+              console.log(`Added labels: ${labels.join(', ')}`);
+            }

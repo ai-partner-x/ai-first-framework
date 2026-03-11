@@ -1,0 +1,349 @@
+name: opencode
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request:
+    types: [opened]
+
+jobs:
+  opencode:
+    if: |
+      github.event_name == 'pull_request' ||
+      contains(github.event.comment.body, '/oc') ||
+      contains(github.event.comment.body, '/opencode')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Check for merge command
+        id: check_merge
+        if: github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment'
+        run: |
+          COMMENT_BODY="${{ github.event.comment.body }}"
+          if echo "$COMMENT_BODY" | grep -qE '/oc\s+merge'; then
+            echo "should_merge=true" >> $GITHUB_OUTPUT
+            echo "Merge command detected"
+          else
+            echo "should_merge=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extract user requirements
+        id: user_requirements
+        if: github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment'
+        run: |
+          COMMENT_BODY="${{ github.event.comment.body }}"
+          # 提取 /oc review 后面的内容
+          REQUIREMENTS=$(echo "$COMMENT_BODY" | sed -n 's/.*\/oc review\s*//p' | sed -n 's/.*\/opencode review\s*//p')
+          if [ -n "$REQUIREMENTS" ]; then
+            echo "USER_REQUIREMENTS<<EOF" >> $GITHUB_ENV
+            echo "$REQUIREMENTS" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+            echo "User requirements extracted: $REQUIREMENTS"
+          else
+            echo "USER_REQUIREMENTS=" >> $GITHUB_ENV
+            echo "No user requirements found"
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge PR
+        if: steps.check_merge.outputs.should_merge == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.issue.number;
+            
+            try {
+              // 获取 PR 信息
+              const { data: pr } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber
+              });
+              
+              // 检查是否已合并
+              if (pr.merged) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  body: '⚠️ PR 已经合并过了。'
+                });
+                return;
+              }
+              
+              // 检查是否有冲突
+              if (!pr.mergeable) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  body: '❌ 无法合并：PR 存在冲突，请先解决冲突。'
+                });
+                return;
+              }
+              
+              // 执行 squash 合并
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                merge_method: 'squash',
+                commit_title: `Merge PR #${prNumber}: ${pr.title}`,
+                commit_message: `Merged via /oc merge command\n\nOriginal PR: #${prNumber}`
+              });
+              
+              // 成功评论
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `✅ **PR 已成功合并到 \`${pr.base.ref}\` 分支！**\n\n- 合并方式：Squash\n- 合并时间：${new Date().toISOString()}\n- 操作人：github-actions[bot]`
+              });
+              
+            } catch (error) {
+              console.error('Merge error:', error);
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `❌ **合并失败**\n\n错误信息：${error.message}\n\n请检查 PR 状态或手动合并。`
+              });
+              core.setFailed(error.message);
+            }
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run TypeScript type check
+        id: typecheck
+        continue-on-error: true
+        run: |
+          echo "## TypeScript 类型检查" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          pnpm type-check 2>&1 | tee typecheck-output.txt || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Run ESLint
+        id: lint
+        continue-on-error: true
+        run: |
+          echo "## ESLint 代码检查" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          pnpm lint 2>&1 | tee lint-output.txt || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Run tests
+        id: test
+        continue-on-error: true
+        run: |
+          echo "## 单元测试" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          pnpm test 2>&1 | tee test-output.txt || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Collect check results and rules
+        id: results
+        run: |
+          # 收集所有检查结果
+          {
+            echo "TYPECHECK_RESULT<<EOF"
+            cat typecheck-output.txt 2>/dev/null || echo "No output"
+            echo "EOF"
+            echo "LINT_RESULT<<EOF"
+            cat lint-output.txt 2>/dev/null || echo "No output"
+            echo "EOF"
+            echo "TEST_RESULT<<EOF"
+            cat test-output.txt 2>/dev/null || echo "No output"
+            echo "EOF"
+          } >> $GITHUB_ENV
+          
+          # 读取通用审查规则
+          {
+            echo "COMMON_RULES<<EOF"
+            cat .github/workflows/rules/pr-review-rules-common.md 2>/dev/null || echo "Common rules file not found"
+            echo "EOF"
+          } >> $GITHUB_ENV
+          
+          # 读取服务端核心审查规则
+          {
+            echo "SERVER_CORE_RULES<<EOF"
+            cat .github/workflows/rules/pr-review-rules-server.md 2>/dev/null || echo "Server core rules file not found"
+            echo "EOF"
+          } >> $GITHUB_ENV
+          
+          # 读取服务端 Starter 审查规则
+          {
+            echo "SERVER_STARTER_RULES<<EOF"
+            cat .github/workflows/rules/pr-review-rules-starter.md 2>/dev/null || echo "Server starter rules file not found"
+            echo "EOF"
+          } >> $GITHUB_ENV
+          
+          # 读取管理后台审查规则
+          {
+            echo "ADMIN_RULES<<EOF"
+            cat .github/workflows/rules/pr-review-rules-admin.md 2>/dev/null || echo "Admin rules file not found"
+            echo "EOF"
+          } >> $GITHUB_ENV
+          
+          # 读取移动端审查规则
+          {
+            echo "MOBILE_RULES<<EOF"
+            cat .github/workflows/rules/pr-review-rules-mobile.md 2>/dev/null || echo "Mobile rules file not found"
+            echo "EOF"
+          } >> $GITHUB_ENV
+
+      - name: Run OpenCode
+        uses: anomalyco/opencode/github-action@v1
+        env:
+          BAILIAN_API_KEY: ${{ secrets.BAILIAN_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TYPECHECK_RESULT: ${{ env.TYPECHECK_RESULT }}
+          LINT_RESULT: ${{ env.LINT_RESULT }}
+          TEST_RESULT: ${{ env.TEST_RESULT }}
+          COMMON_RULES: ${{ env.COMMON_RULES }}
+          SERVER_CORE_RULES: ${{ env.SERVER_CORE_RULES }}
+          SERVER_STARTER_RULES: ${{ env.SERVER_STARTER_RULES }}
+          ADMIN_RULES: ${{ env.ADMIN_RULES }}
+          MOBILE_RULES: ${{ env.MOBILE_RULES }}
+          USER_REQUIREMENTS: ${{ env.USER_REQUIREMENTS }}
+        with:
+          model: bailian/qwen3.5-plus
+          use_github_token: true
+          prompt: |
+            # 🔴 重要：你的回复必须包含审查结论
+            
+            你是一个代码审查助手。在审查完成后，你**必须**在回复末尾给出明确的审查结论。
+            这是强制性要求，没有审查结论的回复将被视为无效。
+            
+            ---
+            
+            ## 请审查这个 Pull Request
+            
+            ### 用户的个性化审查要求
+            ${{ env.USER_REQUIREMENTS }}
+            
+            ---
+            
+            ## 自动检查结果
+            
+            **TypeScript 类型检查：**
+            ```
+            ${{ env.TYPECHECK_RESULT }}
+            ```
+            
+            **ESLint 代码检查：**
+            ```
+            ${{ env.LINT_RESULT }}
+            ```
+            
+            **单元测试：**
+            ```
+            ${{ env.TEST_RESULT }}
+            ```
+            
+            ---
+            
+            ## 审查规则
+            
+            根据修改的文件路径，应用以下规则：
+            
+            **服务端核心代码（packages/aiko-boot/ 或 packages/aiko-boot-codegen/）：**
+            ${{ env.SERVER_CORE_RULES }}
+            
+            **服务端 Starter（packages/aiko-boot-starter-*/）：**
+            ${{ env.SERVER_STARTER_RULES }}
+            
+            **管理后台（app/examples/admin/）：**
+            ${{ env.ADMIN_RULES }}
+            
+            **移动端（app/examples/mobile/）：**
+            ${{ env.MOBILE_RULES }}
+            
+            ---
+            
+            ## 输出格式（严格遵守）
+            
+            你的回复必须包含以下两个部分：
+            
+            **第一部分：审查详情**
+            - 🔴 必须修复（类型错误、测试失败、违反规范）
+            - 🟡 建议改进（ESLint 警告、代码风格）
+            - ✅ 优点
+            - 💡 建议
+            
+            **第二部分：审查结论（必填，与详情分开）**
+            
+            ---
+            
+            ## 🔴🔴🔴 审查结论格式（必须严格按此格式输出）
+            
+            在回复的**最后**，你必须输出以下内容（原样复制格式，只替换中括号内的内容）：
+            
+            ```
+            ---
+            ## 审查结论：✅ 批准
+            
+            **决策理由：** 代码质量良好，无阻塞性问题
+            
+            **行动项：**
+            - [ ] 无
+            ---
+            ```
+            
+            或者：
+            
+            ```
+            ---
+            ## 审查结论：⚠️ 有条件批准
+            
+            **决策理由：** 有小问题但不阻塞合并
+            
+            **行动项：**
+            - [ ] 补充文档
+            - [ ] 添加测试
+            ---
+            ```
+            
+            或者：
+            
+            ```
+            ---
+            ## 审查结论：❌ 拒绝
+            
+            **决策理由：** 存在严重问题必须修复
+            
+            **行动项：**
+            - [ ] 修复类型错误
+            - [ ] 修复测试失败
+            ---
+            ```
+            
+            ⚠️ 注意：
+            1. 必须以 `---` 开始和结束
+            2. 必须使用 `## 审查结论：` 作为标题（不是"总结"）
+            3. 必须三选一：✅ 批准 / ⚠️ 有条件批准 / ❌ 拒绝
+            4. 没有这个结论部分 = 审查无效
+            
+            请用中文回复。

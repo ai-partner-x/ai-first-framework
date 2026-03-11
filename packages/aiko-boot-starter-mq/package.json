@@ -1,0 +1,50 @@
+{
+  "name": "@ai-partner-x/aiko-boot-starter-mq",
+  "version": "0.1.0",
+  "description": "AI-First Framework - MQ with Spring Boot style decorators (RabbitMQ)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "example": "tsx examples/main.ts"
+  },
+  "dependencies": {
+    "@ai-partner-x/aiko-boot": "workspace:*",
+    "amqplib": "^0.10.4",
+    "kafkajs": "^2.2.4",
+    "reflect-metadata": "^0.2.1",
+    "rocketmq-client-nodejs": "^1.0.3",
+    "uuid": "^11.0.3"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.8",
+    "@types/uuid": "^10.0.0",
+    "tslib": "^2.8.1",
+    "tsup": "^8.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.2.0"
+  },
+  "keywords": [
+    "ai-first",
+    "mq",
+    "rabbitmq",
+    "spring-boot",
+    "decorator",
+    "typescript"
+  ]
+}
