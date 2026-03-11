@@ -1,5 +1,4 @@
 import type { AppConfig } from '@ai-partner-x/aiko-boot';
-import '@ai-partner-x/aiko-boot-starter-cache';
 
 export default {
   server: {
