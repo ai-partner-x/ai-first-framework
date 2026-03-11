@@ -21,10 +21,13 @@ export default {
     enabled: true,
     failFast: false,
   },
+  // ========== Cache Configuration (cache.*) ==========
+  // Cache is disabled by default — no Redis connection is made until you opt in.
+  // To enable: set `enabled: true`, ensure Redis is running, then adjust host/port.
   cache: {
-    enabled: false,
+    enabled: false,  // set to true to activate (requires Redis)
     type: 'redis',
-    host: '127.0.0.1',
-    port: 6379,
+    host: process.env.REDIS_HOST || '127.0.0.1',
+    port: Number(process.env.REDIS_PORT || 6379),
   },
 } satisfies AppConfig;
