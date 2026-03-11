@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Admin application" />
+    <title>Admin</title>
+  </head>
+  <body>
+    <script>
+      (function () {
+        var key = "app-theme";
+        try {
+          var raw = localStorage.getItem(key);
+          if (raw) {
+            var doc = document.documentElement;
+            if (["light", "dark", "system"].indexOf(raw) !== -1) {
+              var appearance = raw === "system"
+                ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+                : raw;
+              doc.classList.add(appearance);
+            } else {
+              var parsed = JSON.parse(raw);
+              var appearance = parsed.appearance === "system"
+                ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+                : (parsed.appearance || "light");
+              var palette = parsed.palette || "fiori";
+              doc.classList.add(appearance);
+              doc.setAttribute("data-palette", palette);
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <script type="module" src="/src/index.tsx"></script>
+    <!--
+      This HTML file is a template.
+      If you open it directly in the browser, you will see an empty page.
+
+      You can add webfonts, meta tags, or analytics to this file.
+      The build step will place the bundled scripts into the <body> tag.
+
+      To begin the development, run `npm dev` or `yarn start`.
+      To create a production bundle, use `npm run build` or `yarn build`.
+    -->
+  </body>
+</html>
