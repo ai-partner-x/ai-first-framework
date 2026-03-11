@@ -1,4 +1,4 @@
-# admin-template
+# admin
 
 ## Getting Started
 
