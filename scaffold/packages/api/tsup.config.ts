@@ -9,17 +9,14 @@ export default defineConfig([
     external: [/^@ai-partner-x\//, 'reflect-metadata', 'express', 'cors'],
   },
   {
-    // Compile app.config.ts → app.config.js in the project root so that
-    // `node dist/server.js` (production) can load it via ConfigLoader.loadAsync().
-    // ConfigLoader looks for config files in join(srcDir, '..'), which resolves to
-    // the project root when srcDir = __dirname (= dist/). Outputting to '.' places
-    // app.config.js alongside app.config.ts so both dev (SWC loads .ts) and
-    // production (Node loads .js) work without any changes to server.ts.
+    // Compile app.config.ts → app.config.js into a dedicated build directory so that
+    // production can load it via ConfigLoader.loadAsync() without a generated .js
+    // file in the project root overriding the source app.config.ts during dev.
     entry: { 'app.config': 'app.config.ts' },
     format: ['esm'],
     dts: false,
     clean: false,
-    outDir: '.',
+    outDir: 'dist/config',
     external: [/^@ai-partner-x\//, 'reflect-metadata'],
   },
 ]);
