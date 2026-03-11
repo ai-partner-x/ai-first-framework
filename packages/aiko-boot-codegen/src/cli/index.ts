@@ -25,6 +25,7 @@ program
   .option('--spring-boot <version>', 'Spring Boot version', '3.2.0')
   .option('--dry-run', 'Show what would be generated without writing files', false)
   .option('-v, --verbose', 'Verbose output', false)
+  .option('--incremental', 'Enable incremental generation (only regenerate changed files)', false)
   .action(transpileCommand);
 
 // Validate command

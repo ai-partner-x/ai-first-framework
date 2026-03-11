@@ -5,6 +5,8 @@ const config = {
   moduleNameMapper: {
     '^(\.{1,2}/.*)\.js$': '$1',
   },
+  extensionsToTreatAsEsm: ['.ts'],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
 };
 
-module.exports = config;
+export default config;

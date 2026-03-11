@@ -10,6 +10,7 @@ import { generateJavaClass, getUtilityTypeUsages, clearUtilityTypeUsages, genera
 import { PluginRegistry } from '../plugins.js';
 import { getBuiltinPlugins } from '../builtin-plugins.js';
 import type { ParsedClass } from '../types.js';
+import { hasFileChanged, updateCacheEntry, getCacheStats, cleanupStaleCache } from '../cache-manager.js';
 
 export interface TranspileOptions {
   out: string;
@@ -19,6 +20,7 @@ export interface TranspileOptions {
   springBoot: string;
   dryRun: boolean;
   verbose: boolean;
+  incremental?: boolean;
 }
 
 /**
@@ -95,6 +97,14 @@ export async function transpileCommand(source: string, options: TranspileOptions
   const pluginRegistry = new PluginRegistry();
   pluginRegistry.registerAll(getBuiltinPlugins());
 
+  // Incremental generation support
+  if (options.incremental) {
+    const stats = getCacheStats();
+    console.log(`📊 Cache stats: ${stats.total} entries, ${stats.stale} stale`);
+    cleanupStaleCache();
+    console.log('');
+  }
+
   // Process each file
   const outputDir = path.resolve(options.out);
   const packageDir = path.join(outputDir, 'src', 'main', 'java', ...options.package.split('.'));
@@ -102,6 +112,7 @@ export async function transpileCommand(source: string, options: TranspileOptions
   let successCount = 0;
   let errorCount = 0;
   const generatedFiles: string[] = [];
+  const skippedFiles: string[] = [];
   const entities: { tableName: string; fields: { name: string; type: string; column: string }[] }[] = [];
   const allParsedClasses: ParsedClass[] = [];
   const errors: { file: string; error: string; type: string }[] = [];
@@ -122,6 +133,15 @@ export async function transpileCommand(source: string, options: TranspileOptions
       }
 
       const sourceCode = fs.readFileSync(file, 'utf-8');
+      
+      // Check incremental generation
+      if (options.incremental && !hasFileChanged(file, sourceCode)) {
+        if (options.verbose) {
+          console.log(`    ⏭️  Skipped (unchanged): ${path.relative(sourceDir, file)}`);
+        }
+        skippedFiles.push(file);
+        continue;
+      }
       const parsedFile = parseSourceFileFull(sourceCode, file);
       const classes = parsedFile.classes;
       const interfaces = parsedFile.interfaces;
@@ -203,6 +223,11 @@ export async function transpileCommand(source: string, options: TranspileOptions
           fs.writeFileSync(targetFile, javaCode);
           generatedFiles.push(targetFile);
           
+          // Update cache for incremental generation
+          if (options.incremental) {
+            updateCacheEntry(file, sourceCode);
+          }
+          
           if (options.verbose) {
             console.log(`    ✅ Generated: ${path.relative(outputDir, targetFile)}`);
           }
@@ -239,6 +264,11 @@ export async function transpileCommand(source: string, options: TranspileOptions
           fs.mkdirSync(modelDir, { recursive: true });
           fs.writeFileSync(targetFile, javaCode);
           generatedFiles.push(targetFile);
+          
+          // Update cache for incremental generation
+          if (options.incremental) {
+            updateCacheEntry(file, sourceCode);
+          }
           
           if (options.verbose) {
             console.log(`    ✅ Generated: ${path.relative(outputDir, targetFile)} (from interface)`);

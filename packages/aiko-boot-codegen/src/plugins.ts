@@ -28,6 +28,13 @@ export interface TranspilePlugin {
   name: string;
   
   /**
+   * Plugin priority (higher numbers execute first)
+   * Default: 0
+   * Use this to control plugin execution order when multiple plugins are registered
+   */
+  priority?: number;
+  
+  /**
    * Transform decorator before code generation
    * Use to modify decorator arguments or convert decorator names
    * 
@@ -88,15 +95,35 @@ export class PluginRegistry {
   private plugins: TranspilePlugin[] = [];
   
   register(plugin: TranspilePlugin): void {
+    // Check for duplicate plugin names
+    if (this.plugins.some(p => p.name === plugin.name)) {
+      return;
+    }
     this.plugins.push(plugin);
+    this.sortPlugins();
   }
   
   registerAll(plugins: TranspilePlugin[]): void {
-    this.plugins.push(...plugins);
+    const uniquePlugins = plugins.filter(plugin => 
+      !this.plugins.some(p => p.name === plugin.name)
+    );
+    this.plugins.push(...uniquePlugins);
+    this.sortPlugins();
   }
   
   getPlugins(): TranspilePlugin[] {
     return this.plugins;
+  }
+  
+  /**
+   * Sort plugins by priority (higher numbers execute first)
+   */
+  private sortPlugins(): void {
+    this.plugins.sort((a, b) => {
+      const priorityA = a.priority ?? 0;
+      const priorityB = b.priority ?? 0;
+      return priorityB - priorityA;
+    });
   }
   
   /**

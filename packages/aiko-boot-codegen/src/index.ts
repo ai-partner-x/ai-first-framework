@@ -33,9 +33,9 @@ export {
   getPluginsByName,
 } from './builtin-plugins.js';
 
-import { parseSourceFile } from './parser.js';
-import { generateJavaClass } from './generator.js';
-import type { TranspilerOptions } from './types.js';
+import { parseSourceFileFull } from './parser.js';
+import { generateJavaClass, generateJavaFromInterface } from './generator.js';
+import type { TranspilerOptions, ParsedClass, ParsedInterface } from './types.js';
 
 /**
  * Transpile TypeScript source code to Java
@@ -44,12 +44,19 @@ export function transpile(
   sourceCode: string,
   options: TranspilerOptions
 ): Map<string, string> {
-  const classes = parseSourceFile(sourceCode);
+  const parsedFile = parseSourceFileFull(sourceCode);
   const result = new Map<string, string>();
 
-  classes.forEach(cls => {
+  // Process classes
+  parsedFile.classes.forEach(cls => {
     const javaCode = generateJavaClass(cls, options);
     result.set(`${cls.name}.java`, javaCode);
+  });
+
+  // Process interfaces
+  parsedFile.interfaces.forEach(intf => {
+    const javaCode = generateJavaFromInterface(intf, options);
+    result.set(`${intf.name}.java`, javaCode);
   });
 
   return result;

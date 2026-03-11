@@ -244,11 +244,8 @@ export function generateJavaComment(comment: ParsedComment | undefined, indent: 
 function collectImports(parsedClass: ParsedClass, imports: Set<string>, classType: string, options: TranspilerOptions): void {
   switch (classType) {
     case 'entity':
-      // MyBatis-Plus imports
-      imports.add('com.baomidou.mybatisplus.annotation.TableName');
-      imports.add('com.baomidou.mybatisplus.annotation.TableId');
-      imports.add('com.baomidou.mybatisplus.annotation.TableField');
-      imports.add('com.baomidou.mybatisplus.annotation.IdType');
+      // MyBatis-Plus imports (using wildcard import)
+      imports.add('com.baomidou.mybatisplus.annotation.*');
       imports.add('java.time.LocalDateTime');
       // Lombok
       if (options.useLombok) {
@@ -533,8 +530,9 @@ function generateClassAnnotations(parsedClass: ParsedClass, lines: string[], opt
         }
         break;
       case 'RedisHash':
-        if (dec.args.value) {
-          lines.push(`@RedisHash("${dec.args.value}")`);
+        if (dec.args.value || dec.args.arg0) {
+          const value = dec.args.value || dec.args.arg0;
+          lines.push(`@RedisHash("${value}")`);
         } else {
           lines.push('@RedisHash');
         }
@@ -567,6 +565,14 @@ function generateClassAnnotations(parsedClass: ParsedClass, lines: string[], opt
       case 'AdminPermission':
         lines.push('@AdminPermission');
         break;
+      case 'Output':
+      case 'MqSender':
+        if (dec.args.value) {
+          lines.push(`@Output(${dec.args.value})`);
+        } else {
+          lines.push('@Output');
+        }
+        break;
     }
   });
 }
@@ -587,8 +593,11 @@ function generateEntityFields(parsedClass: ParsedClass, lines: string[]): void {
 
     // Check for @TableField (column mapping)
     const tableField = field.decorators.find(d => d.name === 'TableField' || d.name === 'Column');
-    if (tableField?.args.column && tableField.args.column !== field.name) {
-      lines.push(`    @TableField("${tableField.args.column}")`);
+    if (tableField) {
+      const columnName = tableField.args.column || tableField.args.arg0;
+      if (columnName && columnName !== field.name) {
+        lines.push(`    @TableField("${columnName}")`);
+      }
     }
 
     // Check for validation decorators
@@ -663,7 +672,7 @@ function generateDtoFields(parsedClass: ParsedClass, lines: string[], _options: 
  * - id fields use Long
  * - age, count etc. use Integer
  */
-function mapFieldType(field: { name: string; type: string; decorators: any[] }): string {
+export function mapFieldType(field: { name: string; type: string; decorators: any[] }): string {
   const tsType = field.type;
   
   // Check if it's a Redis field (has @Indexed or is Redis entity)
@@ -761,10 +770,16 @@ function generateMethod(
       lines.push('    @Transactional');
     }
     if (dec.name === 'PreAuthorize') {
-      lines.push(`    @PreAuthorize("${dec.args.value}")`);
+      const value = dec.args.value || dec.args.arg0 || '';
+      // Escape double quotes inside the value
+      const escapedValue = value.replace(/"/g, '\\"');
+      lines.push(`    @PreAuthorize("${escapedValue}")`);
     }
     if (dec.name === 'PostAuthorize') {
-      lines.push(`    @PostAuthorize("${dec.args.value}")`);
+      const value = dec.args.value || dec.args.arg0 || '';
+      // Escape double quotes inside the value
+      const escapedValue = value.replace(/"/g, '\\"');
+      lines.push(`    @PostAuthorize("${escapedValue}")`);
     }
     if (dec.name === 'Secured') {
       const roles = Array.isArray(dec.args.value) ? dec.args.value.map(r => `"${r}"`).join(', ') : `"${dec.args.value}"`;
@@ -776,7 +791,21 @@ function generateMethod(
     }
     if (dec.name === 'MqListener' || dec.name === 'StreamListener') {
       let value = dec.args.value || dec.args.arg0 || '';
-      lines.push(value ? `    @StreamListener("${value}")` : `    @StreamListener`);
+      // Check if value is a constant (like Sink.INPUT)
+      if (value && (value.includes('.') || value === 'Sink.INPUT' || value === 'Source.OUTPUT')) {
+        lines.push(`    @StreamListener(${value})`);
+      } else {
+        lines.push(value ? `    @StreamListener("${value}")` : `    @StreamListener`);
+      }
+    }
+    if (dec.name === 'Output' || dec.name === 'MqSender') {
+      let value = dec.args.value || dec.args.arg0 || '';
+      // Check if value is a constant (like Source.OUTPUT)
+      if (value && (value.includes('.') || value === 'Source.OUTPUT' || value === 'Sink.INPUT')) {
+        lines.push(`    @Output(${value})`);
+      } else {
+        lines.push(value ? `    @Output("${value}")` : `    @Output`);
+      }
     }
     if (dec.name === 'AdminRoute') {
       lines.push('    @AdminRoute');
@@ -805,7 +834,15 @@ function generateMethod(
         annotations.push('@RequestBody');
       }
     });
-    return `${annotations.join(' ')} ${mapType(p.type)} ${p.name}`.trim();
+    
+    // Smart type mapping for parameters
+    let javaType = mapType(p.type);
+    // Map id parameters to Long
+    if (p.type === 'number' && (p.name === 'id' || p.name.includes('Id'))) {
+      javaType = ID_TYPE_MAPPING.default;
+    }
+    
+    return `${annotations.join(' ')} ${javaType} ${p.name}`.trim();
   }).join(', ');
 
   lines.push(`    public ${returnType} ${method.name}(${params}) {`);
@@ -856,7 +893,7 @@ function generateGettersSetters(parsedClass: ParsedClass, lines: string[]): void
 /**
  * Map TypeScript type to Java type
  */
-function mapType(tsType: string): string {
+export function mapType(tsType: string): string {
   // Handle nullable types
   if (tsType.endsWith(' | null')) {
     tsType = tsType.replace(' | null', '');
@@ -1070,7 +1107,7 @@ function getFieldsForUtilityType(usage: UtilityTypeUsage, entityClass: ParsedCla
 }
 
 /**
- * Generate Java DTO class from TypeScript interface
+ * Generate Java DTO class or repository interface from TypeScript interface
  */
 export function generateJavaFromInterface(
   parsedInterface: ParsedInterface,
@@ -1079,23 +1116,34 @@ export function generateJavaFromInterface(
   const lines: string[] = [];
   const imports = new Set<string>();
   
-  // Check if it's a Redis repository interface (by name pattern)
-  const isRedisRepo = parsedInterface.name.includes('Repository');
+  // Check if it's a repository interface
+  const isRepo = parsedInterface.name.includes('Repository');
   
-  // For interfaces with Repository in name, check if they have Redis-related names
-  const isRedisRelated = parsedInterface.name.includes('Redis') || 
-                         parsedInterface.name.includes('Session');
+  // Check if it has @Repository decorator
+  const hasRepositoryDecorator = parsedInterface.decorators.some(d => d.name === 'Repository');
   
-  const shouldBeRedisRepo = isRedisRepo && isRedisRelated;
+  // Check if it's a Redis repository interface
+  const isRedisRepo = isRepo && (parsedInterface.name.includes('Redis') || 
+                                parsedInterface.name.includes('Session') ||
+                                parsedInterface.decorators.some(d => d.name === 'RedisRepository' || d.name === 'RedisRepo'));
   
-  // Redis repository imports
-  if (shouldBeRedisRepo) {
+  // Check if it's a regular ORM repository
+  const isOrmRepo = isRepo && !isRedisRepo;
+  
+  // Repository imports
+  if (isRedisRepo) {
     imports.add('org.springframework.data.redis.repository.RedisRepository');
     imports.add('org.springframework.stereotype.Repository');
+  } else if (isOrmRepo || hasRepositoryDecorator) {
+    imports.add('com.baomidou.mybatisplus.core.mapper.BaseMapper');
+    imports.add('org.apache.ibatis.annotations.Mapper');
+    // Add entity import
+    const entityName = parsedInterface.name.replace('Repository', '');
+    imports.add(`${options.packageName.replace(/\.repository$/, '.entity')}.${entityName}`);
   }
   
   // Lombok
-  if (options.useLombok && !shouldBeRedisRepo) {
+  if (options.useLombok && !isRepo && !hasRepositoryDecorator) {
     imports.add('lombok.Data');
   }
   
@@ -1123,23 +1171,30 @@ export function generateJavaFromInterface(
   }
   
   // Class annotation
-  if (shouldBeRedisRepo) {
+  if (isRedisRepo) {
     lines.push('@Repository');
+  } else if (isOrmRepo || hasRepositoryDecorator) {
+    lines.push('@Repository');
+    lines.push('@Mapper');
   } else if (options.useLombok) {
     lines.push('@Data');
   }
   
-  // Class declaration - Redis repository extends RedisRepository
-  if (shouldBeRedisRepo) {
+  // Class declaration
+  if (isRedisRepo) {
     // Extract entity name from repository name
     const entityName = parsedInterface.name.replace('Repository', '');
     lines.push(`public interface ${parsedInterface.name} extends RedisRepository<${entityName}, String> {`);
+  } else if (isOrmRepo || hasRepositoryDecorator) {
+    // Extract entity name from repository name
+    const entityName = parsedInterface.name.replace('Repository', '');
+    lines.push(`public interface ${parsedInterface.name} extends BaseMapper<${entityName}> {`);
   } else {
     lines.push(`public class ${parsedInterface.name} {`);
   }
   
-  // For Redis repository interfaces, don't generate fields or methods
-  if (!shouldBeRedisRepo) {
+  // For repository interfaces, don't generate fields or methods
+  if (!isRepo && !hasRepositoryDecorator) {
     // Generate fields from interface properties
     for (const prop of parsedInterface.properties) {
       // Add field comment if present
