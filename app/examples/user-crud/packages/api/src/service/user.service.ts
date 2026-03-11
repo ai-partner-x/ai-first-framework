@@ -42,7 +42,7 @@ export class UserService {
     return this.userMapper.selectById(id);
   }
 
-  @Cacheable({ key: 'users', ttl: 60 })
+  @Cacheable({ key: 'users', ttl: 60, keyGenerator: () => 'all' })
   async getUserList(_page: number, _pageSize: number): Promise<User[]> {
     return this.userMapper.selectList();
   }
@@ -178,6 +178,7 @@ export class UserService {
   }
 
   @Transactional()
+  @CacheEvict({ key: 'user', allEntries: true })
   @CacheEvict({ key: 'users', allEntries: true })
   async batchUpdateAge(usernameKeyword: string, newAge: number): Promise<number> {
     const wrapper = new UpdateWrapper<User>()
@@ -190,6 +191,7 @@ export class UserService {
 
   @Transactional()
   @CacheEvict({ key: 'user', keyGenerator: (id) => String(id) })
+  @CacheEvict({ key: 'users', allEntries: true })
   async updateEmailById(id: number, newEmail: string): Promise<number> {
     const wrapper = new UpdateWrapper<User>()
       .set('email', newEmail)
@@ -200,6 +202,7 @@ export class UserService {
   }
 
   @Transactional()
+  @CacheEvict({ key: 'user', allEntries: true })
   @CacheEvict({ key: 'users', allEntries: true })
   async batchDeleteByAgeRange(minAge: number, maxAge: number): Promise<number> {
     const wrapper = new QueryWrapper<User>()

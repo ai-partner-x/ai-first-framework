@@ -21,7 +21,7 @@
 
 | 概念 | TypeScript（AI-First） | Java（Spring Boot） |
 |------|----------------------|---------------------|
-| 开启缓存功能（启动验证） | `initializeCaching(config)` / `createApp({ cache })` | `@EnableCaching` + `spring.cache.type=redis` |
+| 开启缓存功能（启动验证） | `initializeCaching(config)` / `app.config.ts` (`cache.*`) | `@EnableCaching` + `spring.cache.type=redis` |
 | 缓存组件标记 | `@Service()` / `@Component()` | `@Service` / `@Repository` |
 | 属性注入 | `@Autowired()` | `@Autowired` |
 | 读通缓存 | `@Cacheable` | `@Cacheable` |
@@ -42,7 +42,7 @@
 
 - 切换缓存后端（如从 Redis 切到 Memcached）需要修改所有业务代码
 - 测试时无法轻易替换为内存实现
-- 框架 API（如 `createApp({ cache })`）的 `cache` 选项类型写死为具体后端，无法扩展
+- 框架 `app.config.ts` 中的 `cache.*` 配置类型写死为具体后端，无法扩展
 
 ### 设计思路
 
@@ -58,12 +58,15 @@
 
 2. **SPI 扩展点**：`Cache` + `CacheManager` 两个接口定义稳定契约，新后端只需实现接口并调用 `setCacheManager()` 注册，业务代码零改动
 
-3. **CacheConfig 联合类型**：以 `type` 字段作为辨别符（对应 `spring.cache.type`），为框架 API 的 `cache` 选项提供稳定、可扩展的配置类型：
+3. **CacheConfig 联合类型**：以 `type` 字段作为辨别符（对应 `spring.cache.type`），为框架 `app.config.ts` 中的 `cache.*` 配置提供稳定、可扩展的配置类型：
 
    ```typescript
-   createApp({ cache: { type: 'redis', host: '127.0.0.1', port: 6379 } })
+   // app.config.ts
+   export default {
+     cache: { enabled: true, type: 'redis', host: '127.0.0.1', port: 6379 },
+   } satisfies AppConfig;
    // 未来：
-   createApp({ cache: { type: 'memcached', host: '127.0.0.1', port: 11211 } })
+   // cache: { enabled: true, type: 'memcached', host: '127.0.0.1', port: 11211 }
    ```
 
 4. **双入口分层**：`@ai-partner-x/aiko-boot-starter-cache` 只依赖缓存抽象（无 ioredis 直接依赖），`@ai-partner-x/aiko-boot-starter-cache/redis` 提供 Redis 专属 API，用户按需引入
@@ -221,6 +224,7 @@ Redis Sentinel（高可用）：
 // app.config.ts
 export default {
   cache: {
+    enabled: true,
     type: 'redis',
     mode: 'sentinel',
     masterName: 'mymaster',
@@ -669,6 +673,7 @@ import type { AppConfig } from '@ai-partner-x/aiko-boot';
 
 export default {
   cache: {
+    enabled: true,
     type: 'redis',
     host: process.env.REDIS_HOST ?? '127.0.0.1',
     port: Number(process.env.REDIS_PORT ?? 6379),
