@@ -21,11 +21,18 @@ export default {
     enabled: true,
     failFast: false,
   },
+  storage: {
+    provider: 'local',
+    local: {
+      uploadDir: './uploads',
+      baseUrl: 'http://localhost:3001/api/uploads',
+    },
+  },
   // ========== MQ Configuration (消息队列) ==========
   // 使用内存适配器无需 RabbitMQ，设置 MQ_TYPE=memory 或使用下方配置
   mq: {
-  enabled: true,
-  type: 'memory' as const,
+    enabled: true,
+    type: 'memory' as const,
   },
   // ========== Cache Configuration (cache.*) ==========
   // Cache is disabled by default — no Redis connection is made until you opt in.
