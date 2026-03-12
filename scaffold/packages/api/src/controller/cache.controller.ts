@@ -59,17 +59,26 @@ export class CacheController {
    * 删除缓存条目
    * 
    * @example
+   * # 删除单个 key
    * curl -X DELETE "http://localhost:3001/api/cache/evict?name=user&key=1"
+   * 
+   * # 删除命名空间下所有条目（无需传 key）
+   * curl -X DELETE "http://localhost:3001/api/cache/evict?name=user&allEntries=true"
    */
   @DeleteMapping('/evict')
   async evict(
     @RequestParam('name') name: string,
-    @RequestParam('key') key: string,
+    @RequestParam('key') key?: string,
     @RequestParam('allEntries') allEntries?: string,
   ): Promise<{ ok: boolean }> {
     this.assertNonProduction();
     const normalizedAllEntries =
       typeof allEntries === 'string' ? allEntries === 'true' : undefined;
+
+    // 当 allEntries 不为 true 时，必须提供 key
+    if (!normalizedAllEntries && (!key || key.trim() === '')) {
+      throw new Error('Query parameter "key" is required when "allEntries" is not true.');
+    }
     await this.cacheService.evict({ name, key, allEntries: normalizedAllEntries });
     return { ok: true };
   }
