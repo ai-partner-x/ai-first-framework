@@ -170,7 +170,7 @@
   "email": "test@example.com",
   "phone": "13800138001",
   "status": 1,
-  "roleIds": [2]
+  "roleIds": [1]
 }
 ```
 

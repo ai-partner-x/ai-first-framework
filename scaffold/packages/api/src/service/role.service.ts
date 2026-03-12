@@ -21,25 +21,32 @@ export class RoleService {
     const role = await this.roleMapper.selectById(id);
     if (!role) throw new Error('角色不存在');
     const roleMenus = await this.roleMenuMapper.selectList({ roleId: id });
-    return { ...role, menuIds: roleMenus.map((rm: any) => rm.menuId) };
+    const menuIds: number[] = [];
+    for (let i = 0; i < roleMenus.length; i++) {
+      const rm = roleMenus[i];
+      menuIds.push(rm.menuId);
+    }
+    return { ...role, menuIds: menuIds };
   }
 
   @Transactional()
   async createRole(dto: CreateRoleDto) {
+    console.log("dto", dto);
     const exists = await this.roleMapper.selectList({ roleCode: dto.roleCode });
     if (exists.length) throw new Error('角色编码已存在');
+    const status = dto.status !== undefined ? dto.status : 1;
     await this.roleMapper.insert({
       roleCode: dto.roleCode,
       roleName: dto.roleName,
       description: dto.description,
-      status: dto.status ?? 1,
+      status: status,
       createdAt: new Date().toISOString(),
     });
     const roles = await this.roleMapper.selectList({ roleCode: dto.roleCode });
     const role = roles[0];
     console.error("role", role);
     if (!role) throw new Error('创建角色失败');
-    if (dto.menuIds?.length) await this.assignMenus(role.id, dto.menuIds);
+    if (dto.menuIds !== undefined && dto.menuIds.length > 0) await this.assignMenus(role.id, dto.menuIds);
     return role;
   }
 
@@ -64,7 +71,12 @@ export class RoleService {
 
   async getRoleMenuIds(roleId: number): Promise<number[]> {
     const roleMenus = await this.roleMenuMapper.selectList({ roleId });
-    return roleMenus.map((rm: any) => rm.menuId);
+    const menuIds: number[] = [];
+    for (let i = 0; i < roleMenus.length; i++) {
+      const rm = roleMenus[i];
+      menuIds.push(rm.menuId);
+    }
+    return menuIds;
   }
 
   private async assignMenus(roleId: number, menuIds: number[]) {

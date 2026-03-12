@@ -87,7 +87,8 @@ if (!roles.length) {
 
 // 初始化默认菜单
 const menuCount = await db.selectFrom('sys_menu').select(db.fn.count('id').as('cnt')).executeTakeFirst();
-if (Number(menuCount?.cnt) === 0) {
+const cntValue = menuCount && menuCount.cnt;
+if (Number(cntValue) === 0) {
     // 系统管理目录
     const sysDir = await db.insertInto('sys_menu')
         .values({ parent_id: 0, menu_name: '系统管理', menu_type: 1, icon: 'Settings', sort_order: 100, status: 1 })

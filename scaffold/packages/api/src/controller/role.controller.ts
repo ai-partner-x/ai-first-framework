@@ -24,6 +24,7 @@ export class RoleController {
 
   @PostMapping()
   async create(@RequestBody() dto: CreateRoleDto) {
+    console.log("dto1", dto);
     return this.roleService.createRole(dto);
   }
 

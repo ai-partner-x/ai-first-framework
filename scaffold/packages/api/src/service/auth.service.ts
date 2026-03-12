@@ -37,13 +37,15 @@ export class AuthService {
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) throw new Error('用户名或密码错误');
 
-    const { roles, permissions } = await this.getUserRolesAndPermissions(user.id);
+    const userRolesAndPerms = await this.getUserRolesAndPermissions(user.id);
+    const roles = userRolesAndPerms.roles;
+    const permissions = userRolesAndPerms.permissions;
 
     const payload = { userId: user.id, username: user.username, roles, permissions };
     return {
       accessToken: signAccessToken(payload),
       refreshToken: signRefreshToken({ userId: user.id }),
-      userInfo: { id: user.id, username: user.username, realName: user.realName,email: user.email, roles, permissions },
+      userInfo: { id: user.id, username: user.username, realName: user.realName, email: user.email, roles, permissions },
     };
   }
 
@@ -52,7 +54,9 @@ export class AuthService {
     const user = await this.userMapper.selectById(payload.userId);
     if (!user || user.status === 0) throw new Error('用户不存在或已禁用');
 
-    const { roles, permissions } = await this.getUserRolesAndPermissions(user.id);
+    const userRolesAndPerms = await this.getUserRolesAndPermissions(user.id);
+    const roles = userRolesAndPerms.roles;
+    const permissions = userRolesAndPerms.permissions;
     const accessToken = signAccessToken({ userId: user.id, username: user.username, roles, permissions });
     return { accessToken };
   }
@@ -60,27 +64,39 @@ export class AuthService {
   async getUserInfo(userId: number): Promise<LoginResultDto['userInfo']> {
     const user = await this.userMapper.selectById(userId);
     if (!user) throw new Error('用户不存在');
-    const { roles, permissions } = await this.getUserRolesAndPermissions(userId);
-    const { password: _p, ...safeUser } = user as any;
+    const userRolesAndPerms = await this.getUserRolesAndPermissions(userId);
+    const roles = userRolesAndPerms.roles;
+    const permissions = userRolesAndPerms.permissions;
+    const safeUser: any = {};
+    for (const key in user) {
+      if (key !== 'password') {
+        safeUser[key] = user[key];
+      }
+    }
     return { ...safeUser, roles, permissions };
   }
 
   private async getUserRolesAndPermissions(userId: number) {
     const userRoles = await this.userRoleMapper.selectList({ userId });
-    if (!userRoles.length) return { roles: [], permissions: [] };
+    if (!userRoles.length) return { roles: [] as string[], permissions: [] as string[] };
 
-    const roleIds = userRoles.map((ur: { roleId: number }) => ur.roleId);
+    const roleIds: number[] = [];
+    for (let i = 0; i < userRoles.length; i++) {
+      roleIds.push(userRoles[i].roleId);
+    }
     const roles: string[] = [];
     const permissions: string[] = [];
 
-    for (const roleId of roleIds) {
+    for (let i = 0; i < roleIds.length; i++) {
+      const roleId = roleIds[i];
       const role = await this.roleMapper.selectById(roleId);
       if (role && role.status === 1) {
         roles.push(role.roleCode);
         const roleMenus = await this.roleMenuMapper.selectList({ roleId });
-        for (const rm of roleMenus) {
+        for (let j = 0; j < roleMenus.length; j++) {
+          const rm = roleMenus[j];
           const menu = await this.menuMapper.selectById(rm.menuId);
-          if (menu?.permission) permissions.push(menu.permission);
+          if (menu && menu.permission) permissions.push(menu.permission);
         }
       }
     }

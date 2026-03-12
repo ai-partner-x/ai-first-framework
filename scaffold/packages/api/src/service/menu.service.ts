@@ -17,11 +17,17 @@ export class MenuService {
 
   async getUserMenuTree(permissions: string[]): Promise<MenuTreeVo[]> {
     const all = await this.menuMapper.selectList({ status: 1 });
-    // 按钮类型(3)只检查权限，目录和菜单直接显示
-    const visible = all.filter((m: any) => {
-      if (m.menuType === 3) return m.permission && permissions.includes(m.permission);
-      return true;
-    });
+    const visible: any[] = [];
+    for (let i = 0; i < all.length; i++) {
+      const m = all[i];
+      if (m.menuType === 3) {
+        if (m.permission && permissions.includes(m.permission)) {
+          visible.push(m);
+        }
+      } else {
+        visible.push(m);
+      }
+    }
     return this.buildTree(visible, 0);
   }
 
@@ -35,24 +41,23 @@ export class MenuService {
   async createMenu(dto: CreateMenuDto) {
     const menu: Menu = {
       id: 0,
-      parentId: dto.parentId ?? 0,
+      parentId: dto.parentId !== undefined ? dto.parentId : 0,
       menuName: dto.menuName,
       menuType: dto.menuType,
       path: dto.path,
       component: dto.component,
       permission: dto.permission,
       icon: dto.icon,
-      sortOrder: dto.sortOrder ?? 0,
-      status: dto.status ?? 1,
+      sortOrder: dto.sortOrder !== undefined ? dto.sortOrder : 0,
+      status: dto.status !== undefined ? dto.status : 1,
     };
     const result:number = await this.menuMapper.insert(menu);
     console.log("result", result);
-    // if (!result || result !== 1) {
-    if (true) {
+    if (result !== 1) {
       throw new Error('创建菜单失败');
     }
-    // const menus = await this.menuMapper.selectList({ id: menu.id });
-    return dto;
+    const menus = await this.menuMapper.selectList({ id: menu.id });
+    return menus[0] || null;
   }
 
   @Transactional()
@@ -71,10 +76,19 @@ export class MenuService {
   }
 
   private buildTree(menus: any[], parentId: number): MenuTreeVo[] {
-    return menus
-      .filter(m => m.parentId === parentId)
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map(m => ({ ...m, children: this.buildTree(menus, m.id) }))
-      .map(m => (m.children.length === 0 ? { ...m, children: undefined } : m));
+    const result: MenuTreeVo[] = [];
+    for (let i = 0; i < menus.length; i++) {
+      const m = menus[i];
+      if (m.parentId === parentId) {
+        const children = this.buildTree(menus, m.id);
+        const item: MenuTreeVo = { ...m };
+        if (children.length > 0) {
+          item.children = children;
+        }
+        result.push(item);
+      }
+    }
+    result.sort((a, b) => a.sortOrder - b.sortOrder);
+    return result;
   }
 }
