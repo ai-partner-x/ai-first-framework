@@ -33,7 +33,20 @@ export class CacheService {
    * @param ttlSeconds 可选过期时间（秒）
    */
   async put(dto: CachePutDto): Promise<void> {
-    const value = JSON.stringify(dto.value);
+    if (dto.value === undefined) {
+      throw new Error('Cache value is required and must be JSON-serializable.');
+    }
+
+    let value: string;
+    try {
+      const serialized = JSON.stringify(dto.value);
+      if (serialized === undefined) {
+        throw new Error('Cache value is not JSON-serializable.');
+      }
+      value = serialized;
+    } catch (err) {
+      throw new Error('Cache value is not JSON-serializable.');
+    }
     const cache = this.getCacheManagerInstance().getCache(dto.name);
     await cache.put(dto.key, value, dto.ttlSeconds);
   }
