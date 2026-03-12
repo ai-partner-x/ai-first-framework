@@ -5,7 +5,7 @@
  */
 import { randomUUID } from 'crypto';
 import { mkdir, writeFile, unlink } from 'fs/promises';
-import { dirname, extname, resolve } from 'path';
+import { dirname, extname, resolve, normalize } from 'path';
 import { StorageError, type IStorageAdapter, type ImagePreviewOptions, type UploadOptions, type UploadResult } from '../types.js';
 import { buildKey, getMimeType } from './utils.js';
 
@@ -35,8 +35,9 @@ export class LocalStorageAdapter implements IStorageAdapter {
   }
 
   private resolveSafePath(key: string): string {
-    const safePath = resolve(this.uploadRoot, key);
-    if (safePath !== this.uploadRoot && !safePath.startsWith(this.uploadRoot + '/')) {
+    const safePath = normalize(resolve(this.uploadRoot, key));
+    const normalizedUploadRoot = normalize(this.uploadRoot);
+    if (safePath !== normalizedUploadRoot && !safePath.startsWith(normalizedUploadRoot + (process.platform === 'win32' ? '\\' : '/'))) {
       throw new StorageError(`非法文件路径: ${key}`, 'UPLOAD_FAILED');
     }
     return safePath;
