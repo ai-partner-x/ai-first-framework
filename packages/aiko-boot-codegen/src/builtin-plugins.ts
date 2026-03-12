@@ -4,6 +4,7 @@
  */
 import type { TranspilePlugin } from './plugins.js';
 import type { ParsedDecorator, ParsedClass } from './types.js';
+import { getComponentPlugins } from './component-plugins.js';
 
 /**
  * Mapper Plugin
@@ -162,6 +163,7 @@ export function getBuiltinPlugins(): TranspilePlugin[] {
     servicePlugin,
     controllerPlugin,
     queryWrapperPlugin,
+    ...getComponentPlugins(),
   ];
 }
 

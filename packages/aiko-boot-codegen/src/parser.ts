@@ -44,11 +44,21 @@ export function parseSourceFileFull(sourceCode: string, fileName: string = 'sour
     }
     // Parse class declarations
     else if (ts.isClassDeclaration(node) && node.name) {
-      classes.push(parseClass(node, sourceFile));
+      const parsedClass = parseClass(node, sourceFile);
+      classes.push(parsedClass);
+      // Add class-level comments to file comments only if no file-level comments
+      if (fileComments.length === 0 && parsedClass.comment) {
+        comments.push(parsedClass.comment);
+      }
     }
     // Parse interface declarations
     else if (ts.isInterfaceDeclaration(node) && node.name) {
-      interfaces.push(parseInterface(node, sourceFile));
+      const parsedInterface = parseInterface(node, sourceFile);
+      interfaces.push(parsedInterface);
+      // Add interface-level comments to file comments only if no file-level comments
+      if (fileComments.length === 0 && parsedInterface.comment) {
+        comments.push(parsedInterface.comment);
+      }
     }
     ts.forEachChild(node, visit);
   }
@@ -174,9 +184,9 @@ function parseClass(node: ts.ClassDeclaration, sourceFile: ts.SourceFile): Parse
   const methods: ParsedMethod[] = [];
   let constructor: ParsedConstructor | undefined;
   
-  // Parse class-level JSDoc comment
+  // Parse class-level JSDoc comment (only the last one before the class)
   const comments = parseLeadingComments(node, sourceFile);
-  const comment = comments.find(c => c.type === 'jsdoc') || comments[0];
+  const comment = comments.length > 0 ? comments[comments.length - 1] : undefined;
 
   node.members.forEach(member => {
     if (ts.isPropertyDeclaration(member)) {
@@ -201,9 +211,12 @@ function parseInterface(node: ts.InterfaceDeclaration, sourceFile: ts.SourceFile
   // Check if exported
   const isExported = node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword) ?? false;
   
-  // Parse interface-level JSDoc comment
+  // Parse interface-level decorators
+  const decorators = parseDecorators(node, sourceFile);
+  
+  // Parse interface-level JSDoc comment (only the last one before the interface)
   const comments = parseLeadingComments(node, sourceFile);
-  const comment = comments.find(c => c.type === 'jsdoc') || comments[0];
+  const comment = comments.length > 0 ? comments[comments.length - 1] : undefined;
   
   // Parse interface members
   node.members.forEach(member => {
@@ -226,7 +239,7 @@ function parseInterface(node: ts.InterfaceDeclaration, sourceFile: ts.SourceFile
     }
   });
   
-  return { name, properties, comment, isExported };
+  return { name, properties, decorators, comment, isExported };
 }
 
 /**

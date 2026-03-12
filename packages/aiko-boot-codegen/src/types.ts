@@ -17,6 +17,15 @@ export const TYPE_MAPPING: Record<string, string> = {
 };
 
 /**
+ * ID type mapping based on component type
+ */
+export const ID_TYPE_MAPPING: Record<string, string> = {
+  default: 'Long',
+  redis: 'String',
+  age: 'Integer',
+};
+
+/**
  * Decorator mapping from TypeScript to Java
  */
 export const DECORATOR_MAPPING: Record<string, string> = {
@@ -25,6 +34,33 @@ export const DECORATOR_MAPPING: Record<string, string> = {
   'Repository': '@Repository',
   'Service': '@Service',
   'RestController': '@RestController',
+  
+  // Redis decorators
+  'RedisHash': '@RedisHash',
+  'RedisRepository': '@Repository',
+  'RedisRepo': '@Repository',
+  
+  // Message Queue decorators
+  'MqListener': '@StreamListener',
+  'StreamListener': '@StreamListener',
+  'MqSender': '@Output',
+  'Output': '@Output',
+  'MqBinding': '@EnableBinding',
+  'EnableBinding': '@EnableBinding',
+  
+  // Security decorators
+  'PreAuthorize': '@PreAuthorize',
+  'PostAuthorize': '@PostAuthorize',
+  'Secured': '@Secured',
+  'RolesAllowed': '@RolesAllowed',
+  'AuthenticationPrincipal': '@AuthenticationPrincipal',
+  'EnableGlobalMethodSecurity': '@EnableGlobalMethodSecurity',
+  
+  // Admin decorators
+  'AdminMenu': '@AdminMenu',
+  'AdminRoute': '@AdminRoute',
+  'AdminPermission': '@AdminPermission',
+  'AdminModule': '@AdminModule',
   
   // Method decorators
   'GetMapping': '@GetMapping',
@@ -43,6 +79,12 @@ export const DECORATOR_MAPPING: Record<string, string> = {
   'DbField': '@TableField',
   'Field': '',  // Ignored, just metadata
   'Validation': '',  // Converted to Jakarta Validation
+  
+  // Redis field decorators
+  'RedisKey': '@Id',
+  'Id': '@Id',
+  'RedisValue': '@Indexed',
+  'Indexed': '@Indexed',
 };
 
 /**
@@ -78,6 +120,32 @@ export const IMPORT_MAPPING: Record<string, string[]> = {
     'jakarta.validation.Valid',
     'jakarta.validation.constraints.*',
   ],
+  '@ai-partner-x/aiko-boot-starter-redis': [
+    'org.springframework.data.redis.core.RedisTemplate',
+    'org.springframework.data.redis.repository.RedisRepository',
+    'org.springframework.data.redis.core.HashOperations',
+    'org.springframework.data.redis.core.ValueOperations',
+  ],
+  '@ai-partner-x/aiko-boot-starter-mq': [
+    'org.springframework.cloud.stream.annotation.EnableBinding',
+    'org.springframework.cloud.stream.annotation.StreamListener',
+    'org.springframework.cloud.stream.messaging.Source',
+    'org.springframework.cloud.stream.messaging.Sink',
+  ],
+  '@ai-partner-x/aiko-boot-starter-security': [
+    'org.springframework.security.access.prepost.PreAuthorize',
+    'org.springframework.security.access.prepost.PostAuthorize',
+    'org.springframework.security.access.annotation.Secured',
+    'javax.annotation.security.RolesAllowed',
+    'org.springframework.security.core.annotation.AuthenticationPrincipal',
+    'org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity',
+  ],
+  '@ai-partner-x/aiko-boot-starter-admin': [
+    'com.aiko.admin.annotation.AdminMenu',
+    'com.aiko.admin.annotation.AdminRoute',
+    'com.aiko.admin.annotation.AdminPermission',
+    'com.aiko.admin.annotation.AdminModule',
+  ],
   
   // Named import specific mappings
   'Service': ['org.springframework.stereotype.Service'],
@@ -99,6 +167,37 @@ export const IMPORT_MAPPING: Record<string, string[]> = {
   'TableName': ['com.baomidou.mybatisplus.annotation.TableName'],
   'Mapper': ['org.apache.ibatis.annotations.Mapper'],
   'validateDto': [], // Skip - handled by @Valid
+  
+  // Redis specific imports
+  'RedisHash': ['org.springframework.data.redis.core.RedisHash'],
+  'RedisRepository': ['org.springframework.data.redis.repository.RedisRepository'],
+  'RedisRepo': ['org.springframework.data.redis.repository.RedisRepository'],
+  'RedisKey': ['org.springframework.data.annotation.Id'],
+  'Id': ['org.springframework.data.annotation.Id'],
+  'RedisValue': ['org.springframework.data.redis.core.index.Indexed'],
+  'Indexed': ['org.springframework.data.redis.core.index.Indexed'],
+  
+  // Message Queue specific imports
+  'MqListener': ['org.springframework.cloud.stream.annotation.StreamListener'],
+  'StreamListener': ['org.springframework.cloud.stream.annotation.StreamListener'],
+  'MqSender': ['org.springframework.cloud.stream.annotation.Output'],
+  'Output': ['org.springframework.cloud.stream.annotation.Output'],
+  'MqBinding': ['org.springframework.cloud.stream.annotation.EnableBinding'],
+  'EnableBinding': ['org.springframework.cloud.stream.annotation.EnableBinding'],
+  
+  // Security specific imports
+  'PreAuthorize': ['org.springframework.security.access.prepost.PreAuthorize'],
+  'PostAuthorize': ['org.springframework.security.access.prepost.PostAuthorize'],
+  'Secured': ['org.springframework.security.access.annotation.Secured'],
+  'RolesAllowed': ['javax.annotation.security.RolesAllowed'],
+  'AuthenticationPrincipal': ['org.springframework.security.core.annotation.AuthenticationPrincipal'],
+  'EnableGlobalMethodSecurity': ['org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity'],
+  
+  // Admin specific imports
+  'AdminMenu': ['com.aiko.admin.annotation.AdminMenu'],
+  'AdminRoute': ['com.aiko.admin.annotation.AdminRoute'],
+  'AdminPermission': ['com.aiko.admin.annotation.AdminPermission'],
+  'AdminModule': ['com.aiko.admin.annotation.AdminModule'],
 };
 
 /**
@@ -216,6 +315,8 @@ export interface ParsedInterface {
   name: string;
   /** Interface properties (converted to Java fields) */
   properties: ParsedInterfaceProperty[];
+  /** Interface-level decorators */
+  decorators: ParsedDecorator[];
   /** Interface-level JSDoc comment */
   comment?: ParsedComment;
   /** Whether it's exported */

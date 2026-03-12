@@ -1,7 +1,8 @@
 /**
  * MQ 配置属性
- * 支持从环境变量加载，风格对齐 Spring Boot application.yml
+ * 支持从环境变量或 app.config.mq 加载，风格对齐 Spring Boot application.yml
  */
+import { ConfigLoader } from '@ai-partner-x/aiko-boot/boot';
 
 export interface MqProperties {
   type: 'rabbitmq' | 'kafka' | 'rocketmq' | 'redis' | 'memory';
@@ -50,8 +51,16 @@ export function loadMqProperties(): MqProperties {
   const password = process.env.MQ_PASSWORD || 'guest';
   warnDefaultCredentials(username, password);
 
+  // 优先环境变量，其次 app.config.mq
+  let type: MqProperties['type'] = (process.env.MQ_TYPE as MqProperties['type']) || undefined;
+  if (!type && ConfigLoader.isLoaded()) {
+    const mqConfig = ConfigLoader.getPrefix('mq');
+    type = mqConfig?.type as MqProperties['type'];
+  }
+  type = type || 'rabbitmq';
+
   return {
-    type: (process.env.MQ_TYPE as MqProperties['type']) || 'rabbitmq',
+    type,
     host: process.env.MQ_HOST || 'localhost',
     port: parseInt(process.env.MQ_PORT || '5672', 10),
     username,
