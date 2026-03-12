@@ -167,16 +167,38 @@ jobs:
       - name: Collect check results and rules
         id: results
         run: |
+          summarize_output() {
+            local title="$1"
+            local file="$2"
+
+            if [ ! -f "$file" ]; then
+              printf "%s\n" "$title: No output"
+              return
+            fi
+
+            local line_count
+            line_count=$(wc -l < "$file" | tr -d ' ')
+            printf "%s (showing first 80 lines, total %s lines)\n" "$title" "$line_count"
+            sed -n '1,80p' "$file"
+            if [ "$line_count" -gt 80 ]; then
+              printf "\n... output truncated ...\n"
+            fi
+          }
+
+          TYPECHECK_SUMMARY="$(summarize_output 'TypeScript check' typecheck-output.txt)"
+          LINT_SUMMARY="$(summarize_output 'ESLint check' lint-output.txt)"
+          TEST_SUMMARY="$(summarize_output 'Test run' test-output.txt)"
+
           # 收集所有检查结果
           {
             echo "TYPECHECK_RESULT<<EOF"
-            cat typecheck-output.txt 2>/dev/null || echo "No output"
+            echo "$TYPECHECK_SUMMARY"
             echo "EOF"
             echo "LINT_RESULT<<EOF"
-            cat lint-output.txt 2>/dev/null || echo "No output"
+            echo "$LINT_SUMMARY"
             echo "EOF"
             echo "TEST_RESULT<<EOF"
-            cat test-output.txt 2>/dev/null || echo "No output"
+            echo "$TEST_SUMMARY"
             echo "EOF"
           } >> $GITHUB_ENV
 
