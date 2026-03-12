@@ -4,7 +4,7 @@
  */
 
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createExpressRouter, RequestPart, ModelAttribute, RestController, PostMapping, RequestParam } from '../src';
+import { createExpressRouter, RequestPart, ModelAttribute, RequestAttribute, RestController, PostMapping, GetMapping, RequestParam } from '../src';
 import { Router } from 'express';
 
 vi.mock('multer', () => {
@@ -114,16 +114,12 @@ describe('createExpressRouter', () => {
       }
     }
 
-    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
     expect(() => {
       createExpressRouter([TestController], {
         prefix: '/api',
         verbose: false,
       });
     }).not.toThrow();
-
-    consoleWarnSpy.mockRestore();
   });
 
   test('应该正确处理带 @ModelAttribute 的路由注册', () => {
@@ -212,8 +208,6 @@ describe('createExpressRouter', () => {
   });
 
   test('应该正确处理没有 @RestController 装饰器的类', () => {
-    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
     class NotRestController {
       someMethod() {
         return 'test';
@@ -227,11 +221,9 @@ describe('createExpressRouter', () => {
       });
     }).not.toThrow();
 
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
+    expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('No @RestController metadata found')
     );
-
-    consoleWarnSpy.mockRestore();
   });
 
   test('应该正确处理数组形式的 controllers 参数', () => {
@@ -416,8 +408,6 @@ describe('ModelAttribute 边界情况', () => {
 
 describe('Array Body Handling', () => {
   test('应该正确处理 req.body 为数组并记录警告', () => {
-    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
     const router = Router();
 
     @RestController({ path: '/test' })
@@ -434,8 +424,6 @@ describe('Array Body Handling', () => {
         verbose: false,
       });
     }).not.toThrow();
-
-    consoleWarnSpy.mockRestore();
   });
 
   test('应该正确处理 req.body 为 Buffer 并返回空对象', () => {
@@ -455,5 +443,234 @@ describe('Array Body Handling', () => {
         verbose: false,
       });
     }).not.toThrow();
+  });
+});
+
+describe('Parameter injection (handler invocation)', () => {
+  /**
+   * Helper: 从 Express Router 的 stack 中提取指定路径的最后一个 handler。
+   * multer 中间件（如果有）排在前面，真正的业务 handler 排在最后。
+   */
+  function getHandler(router: any, path: string): Function {
+    for (const layer of router.stack) {
+      if (layer.route && layer.route.path === path) {
+        return layer.route.stack[layer.route.stack.length - 1].handle;
+      }
+    }
+    throw new Error(`No handler found for path: ${path}`);
+  }
+
+  function createMockRes() {
+    const res: any = {
+      json: vi.fn().mockReturnThis(),
+      status: vi.fn().mockReturnThis(),
+    };
+    return res;
+  }
+
+  test('@RequestPart 应正确注入文件为 MultipartFile', async () => {
+    @RestController({ path: '/test' })
+    class UploadController {
+      @PostMapping('/upload')
+      async upload(@RequestPart('file') file: any) {
+        return { filename: file?.getOriginalFilename(), size: file?.getSize() };
+      }
+    }
+
+    const router = createExpressRouter([UploadController], {
+      prefix: '/api',
+      verbose: false,
+      multipart: { maxFileSize: 1024 * 1024 },
+    });
+
+    const handler = getHandler(router, '/api/test/upload');
+    const mockReq = {
+      params: {},
+      query: {},
+      body: {},
+      files: {
+        file: [{
+          fieldname: 'file',
+          originalname: 'photo.png',
+          mimetype: 'image/png',
+          size: 2048,
+          buffer: Buffer.from('file-content'),
+        }],
+      },
+    };
+    const res = createMockRes();
+
+    await handler(mockReq, res, vi.fn());
+
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      data: { filename: 'photo.png', size: 2048 },
+    });
+  });
+
+  test('@RequestPart 应正确注入非文件字段 (从 body 读取)', async () => {
+    @RestController({ path: '/test' })
+    class UploadController {
+      @PostMapping('/upload')
+      async upload(@RequestPart('file') file: any, @RequestPart('folder') folder: string) {
+        return { filename: file?.getOriginalFilename(), folder };
+      }
+    }
+
+    const router = createExpressRouter([UploadController], {
+      prefix: '/api',
+      verbose: false,
+      multipart: { maxFileSize: 1024 * 1024 },
+    });
+
+    const handler = getHandler(router, '/api/test/upload');
+    const mockReq = {
+      params: {},
+      query: {},
+      body: { folder: 'avatars' },
+      files: {
+        file: [{
+          fieldname: 'file',
+          originalname: 'photo.png',
+          mimetype: 'image/png',
+          size: 2048,
+          buffer: Buffer.from('file-content'),
+        }],
+      },
+    };
+    const res = createMockRes();
+
+    await handler(mockReq, res, vi.fn());
+
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      data: { filename: 'photo.png', folder: 'avatars' },
+    });
+  });
+
+  test('@ModelAttribute 应合并 query 和 body 参数', async () => {
+    @RestController({ path: '/test' })
+    class SearchController {
+      @PostMapping('/search')
+      async search(@ModelAttribute() query: any) {
+        return query;
+      }
+    }
+
+    const router = createExpressRouter([SearchController], {
+      prefix: '/api',
+      verbose: false,
+    });
+
+    const handler = getHandler(router, '/api/test/search');
+    const mockReq = {
+      params: {},
+      query: { page: '1', keyword: 'from-query' },
+      body: { sortBy: 'name', keyword: 'from-body' },
+    };
+    const res = createMockRes();
+
+    await handler(mockReq, res, vi.fn());
+
+    // body 字段覆盖同名 query 字段
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      data: { page: '1', keyword: 'from-body', sortBy: 'name' },
+    });
+  });
+
+  test('@ModelAttribute 当 body 是数组时应使用空对象并发出警告', async () => {
+    @RestController({ path: '/test' })
+    class SearchController {
+      @PostMapping('/search')
+      async search(@ModelAttribute() query: any) {
+        return query;
+      }
+    }
+
+    const router = createExpressRouter([SearchController], {
+      prefix: '/api',
+      verbose: false,
+    });
+
+    const handler = getHandler(router, '/api/test/search');
+    const mockReq = {
+      params: {},
+      query: { page: '1' },
+      body: [1, 2, 3],
+    };
+    const res = createMockRes();
+
+    await handler(mockReq, res, vi.fn());
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('@ModelAttribute received array body')
+    );
+    // 数组 body 被忽略，只保留 query 参数
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      data: { page: '1' },
+    });
+  });
+
+  test('@RequestAttribute 应从 req 对象读取自定义属性', async () => {
+    @RestController({ path: '/test' })
+    class ProfileController {
+      @GetMapping('/profile')
+      async profile(@RequestAttribute('currentUser') user: any) {
+        return { userId: user?.id };
+      }
+    }
+
+    const router = createExpressRouter([ProfileController], {
+      prefix: '/api',
+      verbose: false,
+    });
+
+    const handler = getHandler(router, '/api/test/profile');
+    const mockReq = {
+      params: {},
+      query: {},
+      body: {},
+      currentUser: { id: 42, name: 'Alice' },
+    };
+    const res = createMockRes();
+
+    await handler(mockReq, res, vi.fn());
+
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      data: { userId: 42 },
+    });
+  });
+
+  test('@RequestAttribute 当属性不存在时应注入 undefined', async () => {
+    @RestController({ path: '/test' })
+    class ProfileController {
+      @GetMapping('/profile')
+      async profile(@RequestAttribute('currentUser') user: any) {
+        return { hasUser: user !== undefined };
+      }
+    }
+
+    const router = createExpressRouter([ProfileController], {
+      prefix: '/api',
+      verbose: false,
+    });
+
+    const handler = getHandler(router, '/api/test/profile');
+    const mockReq = {
+      params: {},
+      query: {},
+      body: {},
+    };
+    const res = createMockRes();
+
+    await handler(mockReq, res, vi.fn());
+
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      data: { hasUser: false },
+    });
   });
 });
