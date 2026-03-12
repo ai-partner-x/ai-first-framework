@@ -21,4 +21,11 @@ export default {
     enabled: true,
     failFast: false,
   },
+
+  // ========== MQ Configuration (消息队列) ==========
+  // 使用内存适配器无需 RabbitMQ，设置 MQ_TYPE=memory 或使用下方配置
+  mq: {
+    enabled: true,
+    type: 'memory' as const,
+  },
 } satisfies AppConfig;

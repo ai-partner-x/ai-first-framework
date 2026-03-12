@@ -1,0 +1,68 @@
+{
+  "common": {
+    "appTitle": "管理后台",
+    "language": "语言",
+    "en": "English",
+    "zh": "中文"
+  },
+  "dashboard": {
+    "title": "仪表盘",
+    "welcome": "欢迎。您可以在此添加自己的页面和数据。"
+  },
+  "error": {
+    "title": "页面未找到。",
+    "description": "您访问的页面不存在。",
+    "backHome": "返回首页"
+  },
+  "auth": {
+    "login": "登录",
+    "loginTitle": "登录到管理后台",
+    "email": "邮箱",
+    "password": "密码",
+    "submit": "登录",
+    "invalidCredentials": "邮箱或密码无效"
+  },
+  "header": {
+    "logout": "退出登录"
+  },
+  "sidebar": {
+    "menu": {
+      "dashboard": "仪表盘"
+    }
+  },
+  "theme": {
+    "toggleLabel": "切换主题（浅色 → 深色 → 跟随系统）",
+    "light": "浅色",
+    "dark": "深色",
+    "system": "跟随系统",
+    "appearance": "外观",
+    "paletteLabel": "配色",
+    "palette": {
+      "default": "默认",
+      "blue": "蓝色",
+      "green": "绿色",
+      "violet": "紫色",
+      "rose": "玫红",
+      "amber": "琥珀",
+      "fiori": "Fiori"
+    }
+  },
+  "notification": {
+    "undo": "撤销"
+  },
+  "user": {
+    "defaultName": "用户"
+  },
+  "dataTable": {
+    "rows": "行",
+    "rowsPerPage": "每页行数",
+    "pageOf": "第 {{current}} 页，共 {{total}} 页",
+    "goToFirstPage": "跳到第一页",
+    "goToPreviousPage": "上一页",
+    "goToNextPage": "下一页",
+    "goToLastPage": "跳到最后一页",
+    "sortBy": "按 {{id}} 排序",
+    "sortDesc": "按 {{id}} 降序",
+    "sortAsc": "按 {{id}} 升序"
+  }
+}
