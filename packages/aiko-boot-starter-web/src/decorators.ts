@@ -599,15 +599,20 @@ export function applyJsonFormat(value: unknown, visited: WeakMap<object, unknown
       return value;
     }
 
-    // If the object defines a toJSON method, honor it and then apply formatting
-    const anyValue = value as any;
-    if (typeof anyValue.toJSON === 'function') {
-      return applyJsonFormat(anyValue.toJSON.call(anyValue), visited);
-    }
-
     // Return the already-transformed copy for circular/shared references
     if (visited.has(value)) {
       return visited.get(value);
+    }
+
+    // If the object defines a toJSON method, honor it and then apply formatting.
+    // Guard against self-referential toJSON (e.g. toJSON returns `this`): if the
+    // returned value is the same reference, fall through to standard object handling.
+    const anyValue = value as any;
+    if (typeof anyValue.toJSON === 'function') {
+      const jsonValue = anyValue.toJSON.call(anyValue) as unknown;
+      if (jsonValue !== value) {
+        return applyJsonFormat(jsonValue, visited);
+      }
     }
 
     const proto = Object.getPrototypeOf(value);
