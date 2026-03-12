@@ -37,12 +37,6 @@ export class UserController {
     return this.userService.getAllUsers();
   }
 
-  /**
-   * 高级搜索 - 使用 QueryWrapper
-   * 
-   * @example
-   * GET /api/users/search?username=test&minAge=20&maxAge=30&page=1&pageSize=10
-   */
   @GetMapping('/search')
   async search(
     @RequestParam('username') username?: string,
@@ -75,17 +69,11 @@ export class UserController {
     return response;
   }
 
-  /**
-   * 活跃用户查询 - QueryWrapper 示例
-   */
   @GetMapping('/active')
   async getActiveUsers(): Promise<User[]> {
     return this.userService.getActiveUsers();
   }
 
-  /**
-   * 关键字搜索 - OR 条件 QueryWrapper 示例
-   */
   @GetMapping('/keyword/:keyword')
   async searchByKeyword(@PathVariable('keyword') keyword: string): Promise<User[]> {
     return this.userService.searchByKeyword(keyword);
@@ -116,15 +104,6 @@ export class UserController {
     return response;
   }
 
-  // ==================== UpdateWrapper 示例端点 ====================
-
-  /**
-   * 批量更新年龄 - UpdateWrapper 示例
-   * 
-   * @example
-   * PUT /api/users/batch/age
-   * Body: { "username": "test", "age": 30 }
-   */
   @PutMapping('/batch/age')
   async batchUpdateAge(
     @RequestBody() body: BatchUpdateAgeDto,
@@ -134,13 +113,6 @@ export class UserController {
     return response;
   }
 
-  /**
-   * 更新用户邮箱 - UpdateWrapper 示例
-   * 
-   * @example
-   * PUT /api/users/1/email
-   * Body: { "email": "new@test.com" }
-   */
   @PutMapping('/:id/email')
   async updateEmail(
     @PathVariable('id') id: string,
@@ -151,13 +123,6 @@ export class UserController {
     return response;
   }
 
-  /**
-   * 批量删除 - QueryWrapper 示例
-   * 
-   * @example
-   * DELETE /api/users/batch
-   * Body: { "minAge": 18, "maxAge": 25 }
-   */
   @DeleteMapping('/batch')
   async batchDelete(
     @RequestBody() body: BatchDeleteDto,

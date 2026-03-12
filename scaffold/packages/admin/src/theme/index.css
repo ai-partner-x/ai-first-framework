@@ -1,0 +1,12 @@
+/**
+ * Theme palettes entry.
+ * Applied via .light / .dark and [data-palette] on document root.
+ */
+
+@import "./default.css";
+@import "./blue.css";
+@import "./green.css";
+@import "./violet.css";
+@import "./rose.css";
+@import "./amber.css";
+@import "./fiori.css";

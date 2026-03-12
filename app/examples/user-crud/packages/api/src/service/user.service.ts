@@ -1,6 +1,11 @@
 import 'reflect-metadata';
 import { Service, Transactional, Autowired } from '@ai-partner-x/aiko-boot';
 import { QueryWrapper, UpdateWrapper } from '@ai-partner-x/aiko-boot-starter-orm';
+import {
+  Cacheable,
+  CachePut,
+  CacheEvict,
+} from '@ai-partner-x/aiko-boot-starter-cache';
 import { User } from '../entity/user.entity.js';
 import { UserMapper } from '../mapper/user.mapper.js';
 import { CreateUserDto, UpdateUserDto } from '../dto/user.dto.js';
@@ -32,22 +37,25 @@ export class UserService {
   @Autowired()
   private userMapper!: UserMapper;
 
+  @Cacheable({ key: 'user', ttl: 300 })
   async getUserById(id: number): Promise<User | null> {
     return this.userMapper.selectById(id);
   }
 
+  @Cacheable({ key: 'users', ttl: 60, keyGenerator: () => 'all' })
   async getUserList(_page: number, _pageSize: number): Promise<User[]> {
     // 简化版分页查询，返回用户列表
     return this.userMapper.selectList();
   }
 
+  @Cacheable({ key: 'users', ttl: 60 })
   async getAllUsers(): Promise<User[]> {
     return this.userMapper.selectList();
   }
 
   /**
    * 使用 QueryWrapper 进行高级搜索
-   * 
+   *
    * @example
    * ```typescript
    * // 搜索年龄在 20-30 之间，用户名包含 "test" 的用户
@@ -104,7 +112,7 @@ export class UserService {
 
     // 执行查询
     const data = await this.userMapper.selectListByWrapper(wrapper);
-    
+
     // 统计总数（不带分页的 wrapper）
     const countWrapper = new QueryWrapper<User>();
     if (username) countWrapper.like('username', username);
@@ -130,7 +138,7 @@ export class UserService {
       .gt('age', 18)
       .isNotNull('email')
       .orderByDesc('createdAt');
-    
+
     return this.userMapper.selectListByWrapper(wrapper);
   }
 
@@ -141,11 +149,12 @@ export class UserService {
     const wrapper = new QueryWrapper<User>()
       .or(w => w.like('username', keyword).like('email', keyword))
       .orderByDesc('id');
-    
+
     return this.userMapper.selectListByWrapper(wrapper);
   }
 
   @Transactional()
+  @CacheEvict({ key: 'users', allEntries: true })
   async createUser(dto: CreateUserDto): Promise<User> {
     // 检查用户名是否已存在
     const existingWrapper = new QueryWrapper<User>().eq('username', dto.username);
@@ -171,6 +180,8 @@ export class UserService {
   }
 
   @Transactional()
+  @CacheEvict({ key: 'users', allEntries: true })
+  @CachePut({ key: 'user', ttl: 300, keyGenerator: (id) => String(id) })
   async updateUser(id: number, dto: UpdateUserDto): Promise<User> {
     const user = await this.userMapper.selectById(id);
     if (!user) {
@@ -188,6 +199,8 @@ export class UserService {
   }
 
   @Transactional()
+  @CacheEvict({ key: 'user', keyGenerator: (id) => String(id) })
+  @CacheEvict({ key: 'users', allEntries: true })
   async deleteUser(id: number): Promise<boolean> {
     const user = await this.userMapper.selectById(id);
     if (!user) {
@@ -201,7 +214,7 @@ export class UserService {
 
   /**
    * 使用 UpdateWrapper 批量更新用户年龄
-   * 
+   *
    * @example
    * ```typescript
    * // 将所有 username 包含 'test' 的用户年龄设置为 25
@@ -209,18 +222,20 @@ export class UserService {
    * ```
    */
   @Transactional()
+  @CacheEvict({ key: 'user', allEntries: true })
+  @CacheEvict({ key: 'users', allEntries: true })
   async batchUpdateAge(usernameKeyword: string, newAge: number): Promise<number> {
     const wrapper = new UpdateWrapper<User>()
       .set('age', newAge)
       .set('updatedAt', new Date().toISOString())
       .like('username', usernameKeyword);
-    
+
     return this.userMapper.updateWithWrapper(wrapper);
   }
 
   /**
    * 使用 UpdateWrapper 根据条件更新邮箱
-   * 
+   *
    * @example
    * ```typescript
    * // 将 ID 为 1 的用户邮箱更新为 new@test.com
@@ -228,12 +243,14 @@ export class UserService {
    * ```
    */
   @Transactional()
+  @CacheEvict({ key: 'user', keyGenerator: (id) => String(id) })
+  @CacheEvict({ key: 'users', allEntries: true })
   async updateEmailById(id: number, newEmail: string): Promise<number> {
     const wrapper = new UpdateWrapper<User>()
       .set('email', newEmail)
       .set('updatedAt', new Date().toISOString())
       .eq('id', id);
-    
+
     return this.userMapper.updateWithWrapper(wrapper);
   }
 
@@ -241,6 +258,8 @@ export class UserService {
    * 使用 QueryWrapper 批量删除（示例：删除指定年龄范围的用户）
    */
   @Transactional()
+  @CacheEvict({ key: 'user', allEntries: true })
+  @CacheEvict({ key: 'users', allEntries: true })
   async batchDeleteByAgeRange(minAge: number, maxAge: number): Promise<number> {
     const wrapper = new QueryWrapper<User>()
       .between('age', minAge, maxAge);

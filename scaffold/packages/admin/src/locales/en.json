@@ -1,0 +1,68 @@
+{
+  "common": {
+    "appTitle": "Admin",
+    "language": "Language",
+    "en": "English",
+    "zh": "中文"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome. You can add your own pages and data here."
+  },
+  "error": {
+    "title": "Page not found.",
+    "description": "The page you're looking for does not exist.",
+    "backHome": "Back to homepage"
+  },
+  "auth": {
+    "login": "Sign in",
+    "loginTitle": "Sign in to Admin",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "invalidCredentials": "Invalid email or password"
+  },
+  "header": {
+    "logout": "Logout"
+  },
+  "sidebar": {
+    "menu": {
+      "dashboard": "Dashboard"
+    }
+  },
+  "theme": {
+    "toggleLabel": "Toggle theme (Light → Dark → System)",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "appearance": "Appearance",
+    "paletteLabel": "Color",
+    "palette": {
+      "default": "Default",
+      "blue": "Blue",
+      "green": "Green",
+      "violet": "Violet",
+      "rose": "Rose",
+      "amber": "Amber",
+      "fiori": "Fiori"
+    }
+  },
+  "notification": {
+    "undo": "Undo"
+  },
+  "user": {
+    "defaultName": "User"
+  },
+  "dataTable": {
+    "rows": "row(s)",
+    "rowsPerPage": "Rows per page",
+    "pageOf": "Page {{current}} of {{total}}",
+    "goToFirstPage": "Go to first page",
+    "goToPreviousPage": "Go to previous page",
+    "goToNextPage": "Go to next page",
+    "goToLastPage": "Go to last page",
+    "sortBy": "Sort by {{id}}",
+    "sortDesc": "Sort by {{id}} as descending",
+    "sortAsc": "Sort by {{id}} as ascending"
+  }
+}

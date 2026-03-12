@@ -63,7 +63,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const prNumber = context.issue.number;
-            
+
             try {
               // 获取 PR 信息
               const { data: pr } = await github.rest.pulls.get({
@@ -179,35 +179,35 @@ jobs:
             cat test-output.txt 2>/dev/null || echo "No output"
             echo "EOF"
           } >> $GITHUB_ENV
-          
+
           # 读取通用审查规则
           {
             echo "COMMON_RULES<<EOF"
             cat .github/workflows/rules/pr-review-rules-common.md 2>/dev/null || echo "Common rules file not found"
             echo "EOF"
           } >> $GITHUB_ENV
-          
+
           # 读取服务端核心审查规则
           {
             echo "SERVER_CORE_RULES<<EOF"
             cat .github/workflows/rules/pr-review-rules-server.md 2>/dev/null || echo "Server core rules file not found"
             echo "EOF"
           } >> $GITHUB_ENV
-          
+
           # 读取服务端 Starter 审查规则
           {
             echo "SERVER_STARTER_RULES<<EOF"
             cat .github/workflows/rules/pr-review-rules-starter.md 2>/dev/null || echo "Server starter rules file not found"
             echo "EOF"
           } >> $GITHUB_ENV
-          
+
           # 读取管理后台审查规则
           {
             echo "ADMIN_RULES<<EOF"
             cat .github/workflows/rules/pr-review-rules-admin.md 2>/dev/null || echo "Admin rules file not found"
             echo "EOF"
           } >> $GITHUB_ENV
-          
+
           # 读取移动端审查规则
           {
             echo "MOBILE_RULES<<EOF"
@@ -215,8 +215,51 @@ jobs:
             echo "EOF"
           } >> $GITHUB_ENV
 
+      - name: Check PR size
+        id: pr_size
+        if: github.event_name == 'pull_request' || github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.issue?.number || context.payload.pull_request?.number;
+            if (!prNumber) {
+              core.setOutput('should_skip', 'false');
+              return;
+            }
+
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              per_page: 100
+            });
+
+            const fileCount = files.length;
+            console.log(`PR has ${fileCount} files`);
+
+            // 超过 50 个文件，跳过自动审查
+            if (fileCount >= 50) {
+              core.setOutput('should_skip', 'true');
+              core.setOutput('file_count', fileCount);
+              
+              // 只在 PR 刚打开时提示
+              if (context.eventName === 'pull_request') {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  body: `⚠️ **PR 规模过大（${fileCount} 个文件）**\n\n自动代码审查已跳过，建议：\n1. 拆分为更小的 PR\n2. 或使用 \`/oc review\` 手动触发审查（可能需要较长时间）`
+                });
+              }
+            } else {
+              core.setOutput('should_skip', 'false');
+            }
+
       - name: Run OpenCode
-        uses: anomalyco/opencode/github-action@v1
+        if: steps.pr_size.outputs.should_skip != 'true' || contains(github.event.comment.body, '/oc')
+        timeout-minutes: 15
+        uses: anomalyco/opencode/github@latest
         env:
           BAILIAN_API_KEY: ${{ secrets.BAILIAN_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -234,117 +277,117 @@ jobs:
           use_github_token: true
           prompt: |
             # 🔴 重要：你的回复必须包含审查结论
-            
+
             你是一个代码审查助手。在审查完成后，你**必须**在回复末尾给出明确的审查结论。
             这是强制性要求，没有审查结论的回复将被视为无效。
-            
+
             ---
-            
+
             ## 请审查这个 Pull Request
-            
+
             ### 用户的个性化审查要求
             ${{ env.USER_REQUIREMENTS }}
-            
+
             ---
-            
+
             ## 自动检查结果
-            
+
             **TypeScript 类型检查：**
             ```
             ${{ env.TYPECHECK_RESULT }}
             ```
-            
+
             **ESLint 代码检查：**
             ```
             ${{ env.LINT_RESULT }}
             ```
-            
+
             **单元测试：**
             ```
             ${{ env.TEST_RESULT }}
             ```
-            
+
             ---
-            
+
             ## 审查规则
-            
+
             根据修改的文件路径，应用以下规则：
-            
+
             **服务端核心代码（packages/aiko-boot/ 或 packages/aiko-boot-codegen/）：**
             ${{ env.SERVER_CORE_RULES }}
-            
+
             **服务端 Starter（packages/aiko-boot-starter-*/）：**
             ${{ env.SERVER_STARTER_RULES }}
-            
+
             **管理后台（app/examples/admin/）：**
             ${{ env.ADMIN_RULES }}
-            
+
             **移动端（app/examples/mobile/）：**
             ${{ env.MOBILE_RULES }}
-            
+
             ---
-            
+
             ## 输出格式（严格遵守）
-            
+
             你的回复必须包含以下两个部分：
-            
+
             **第一部分：审查详情**
             - 🔴 必须修复（类型错误、测试失败、违反规范）
             - 🟡 建议改进（ESLint 警告、代码风格）
             - ✅ 优点
             - 💡 建议
-            
+
             **第二部分：审查结论（必填，与详情分开）**
-            
+
             ---
-            
+
             ## 🔴🔴🔴 审查结论格式（必须严格按此格式输出）
-            
+
             在回复的**最后**，你必须输出以下内容（原样复制格式，只替换中括号内的内容）：
-            
+
             ```
             ---
             ## 审查结论：✅ 批准
-            
+
             **决策理由：** 代码质量良好，无阻塞性问题
-            
+
             **行动项：**
             - [ ] 无
             ---
             ```
-            
+
             或者：
-            
+
             ```
             ---
             ## 审查结论：⚠️ 有条件批准
-            
+
             **决策理由：** 有小问题但不阻塞合并
-            
+
             **行动项：**
             - [ ] 补充文档
             - [ ] 添加测试
             ---
             ```
-            
+
             或者：
-            
+
             ```
             ---
             ## 审查结论：❌ 拒绝
-            
+
             **决策理由：** 存在严重问题必须修复
-            
+
             **行动项：**
             - [ ] 修复类型错误
             - [ ] 修复测试失败
             ---
             ```
-            
+
             ⚠️ 注意：
             1. 必须以 `---` 开始和结束
             2. 必须使用 `## 审查结论：` 作为标题（不是"总结"）
             3. 必须三选一：✅ 批准 / ⚠️ 有条件批准 / ❌ 拒绝
             4. 没有这个结论部分 = 审查无效
-            
+
             请用中文回复。

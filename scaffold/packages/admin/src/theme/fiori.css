@@ -1,0 +1,180 @@
+/**
+ * SAP Fiori / Morning Horizon theme.
+ * Uses RGB triplets for Tailwind opacity support (e.g. bg-primary/80).
+ */
+
+.light[data-palette="fiori"] {
+  /* ===== Morning Horizon 主色 ===== */
+  --fiori-primary: 0 112 242;
+  --fiori-primary-light: 235 248 255;
+  --fiori-primary-dark: 0 82 204;
+
+  /* ===== shadcn/ui 兼容变量 (完整颜色值供 Tailwind var() 使用) ===== */
+  --primary: rgb(0 112 242);
+  --primary-foreground: rgb(255 255 255);
+  --destructive: rgb(187 0 0);
+  --destructive-foreground: rgb(255 255 255);
+  --accent: rgb(245 246 247);
+  --accent-foreground: rgb(29 45 62);
+  --background: rgb(245 246 247);
+  --foreground: rgb(29 45 62);
+  --muted: rgb(245 246 247);
+  --muted-foreground: rgb(85 107 130);
+  --border: rgb(223 227 232);
+  --input: rgb(223 227 232);
+  --ring: rgb(0 112 242);
+
+  /* ===== Card / Popover / Surface ===== */
+  --card: rgb(255 255 255);
+  --card-foreground: rgb(29 45 62);
+  --popover: rgb(255 255 255);
+  --popover-foreground: rgb(29 45 62);
+  --secondary: rgb(245 246 247);
+  --secondary-foreground: rgb(29 45 62);
+
+  /* ===== Sidebar (light: surface) ===== */
+  --sidebar: rgb(255 255 255);
+  --sidebar-foreground: rgb(29 45 62);
+  --sidebar-primary: rgb(0 112 242);
+  --sidebar-primary-foreground: rgb(255 255 255);
+  --sidebar-accent: rgb(245 246 247);
+  --sidebar-accent-foreground: rgb(29 45 62);
+  --sidebar-border: rgb(223 227 232);
+  --sidebar-ring: rgb(0 112 242);
+
+  /* ===== Charts ===== */
+  --chart-1: rgb(0 112 242);
+  --chart-2: rgb(16 126 62);
+  --chart-3: rgb(223 143 0);
+  --chart-4: rgb(131 64 199);
+  --chart-5: rgb(186 6 108);
+
+  /* ===== Shell Bar ===== */
+  --fiori-shell: 53 74 95;
+  --fiori-shell-hover: 42 59 76;
+
+  /* ===== 背景 / 文字 / 边框 ===== */
+  --fiori-background: 245 246 247;
+  --fiori-surface: 255 255 255;
+  --fiori-surface-elevated: 255 255 255;
+  --fiori-text-primary: 29 45 62;
+  --fiori-text-secondary: 85 107 130;
+  --fiori-text-tertiary: 117 140 164;
+  --fiori-text-disabled: 154 160 166;
+  --fiori-border: 117 140 164;
+  --fiori-border-light: 223 227 232;
+
+  /* ===== 语义色 ===== */
+  --fiori-success: 16 126 62;
+  --fiori-success-bg: 241 253 246;
+  --fiori-warning: 223 143 0;
+  --fiori-warning-bg: 255 249 237;
+  --fiori-error: 187 0 0;
+  --fiori-error-bg: 255 235 235;
+  --fiori-info: 0 112 242;
+  --fiori-info-bg: 235 248 255;
+  --fiori-neutral: 106 116 128;
+  --fiori-neutral-bg: 245 246 247;
+
+  /* ===== 强调色 ===== */
+  --fiori-accent-1: 210 119 0;
+  --fiori-accent-2: 170 8 8;
+  --fiori-accent-3: 186 6 108;
+  --fiori-accent-4: 161 0 194;
+  --fiori-accent-5: 0 112 242;
+  --fiori-accent-6: 4 107 110;
+  --fiori-accent-7: 16 126 62;
+  --fiori-accent-8: 131 64 199;
+  --fiori-accent-9: 230 99 120;
+  --fiori-accent-10: 0 153 153;
+
+  /* ===== 磁贴图标背景色 ===== */
+  --fiori-tile-blue: 235 248 255;
+  --fiori-tile-green: 241 253 246;
+  --fiori-tile-orange: 255 243 232;
+  --fiori-tile-purple: 248 240 255;
+  --fiori-tile-teal: 237 250 250;
+  --fiori-tile-pink: 255 240 243;
+
+  /* ===== 字体 ===== */
+  font-family: "72", "72full", "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.dark[data-palette="fiori"] {
+  /* Dark variant: Shell-style background, same primary blue */
+  --fiori-primary: 39 60 84;
+  --fiori-primary-light: 0 82 204;
+  --fiori-primary-dark: 0 112 242;
+
+  --primary: rgb(88 142 204);
+  --primary-foreground: rgb(255 255 255);
+  --destructive: rgb(255 99 99);
+  --destructive-foreground: rgb(255 255 255);
+  --accent: rgb(42 59 76);
+  --accent-foreground: rgb(245 246 247);
+  --background: rgb(29 45 62);
+  --foreground: rgb(245 246 247);
+  --muted: rgb(42 59 76);
+  --muted-foreground: rgb(165 180 195);
+  --border: rgb(53 74 95);
+  --input: rgb(53 74 95);
+  --ring: rgb(69 155 255);
+
+  --card: rgb(42 59 76);
+  --card-foreground: rgb(245 246 247);
+  --popover: rgb(42 59 76);
+  --popover-foreground: rgb(245 246 247);
+  --secondary: rgb(53 74 95);
+  --secondary-foreground: rgb(245 246 247);
+
+  --sidebar: rgb(53 74 95);
+  --sidebar-foreground: rgb(245 246 247);
+  --sidebar-primary: rgb(69 155 255);
+  --sidebar-primary-foreground: rgb(255 255 255);
+  --sidebar-accent: rgb(42 59 76);
+  --sidebar-accent-foreground: rgb(245 246 247);
+  --sidebar-border: rgb(69 90 115);
+  --sidebar-ring: rgb(69 155 255);
+
+  --chart-1: rgb(69 155 255);
+  --chart-2: rgb(80 200 120);
+  --chart-3: rgb(255 180 50);
+  --chart-4: rgb(180 130 255);
+  --chart-5: rgb(255 120 180);
+
+  --fiori-shell: 29 45 62;
+  --fiori-shell-hover: 42 59 76;
+  --fiori-background: 29 45 62;
+  --fiori-surface: 42 59 76;
+  --fiori-surface-elevated: 53 74 95;
+  --fiori-text-primary: 245 246 247;
+  --fiori-text-secondary: 165 180 195;
+  --fiori-text-tertiary: 117 140 164;
+  --fiori-text-disabled: 85 95 105;
+  --fiori-border: 69 90 115;
+  --fiori-border-light: 53 74 95;
+  --fiori-success: 80 200 120;
+  --fiori-success-bg: 20 60 40;
+  --fiori-warning: 255 180 50;
+  --fiori-warning-bg: 80 60 20;
+  --fiori-error: 255 99 99;
+  --fiori-error-bg: 80 20 20;
+  --fiori-info: 69 155 255;
+  --fiori-info-bg: 20 40 80;
+  --fiori-neutral: 106 116 128;
+  --fiori-neutral-bg: 42 59 76;
+
+  font-family: "72", "72full", "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

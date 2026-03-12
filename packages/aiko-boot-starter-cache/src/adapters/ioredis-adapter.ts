@@ -218,6 +218,28 @@ export class IORedisAdapter<K = string, V = unknown> {
 
   opsForList(): ListOperations<K, V> {
     const adapter = this;
+
+    // Use function overloads so TypeScript can verify each overload without unsafe casts
+    async function leftPop(key: K): Promise<V | null>;
+    async function leftPop(key: K, count: number): Promise<V[]>;
+    async function leftPop(key: K, count?: number): Promise<V | null | V[]> {
+      if (count !== undefined) {
+        const raws = await adapter.client.lpop(adapter.sk(key), count);
+        return (raws ?? []).map((r: string) => adapter.ds(r));
+      }
+      return adapter.dv(await adapter.client.lpop(adapter.sk(key)));
+    }
+
+    async function rightPop(key: K): Promise<V | null>;
+    async function rightPop(key: K, count: number): Promise<V[]>;
+    async function rightPop(key: K, count?: number): Promise<V | null | V[]> {
+      if (count !== undefined) {
+        const raws = await adapter.client.rpop(adapter.sk(key), count);
+        return (raws ?? []).map((r: string) => adapter.ds(r));
+      }
+      return adapter.dv(await adapter.client.rpop(adapter.sk(key)));
+    }
+
     return {
       async leftPush(key: K, value: V): Promise<number> {
         return adapter.client.lpush(adapter.sk(key), adapter.sv(value));
@@ -243,21 +265,9 @@ export class IORedisAdapter<K = string, V = unknown> {
         return adapter.client.rpushx(adapter.sk(key), adapter.sv(value));
       },
 
-      leftPop: (async (key: K, count?: number): Promise<V | null | V[]> => {
-        if (count !== undefined) {
-          const raws = await adapter.client.lpop(adapter.sk(key), count);
-          return (raws ?? []).map((r: string) => adapter.ds(r));
-        }
-        return adapter.dv(await adapter.client.lpop(adapter.sk(key)));
-      }) as ListOperations<K, V>['leftPop'],
+      leftPop,
 
-      rightPop: (async (key: K, count?: number): Promise<V | null | V[]> => {
-        if (count !== undefined) {
-          const raws = await adapter.client.rpop(adapter.sk(key), count);
-          return (raws ?? []).map((r: string) => adapter.ds(r));
-        }
-        return adapter.dv(await adapter.client.rpop(adapter.sk(key)));
-      }) as ListOperations<K, V>['rightPop'],
+      rightPop,
 
       async rightPopAndLeftPush(sourceKey: K, destinationKey: K): Promise<V | null> {
         return adapter.dv(await adapter.client.rpoplpush(adapter.sk(sourceKey), adapter.sk(destinationKey)));
@@ -370,6 +380,30 @@ export class IORedisAdapter<K = string, V = unknown> {
 
   opsForSet(): SetOperations<K, V> {
     const adapter = this;
+
+    // Use function overloads so TypeScript can verify each overload without unsafe casts
+    async function pop(key: K): Promise<V | null>;
+    async function pop(key: K, count: number): Promise<V[]>;
+    async function pop(key: K, count?: number): Promise<V | null | V[]> {
+      if (count !== undefined) {
+        const raws = await adapter.client.spop(adapter.sk(key), count);
+        return (raws ?? []).map((r: string) => adapter.ds(r));
+      }
+      return adapter.dv(await adapter.client.spop(adapter.sk(key)));
+    }
+
+    async function isMember(key: K, value: V): Promise<boolean>;
+    async function isMember(key: K, ...values: [V, ...V[]]): Promise<boolean | Map<V, boolean>>;
+    async function isMember(key: K, ...values: V[]): Promise<boolean | Map<V, boolean>> {
+      if (values.length === 1) {
+        return (await adapter.client.sismember(adapter.sk(key), adapter.sv(values[0]))) === 1;
+      }
+      const results = await adapter.client.smismember(adapter.sk(key), ...values.map(v => adapter.sv(v)));
+      const map = new Map<V, boolean>();
+      values.forEach((v, i) => map.set(v, results[i] === 1));
+      return map;
+    }
+
     return {
       async add(key: K, ...values: V[]): Promise<number> {
         return adapter.client.sadd(adapter.sk(key), ...values.map(v => adapter.sv(v)));
@@ -379,13 +413,7 @@ export class IORedisAdapter<K = string, V = unknown> {
         return adapter.client.srem(adapter.sk(key), ...values.map(v => adapter.sv(v)));
       },
 
-      pop: (async (key: K, count?: number): Promise<V | null | V[]> => {
-        if (count !== undefined) {
-          const raws = await adapter.client.spop(adapter.sk(key), count);
-          return (raws as string[]).map(r => adapter.ds(r));
-        }
-        return adapter.dv(await (adapter.client.spop(adapter.sk(key)) as Promise<string | null>));
-      }) as SetOperations<K, V>['pop'],
+      pop,
 
       async move(key: K, value: V, destKey: K): Promise<boolean> {
         return (await adapter.client.smove(adapter.sk(key), adapter.sk(destKey), adapter.sv(value))) === 1;
@@ -396,36 +424,28 @@ export class IORedisAdapter<K = string, V = unknown> {
         return new Set(raws.map(r => adapter.ds(r)));
       },
 
-      isMember: (async (key: K, ...values: V[]): Promise<boolean | Map<V, boolean>> => {
-        if (values.length === 1) {
-          return (await adapter.client.sismember(adapter.sk(key), adapter.sv(values[0]))) === 1;
-        }
-        const results = await adapter.client.smismember(adapter.sk(key), ...values.map(v => adapter.sv(v)));
-        const map = new Map<V, boolean>();
-        values.forEach((v, i) => map.set(v, results[i] === 1));
-        return map;
-      }) as SetOperations<K, V>['isMember'],
+      isMember,
 
       async size(key: K): Promise<number> {
         return adapter.client.scard(adapter.sk(key));
       },
 
       async randomMember(key: K): Promise<V | null> {
-        return adapter.dv(await (adapter.client.srandmember(adapter.sk(key)) as Promise<string | null>));
+        return adapter.dv(await adapter.client.srandmember(adapter.sk(key)));
       },
 
       async randomMembers(key: K, count: number): Promise<V[]> {
         if (!Number.isInteger(count) || count <= 0) throw new Error('count must be a positive integer');
         // Negative count allows duplicates in Redis SRANDMEMBER
         const raws = await adapter.client.srandmember(adapter.sk(key), -count);
-        return (raws as string[]).map(r => adapter.ds(r));
+        return (raws ?? []).map((r: string) => adapter.ds(r));
       },
 
       async distinctRandomMembers(key: K, count: number): Promise<Set<V>> {
         if (!Number.isInteger(count) || count <= 0) throw new Error('count must be a positive integer');
         // Positive count returns distinct members in Redis SRANDMEMBER
         const raws = await adapter.client.srandmember(adapter.sk(key), count);
-        return new Set((raws as string[]).map(r => adapter.ds(r)));
+        return new Set((raws ?? []).map((r: string) => adapter.ds(r)));
       },
 
       async intersect(key: K, ...otherKeys: K[]): Promise<Set<V>> {

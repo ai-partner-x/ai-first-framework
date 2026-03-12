@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "lib": ["ES2022"],
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./",
+    "baseUrl": "./",
+    "paths": {
+      "@ai-partner-x/aiko-boot": ["../../../packages/aiko-boot/src"],
+      "@ai-partner-x/aiko-boot-starter-security": ["../../../packages/aiko-boot-starter-security/src"],
+      "@ai-partner-x/aiko-boot-starter-orm": ["../../../packages/aiko-boot-starter-orm/src"],
+      "@ai-partner-x/aiko-boot-starter-validation": ["../../../packages/aiko-boot-starter-validation/src"],
+      "@ai-partner-x/aiko-boot-starter-web": ["../../../packages/aiko-boot-starter-web/src"]
+    },
+    "types": ["node"]
+  },
+  "include": [
+    "**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
