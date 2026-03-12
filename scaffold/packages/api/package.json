@@ -12,9 +12,9 @@
   "scripts": {
     "dev": "concurrently -n codegen,server -c blue,green \"pnpm codegen:watch\" \"node --import @swc-node/register/esm-register --watch src/server.ts\"",
     "dev:server": "node --import @swc-node/register/esm-register --watch src/server.ts",
-    "codegen:watch": "node --import tsx scripts/codegen.ts --watch",
+    "codegen:watch": "node scripts/codegen.cjs --watch",
     "init-db": "node --import @swc-node/register/esm-register src/scripts/init-db.ts",
-    "codegen": "node --import tsx scripts/codegen.ts",
+    "codegen": "node scripts/codegen.cjs",
     "build": "pnpm codegen && tsup",
     "start": "node dist/server.js",
     "lint": "eslint src"
