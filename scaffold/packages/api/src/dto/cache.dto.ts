@@ -15,7 +15,7 @@ export interface CachePutDto {
 
 export interface CacheEvictDto {
   name: string;
-  key: string;
+  key?: string;
   allEntries?: boolean;
 }
 
