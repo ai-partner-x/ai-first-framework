@@ -9,6 +9,14 @@ import type { CacheGetDto, CachePutDto, CacheEvictDto, CacheClearDto } from '../
  *
  * 提供缓存的 CRUD 操作接口
  * 注意：需要在 app.config.ts 中启用 cache 并配置 Redis 连接
+ * 
+ * ⚠️ 安全警告：
+ * 本控制器暴露了任意缓存读写/驱逐/清空操作，适用于开发调试和示例项目。
+ * 在生产环境中使用前，必须：
+ * 1. 通过认证/授权机制保护这些端点（如添加 @PreAuthorize 注解）
+ * 2. 或仅在开发环境注册此控制器（检查 NODE_ENV）
+ * 3. 或从生产配置中完全禁用 cache 模块
+ * 否则可能导致数据泄露、缓存投毒或拒绝服务（如清空热数据缓存）
  */
 @RestController({ path: '/cache' })
 export class CacheController {
@@ -17,6 +25,8 @@ export class CacheController {
 
   /**
    * 获取缓存值
+   * 
+   * ⚠️ 安全提示：此接口在生产环境中应受认证/授权保护
    * @example
    * curl "http://localhost:3001/api/cache/get?name=user&key=1"
    */
@@ -31,6 +41,8 @@ export class CacheController {
 
   /**
    * 设置缓存值
+   * 
+   * ⚠️ 安全提示：此接口在生产环境中应受认证/授权保护
    * @example
    * curl -X POST http://localhost:3001/api/cache/put \
    *   -H "Content-Type: application/json" \
@@ -44,6 +56,8 @@ export class CacheController {
 
   /**
    * 删除缓存条目
+   * 
+   * ⚠️ 安全提示：此接口在生产环境中应受认证/授权保护，防止恶意驱逐
    * @example
    * curl -X DELETE "http://localhost:3001/api/cache/evict?name=user&key=1"
    */
@@ -61,6 +75,8 @@ export class CacheController {
 
   /**
    * 清空缓存命名空间
+   * 
+   * ⚠️ 安全提示：此接口在生产环境中应受认证/授权保护，防止拒绝服务攻击
    * @example
    * curl -X DELETE "http://localhost:3001/api/cache/clear?name=user"
    */
@@ -72,6 +88,8 @@ export class CacheController {
 
   /**
    * 检查缓存状态
+   * 
+   * ⚠️ 安全提示：此接口可能暴露缓存基础设施信息，在生产环境中应受保护
    * @example
    * curl "http://localhost:3001/api/cache/status"
    */
