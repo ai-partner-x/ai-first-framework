@@ -51,9 +51,11 @@ export class CacheController {
   async evict(
     @RequestParam('name') name: string,
     @RequestParam('key') key: string,
-    @RequestParam('allEntries') allEntries?: boolean,
+    @RequestParam('allEntries') allEntries?: string,
   ): Promise<{ ok: boolean }> {
-    await this.cacheService.evict({ name, key, allEntries });
+    const normalizedAllEntries =
+      typeof allEntries === 'string' ? allEntries === 'true' : undefined;
+    await this.cacheService.evict({ name, key, allEntries: normalizedAllEntries });
     return { ok: true };
   }
 
