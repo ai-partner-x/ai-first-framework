@@ -217,9 +217,9 @@ export class UserController {
   @PostMapping('/:id/avatar')
   async uploadAvatar(
     @PathVariable('id') id: string,
-    @RequestPart('avatar') avatar: MultipartFile,
+    @RequestPart('avatar') avatar: MultipartFile | undefined,
   ): Promise<{ url: string; key: string; filename: string; size: number }> {
-    if (avatar.isEmpty()) {
+    if (!avatar || avatar.isEmpty()) {
       throw new Error('上传的文件为空');
     }
 
