@@ -1,0 +1,31 @@
+# Dependencies
+node_modules
+.pnpm-store
+.pnpm-debug.log
+
+# Build outputs
+dist
+*.tsbuildinfo
+.turbo
+.next
+.vite
+
+# Database files
+*.db
+data/*.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.DS_Store
+
+# Logs
+*.log
+
+# Uploads (keep .gitkeep)
+packages/api/uploads/*
+!packages/api/uploads/.gitkeep
