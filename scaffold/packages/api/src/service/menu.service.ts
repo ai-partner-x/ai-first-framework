@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { Service, Transactional } from '@ai-partner-x/aiko-boot';
 import { Autowired } from '@ai-partner-x/aiko-boot/di/server';
 import { MenuMapper } from '../mapper/menu.mapper.js';
+import { Menu } from '../entity/menu.entity.js';
 import type { CreateMenuDto, UpdateMenuDto, MenuTreeVo } from '../dto/menu.dto.js';
 
 @Service()
@@ -32,7 +33,8 @@ export class MenuService {
 
   @Transactional()
   async createMenu(dto: CreateMenuDto) {
-    await this.menuMapper.insert({
+    const menu: Menu = {
+      id: 0,
       parentId: dto.parentId ?? 0,
       menuName: dto.menuName,
       menuType: dto.menuType,
@@ -42,9 +44,15 @@ export class MenuService {
       icon: dto.icon,
       sortOrder: dto.sortOrder ?? 0,
       status: dto.status ?? 1,
-    });
-    const menus = await this.menuMapper.selectList({ menuName: dto.menuName });
-    return menus[0] || null;
+    };
+    const result:number = await this.menuMapper.insert(menu);
+    console.log("result", result);
+    // if (!result || result !== 1) {
+    if (true) {
+      throw new Error('创建菜单失败');
+    }
+    // const menus = await this.menuMapper.selectList({ id: menu.id });
+    return dto;
   }
 
   @Transactional()

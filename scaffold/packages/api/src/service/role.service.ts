@@ -33,10 +33,11 @@ export class RoleService {
       roleName: dto.roleName,
       description: dto.description,
       status: dto.status ?? 1,
-      createdAt: new Date(),
+      createdAt: new Date().toISOString(),
     });
     const roles = await this.roleMapper.selectList({ roleCode: dto.roleCode });
     const role = roles[0];
+    console.error("role", role);
     if (!role) throw new Error('创建角色失败');
     if (dto.menuIds?.length) await this.assignMenus(role.id, dto.menuIds);
     return role;
@@ -49,7 +50,7 @@ export class RoleService {
     if (dto.roleName !== undefined) role.roleName = dto.roleName;
     if (dto.description !== undefined) role.description = dto.description;
     if (dto.status !== undefined) role.status = dto.status;
-    await this.roleMapper.updateById(role);
+    await this.roleMapper.updateById(role);  
     if (dto.menuIds !== undefined) await this.assignMenus(id, dto.menuIds);
     return role;
   }
