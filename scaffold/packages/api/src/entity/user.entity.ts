@@ -11,8 +11,17 @@ export class User {
   @TableField({ column: 'password_hash' })
   passwordHash!: string;
 
-  @TableField()
+  @TableField({ column: 'real_name' })
+  realName?: string;
+
+  @TableField({ column: 'email' })
   email!: string;
+
+  @TableField({ column: 'phone' })
+  phone?: string;
+
+  @TableField({ column: 'status' })
+  status!: number; // 1启用 0禁用
 
   @TableField({ column: 'created_at' })
   createdAt?: Date;

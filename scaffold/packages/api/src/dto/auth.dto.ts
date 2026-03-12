@@ -10,9 +10,21 @@ export class LoginDto {
   password!: string;
 }
 
+export class RefreshTokenDto {
+  @IsNotEmpty({ message: 'refreshToken不能为空' })
+  refreshToken!: string;
+}
+
 /** 登录成功返回的用户信息（不含密码） */
 export class LoginResultDto {
-  id!: number;
-  username!: string;
-  email!: string;
+  accessToken!: string;
+  refreshToken!: string;
+  userInfo!: {
+    id: number;
+    username: string;
+    realName?: string;
+    email?: string;
+    roles: string[];
+    permissions: string[];
+  };
 }
