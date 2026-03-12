@@ -14,7 +14,6 @@ describe('SecurityContext', function() {
       id: 1,
       username: 'testuser',
       email: 'test@example.com',
-      enabled: true,
       roles: [
         { id: 1, name: 'ADMIN' },
         { id: 2, name: 'MANAGER' },
