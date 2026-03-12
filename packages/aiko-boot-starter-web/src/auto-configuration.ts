@@ -208,7 +208,7 @@ export class WebAutoConfiguration {
     // 创建 Express 应用，优先使用调用方通过 useExpressApp() 预注册的实例。
     // 预注册实例允许用户在路由挂载前注册自定义中间件（如 Auth、urlencoded 解析器）。
     const app = _preConfiguredApp ?? express();
-    _preConfiguredApp = null; // 使用后立即清空，避免跨请求复用
+    _preConfiguredApp = null; // 使用后立即清空，避免在多次应用启动 / 重复 createApp 调用间泄漏预配置实例
 
     // CORS (默认启用)
     const corsModule = await import('cors');

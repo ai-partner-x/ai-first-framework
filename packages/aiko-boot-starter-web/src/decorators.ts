@@ -606,6 +606,10 @@ export function applyJsonFormat(value: unknown, visited: WeakMap<object, unknown
     if (visited.has(value as object)) {
       return visited.get(value as object);
     }
+    // Fast-path: all elements are primitives – return array as-is without copying
+    if (value.every(item => item === null || item === undefined || typeof item !== 'object')) {
+      return value;
+    }
     const out: unknown[] = [];
     // Register the array copy before recursing to break cycles
     visited.set(value as object, out);
@@ -671,6 +675,16 @@ export function applyJsonFormat(value: unknown, visited: WeakMap<object, unknown
       proto && proto !== Object.prototype
         ? (Reflect.getMetadata(JSON_FORMAT_METADATA, proto) || {})
         : {};
+
+    // Fast-path: no @JsonFormat metadata and all own values are primitives
+    // – return the original object as-is without deep-copying
+    const hasFormats = Object.keys(formats).length > 0;
+    if (!hasFormats) {
+      const values = Object.values(value as Record<string, unknown>);
+      if (values.every(v => v === null || v === undefined || typeof v !== 'object')) {
+        return value;
+      }
+    }
 
     const result: Record<string, unknown> = {};
     // Register result in the map before recursing so circular refs resolve to the partial copy
