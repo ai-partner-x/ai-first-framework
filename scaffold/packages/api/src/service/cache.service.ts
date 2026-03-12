@@ -6,10 +6,11 @@ import type { CacheGetDto, CachePutDto, CacheEvictDto, CacheClearDto } from '../
 
 @Service()
 export class CacheService {
-  private cacheManager: CacheManager | null = null;
-
-  constructor() {
-    this.cacheManager = getCacheManager();
+  private getCacheManagerInstance(): CacheManager {
+    if (!isCacheManagerInitialized()) {
+      throw new Error('Cache is not initialized. Enable cache in app.config.ts and ensure Redis is running.');
+    }
+    return getCacheManager();
   }
 
   /**
@@ -19,11 +20,7 @@ export class CacheService {
    * @returns 缓存值（JSON 字符串），未命中返回 null
    */
   async get(dto: CacheGetDto): Promise<string | null> {
-    if (!this.cacheManager) {
-      throw new Error('Cache is not initialized. Enable cache in app.config.ts and ensure Redis is running.');
-    }
-
-    const cache = this.cacheManager.getCache(dto.name);
+    const cache = this.getCacheManagerInstance().getCache(dto.name);
     const value = await cache.get(dto.key);
     return value;
   }
@@ -32,16 +29,12 @@ export class CacheService {
    * 设置缓存值
    * @param name 缓存命名空间
    * @param key 缓存键
-   * @param value 缓存值（任意类型，会自动序列化为 JSON）
+   * @param value 缓存值（任意类型，会自动序列化为 JSON 字符串存储）
    * @param ttlSeconds 可选过期时间（秒）
    */
   async put(dto: CachePutDto): Promise<void> {
-    if (!this.cacheManager) {
-      throw new Error('Cache is not initialized. Enable cache in app.config.ts and ensure Redis is running.');
-    }
-
-    const value = typeof dto.value === 'string' ? dto.value : JSON.stringify(dto.value);
-    const cache = this.cacheManager.getCache(dto.name);
+    const value = JSON.stringify(dto.value);
+    const cache = this.getCacheManagerInstance().getCache(dto.name);
     await cache.put(dto.key, value, dto.ttlSeconds);
   }
 
@@ -52,11 +45,7 @@ export class CacheService {
    * @param allEntries 是否清除所有条目
    */
   async evict(dto: CacheEvictDto): Promise<void> {
-    if (!this.cacheManager) {
-      throw new Error('Cache is not initialized. Enable cache in app.config.ts and ensure Redis is running.');
-    }
-
-    const cache = this.cacheManager.getCache(dto.name);
+    const cache = this.getCacheManagerInstance().getCache(dto.name);
     if (dto.allEntries) {
       await cache.clear();
     } else {
@@ -69,11 +58,7 @@ export class CacheService {
    * @param name 缓存命名空间
    */
   async clear(dto: CacheClearDto): Promise<void> {
-    if (!this.cacheManager) {
-      throw new Error('Cache is not initialized. Enable cache in app.config.ts and ensure Redis is running.');
-    }
-
-    const cache = this.cacheManager.getCache(dto.name);
+    const cache = this.getCacheManagerInstance().getCache(dto.name);
     await cache.clear();
   }
 
