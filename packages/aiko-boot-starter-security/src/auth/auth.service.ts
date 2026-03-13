@@ -51,10 +51,6 @@ export class AuthService {
       throw new Error('Invalid credentials');
     }
 
-    if (!user.enabled) {
-      throw new Error('Account is disabled');
-    }
-
     const isValid = await this.localStrategy.verifyPassword(
       user.password || '',
       credentials.password
@@ -94,7 +90,6 @@ export class AuthService {
       username: userData.username,
       email: userData.email,
       password: hashedPassword,
-      enabled: true,
     });
   }
 

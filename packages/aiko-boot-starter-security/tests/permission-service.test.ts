@@ -23,7 +23,6 @@ describe('PermissionService', function () {
             id: 1,
             username: 'testuser',
             email: 'test@example.com',
-            enabled: true,
             roles: roles,
         };
     };
@@ -52,7 +51,6 @@ describe('PermissionService', function () {
                 id: 1,
                 username: 'testuser',
                 email: 'test@example.com',
-                enabled: true,
             };
 
             expect(service.hasRole(user, 'ADMIN')).toBe(false);

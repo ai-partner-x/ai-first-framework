@@ -18,6 +18,5 @@ export interface User {
   username: string;
   password?: string;
   email: string;
-  enabled: boolean;
   roles?: Role[];
 }

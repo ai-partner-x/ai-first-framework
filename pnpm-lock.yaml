@@ -612,12 +612,6 @@ importers:
       '@ai-partner-x/aiko-boot':
         specifier: workspace:*
         version: link:../aiko-boot
-      '@ai-partner-x/aiko-boot-starter-orm':
-        specifier: workspace:*
-        version: link:../aiko-boot-starter-orm
-      '@ai-partner-x/aiko-boot-starter-web':
-        specifier: workspace:*
-        version: link:../aiko-boot-starter-web
       bcrypt:
         specifier: ^5.1.1
         version: 5.1.1
@@ -639,6 +633,9 @@ importers:
       reflect-metadata:
         specifier: ^0.2.1
         version: 0.2.2
+      tslib:
+        specifier: ^2.6.0
+        version: 2.8.1
     devDependencies:
       '@types/bcrypt':
         specifier: ^5.0.2

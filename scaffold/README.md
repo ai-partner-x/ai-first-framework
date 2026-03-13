@@ -2,6 +2,33 @@
 
 多项目 monorepo 脚手架，包含 **api**、**admin**、**mobile**、**shared**、**shared-auth**。
 
+## 快速启动
+
+```bash
+# 1. 进入 scaffold 目录
+cd scaffold
+
+# 2. 安装依赖（首次或依赖变更后）
+pnpm install
+
+# 3. 初始化数据库（首次）
+pnpm init-db
+
+# 4. 启动 API 服务
+pnpm dev:api
+```
+
+**启动成功后访问：**
+- API 服务: http://localhost:3001
+- API 文档: http://localhost:3001/api
+
+**测试登录：**
+```bash
+curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+```
+
 ## 目录结构
 
 ```
