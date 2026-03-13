@@ -25,8 +25,8 @@ export const createAuthorizationClientMiddleware = (key?: string) => {
       await next()
       return
     }
-    const { permissonPoints } = await authorizationConfig.provider.getPermissions()
-    const p = normalizePermissions(permissonPoints)
+    const { permissionPoints } = await authorizationConfig.provider.getPermissions()
+    const p = normalizePermissions(permissionPoints)
     if (!key) {
       key = location.pathname
     }

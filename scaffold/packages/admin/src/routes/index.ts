@@ -45,7 +45,10 @@ function applyMiddlewareToRoutes(routes: RouteConfig[], middlewares: MiddlewareF
   return routes.map((route) => {
     const { children, anonymous, useGuard, ...rest } = route
     const middleware: MiddlewareFn[] = []
-    if (!anonymous) {
+
+    const requiresAuth = anonymous !== true
+
+    if (requiresAuth) {
       middleware.push(middlewares[0] as MiddlewareFn)
       if (useGuard !== false) {
         middleware.push(middlewares[1] as MiddlewareFn)

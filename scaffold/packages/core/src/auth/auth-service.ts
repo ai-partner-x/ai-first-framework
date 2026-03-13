@@ -5,6 +5,11 @@ export class AuthService {
   private provider: AuthProviderConfig | null = null
   private user: AuthUser | null = null
 
+  /** Centralized internal user state update to keep logic in one place. */
+  private setUser(user: AuthUser | null) {
+    this.user = user
+  }
+
 
   async setup(provider: AuthProviderConfig) {
     this.provider = provider
@@ -21,7 +26,7 @@ export class AuthService {
     this.checkSetup()
     const result = await this.provider!.login!(params)
     if (result.success) {
-      this.user = result.user as AuthUser
+      this.setUser(result.user ?? null)
     }
     return result
   }
@@ -30,7 +35,7 @@ export class AuthService {
     this.checkSetup()
     const result = await this.provider!.logout()
     if (result.success) {
-      this.user = null
+      this.setUser(null)
     }
     return result
   }
@@ -47,7 +52,7 @@ export class AuthService {
     }
     const result = await this.provider!.getIdentity()
     if (result) {
-      this.user = result
+      this.setUser(result)
     }
     return result ?? null
   }

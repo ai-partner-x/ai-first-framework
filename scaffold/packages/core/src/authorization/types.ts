@@ -3,7 +3,7 @@ export type PermissionKey = string
 export type PermissionSet = PermissionKey[] | Record<PermissionKey, boolean>
 
 export type PermissionResult = {
-  permissonPoints: PermissionSet
+  permissionPoints: PermissionSet
   menuTree: PermissionMenuItem[]
 }
 

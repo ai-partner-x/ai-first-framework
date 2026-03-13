@@ -40,6 +40,31 @@ export interface ShellBarProps {
   onBack?: () => void
 }
 
+function useAuthIdentity() {
+  const [user, setUser] = useState<AuthUser | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadIdentity = async () => {
+      try {
+        const identity = await appAuth.getIdentity()
+        if (!cancelled) setUser(identity ?? null)
+      } catch {
+        if (!cancelled) setUser(null)
+      }
+    }
+
+    void loadIdentity()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return user
+}
+
 export function ShellBar({
   title = "AI-First",
   logo,
@@ -51,25 +76,7 @@ export function ShellBar({
   onBack,
 }: ShellBarProps) {
   const navigate = useNavigate()
-
-  const [user, setUser] = useState<AuthUser | null>(null)
-  useEffect(() => {
-    let cancelled = false
-    try {
-      appAuth.getIdentity()
-        .then((u) => {
-          if (!cancelled) setUser(u ?? null)
-        })
-        .catch(() => {
-          if (!cancelled) setUser(null)
-        })
-    } catch {
-      setUser(null)
-    }
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const user = useAuthIdentity()
   const handleLogout = async () => {
     const result = await appAuth.logout()
     if (result?.success) navigate(LOGIN_URL, { replace: true })

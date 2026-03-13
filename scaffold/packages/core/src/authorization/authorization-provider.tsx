@@ -41,8 +41,8 @@ export function AuthorizationProvider({
 
       setIsLoading(true)
       try {
-        const { permissonPoints } = await provider.getPermissions()
-        setData(permissonPoints)
+        const { permissionPoints } = await provider.getPermissions()
+        setData(permissionPoints)
       } catch {
         setData(null)
       } finally {

@@ -94,7 +94,11 @@ function AppShell() {
     },
   ]
 
-  if (!LOGIN_URL.startsWith("http")) {
+  // When LOGIN_URL is an internal path (e.g. "/login"), we register a local login route.
+  // For external login URLs (e.g. SSO like "https://sso.example.com/login"), routing is handled outside this app.
+  const isExternalLogin = LOGIN_URL.startsWith("http")
+
+  if (!isExternalLogin) {
     appRoutes.unshift({
       path: LOGIN_URL,
       element: withSuspense(LoginPageRoute),
