@@ -17,7 +17,10 @@
     "codegen": "node scripts/codegen.cjs",
     "build": "pnpm codegen && tsup",
     "start": "node dist/server.js",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@ai-partner-x/aiko-boot": "workspace:*",
@@ -55,6 +58,8 @@
     "@types/node": "^20.11.0",
     "tsup": "^8.0.0",
     "tsx": "^4.7.0",
-    "typescript": "^5.3.0"
+    "typescript": "^5.3.0",
+    "vitest": "^1.2.0",
+    "@vitest/coverage-v8": "^1.2.0"
   }
 }
