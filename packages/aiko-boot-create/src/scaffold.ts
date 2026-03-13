@@ -37,6 +37,7 @@ const FRAMEWORK_PACKAGE_NAMES = [
   'aiko-boot-starter-validation',
   'aiko-boot-starter-web',
   'aiko-boot-starter-storage',
+  'aiko-boot-starter-security',
 ] as const;
 
 export type CreateOptions = {

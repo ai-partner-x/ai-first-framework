@@ -1038,12 +1038,18 @@ importers:
       '@ai-partner-x/aiko-boot-codegen':
         specifier: workspace:*
         version: link:../../../packages/aiko-boot-codegen
+      '@ai-partner-x/aiko-boot-starter-log':
+        specifier: workspace:*
+        version: link:../../../packages/aiko-boot-starter-log
       '@ai-partner-x/aiko-boot-starter-mq':
         specifier: workspace:*
         version: link:../../../packages/aiko-boot-starter-mq
       '@ai-partner-x/aiko-boot-starter-orm':
         specifier: workspace:*
         version: link:../../../packages/aiko-boot-starter-orm
+      '@ai-partner-x/aiko-boot-starter-security':
+        specifier: workspace:*
+        version: link:../../../packages/aiko-boot-starter-security
       '@ai-partner-x/aiko-boot-starter-storage':
         specifier: workspace:*
         version: link:../../../packages/aiko-boot-starter-storage
@@ -1053,15 +1059,24 @@ importers:
       '@ai-partner-x/aiko-boot-starter-web':
         specifier: workspace:*
         version: link:../../../packages/aiko-boot-starter-web
+      bcryptjs:
+        specifier: ^2.4.3
+        version: 2.4.3
       better-sqlite3:
         specifier: ^12.6.2
         version: 12.6.2
       cors:
         specifier: ^2.8.5
         version: 2.8.6
+      date-fns:
+        specifier: ^4.1.0
+        version: 4.1.0
       express:
         specifier: ^4.18.0
         version: 4.22.1
+      jsonwebtoken:
+        specifier: ^9.0.2
+        version: 9.0.3
       multer:
         specifier: ^1.4.5-lts.1
         version: 1.4.5-lts.2
@@ -1075,6 +1090,9 @@ importers:
       '@swc/core':
         specifier: ^1.15.18
         version: 1.15.18
+      '@types/bcryptjs':
+        specifier: ^2.4.6
+        version: 2.4.6
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13
@@ -1084,6 +1102,9 @@ importers:
       '@types/express':
         specifier: ^4.17.21
         version: 4.17.25
+      '@types/jsonwebtoken':
+        specifier: ^9.0.5
+        version: 9.0.10
       '@types/multer':
         specifier: ^1.4.12
         version: 1.4.13
@@ -4000,6 +4021,9 @@ packages:
   '@types/bcrypt@5.0.2':
     resolution: {integrity: sha512-6atioO8Y75fNcbmj0G7UjI9lXN2pQ/IGJ2FWT4a/btd0Lk9lQalHLKhkgKVZ3r+spnmWUKfbMi1GEe9wyHQfNQ==}
 
+  '@types/bcryptjs@2.4.6':
+    resolution: {integrity: sha512-9xlo6R2qDs5uixm0bcIqCeMCE6HiQsIyel9KQySStiyqNl2tnj2mP3DX1Nf56MD6KMenNNlBBsy3LJ7gUEQPXQ==}
+
   '@types/better-sqlite3@7.6.13':
     resolution: {integrity: sha512-NMv9ASNARoKksWtsq/SHakpYAYnhBrQgGD8zkLYk/jaK8jUGn08CfEdTRgYhMypUQAfzSP8W6gNLe0q19/t4VA==}
 
@@ -4672,6 +4696,9 @@ packages:
     resolution: {integrity: sha512-AGBHOG5hPYZ5Xl9KXzU5iKq9516yEmvCKDg3ecP5kX2aB6UqTeXZxk2ELnDgDm6BQSMlLt9rDB4LoSMx0rYwww==}
     engines: {node: '>= 10.0.0'}
 
+  bcryptjs@2.4.3:
+    resolution: {integrity: sha512-V/Hy/X9Vt7f3BbPJEi8BdVFMByHi+jNXrYkW3huaybV/kQ0KJg0Y6PkEMbn+zeT+i+SiKZ/HMqJGIIt4LZDqNQ==}
+
   better-sqlite3@12.6.2:
     resolution: {integrity: sha512-8VYKM3MjCa9WcaSAI3hzwhmyHVlH8tiGFwf0RlTsZPWJ1I5MkzjiudCo4KC4DxOaL/53A5B1sI/IbldNFDbsKA==}
     engines: {node: 20.x || 22.x || 23.x || 24.x || 25.x}
@@ -5047,6 +5074,9 @@ packages:
 
   date-fns@3.6.0:
     resolution: {integrity: sha512-fRHTG8g/Gif+kSh50gaGEdToemgfj74aRX3swtiouboip5JDLAyDE9F11nHMIcvOaXeOC6D7SpNhi7uFyB7Uww==}
+
+  date-fns@4.1.0:
+    resolution: {integrity: sha512-Ukq0owbQXxa/U3EGtsdVBkR1w7KOQ5gIBqdH2hkvknzZPYvBxb/aa6E8L7tmjFtkwZBu3UXBbjIgPo/Ez4xaNg==}
 
   dateformat@2.2.0:
     resolution: {integrity: sha512-GODcnWq3YGoTnygPfi02ygEiRxqUxpJwuRHjdhJYuxpcZmDq4rjBiXYmbCCzStxo176ixfLT6i4NPwQooRySnw==}
@@ -11783,6 +11813,8 @@ snapshots:
     dependencies:
       '@types/node': 20.19.37
 
+  '@types/bcryptjs@2.4.6': {}
+
   '@types/better-sqlite3@7.6.13':
     dependencies:
       '@types/node': 20.19.37
@@ -12686,6 +12718,8 @@ snapshots:
       - encoding
       - supports-color
 
+  bcryptjs@2.4.3: {}
+
   better-sqlite3@12.6.2:
     dependencies:
       bindings: 1.5.0
@@ -13075,6 +13109,8 @@ snapshots:
       assert-plus: 1.0.0
 
   date-fns@3.6.0: {}
+
+  date-fns@4.1.0: {}
 
   dateformat@2.2.0: {}
 
