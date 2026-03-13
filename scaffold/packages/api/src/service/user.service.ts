@@ -1,36 +1,59 @@
 import 'reflect-metadata';
 import { Injectable, Autowired } from '@ai-partner-x/aiko-boot/di/server';
 import bcrypt from 'bcryptjs';
-import { SysUserMapper } from '../mapper/sys-user.mapper.js';
-import { SysUserRoleMapper } from '../mapper/sys-user-role.mapper.js';
-import { SysRoleMapper } from '../mapper/sys-role.mapper.js';
+import { UserMapper } from '../mapper/user.mapper.js';
+import { UserRoleMapper } from '../mapper/user-role.mapper.js';
+import { RoleMapper } from '../mapper/role.mapper.js';
 import type { CreateUserDto, UpdateUserDto, UserPageDto, UserVo } from '../dto/user.dto.js';
 
 @Injectable()
 export class UserService {
   @Autowired()
-  private userMapper!: SysUserMapper;
+  private userMapper!: UserMapper;
 
   @Autowired()
-  private userRoleMapper!: SysUserRoleMapper;
+  private userRoleMapper!: UserRoleMapper;
 
   @Autowired()
-  private roleMapper!: SysRoleMapper;
+  private roleMapper!: RoleMapper;
 
   async pageUsers(params: UserPageDto) {
     const allUsers = await this.userMapper.selectList();
     let filtered = allUsers;
     if (params.username) {
-      filtered = filtered.filter(u => u.username.includes(params.username!));
+      const username = params.username;
+      const temp: typeof allUsers = [];
+      for (let i = 0; i < filtered.length; i++) {
+        const u = filtered[i];
+        if (u.username.includes(username)) {
+          temp.push(u);
+        }
+      }
+      filtered = temp;
     }
     if (params.status !== undefined) {
-      filtered = filtered.filter(u => u.status === params.status);
+      const status = params.status;
+      const temp: typeof allUsers = [];
+      for (let i = 0; i < filtered.length; i++) {
+        const u = filtered[i];
+        if (u.status === status) {
+          temp.push(u);
+        }
+      }
+      filtered = temp;
     }
     const pageNo = params.pageNo || 1;
     const pageSize = params.pageSize || 10;
     const total = filtered.length;
-    const records = filtered.slice((pageNo - 1) * pageSize, pageNo * pageSize);
-    const usersWithRoles = await Promise.all(records.map(u => this.toVo(this.parseEntityDates(u))));
+    const start = (pageNo - 1) * pageSize;
+    const end = start + pageSize;
+    const records = filtered.slice(start, end);
+    const usersWithRoles: UserVo[] = [];
+    for (let i = 0; i < records.length; i++) {
+      const u = records[i];
+      const vo = await this.toVo(this.parseEntityDates(u));
+      usersWithRoles.push(vo);
+    }
     return { records: usersWithRoles, total, pageNo, pageSize, totalPages: Math.ceil(total / pageSize) };
   }
 
@@ -46,19 +69,20 @@ export class UserService {
     const exists = await this.userMapper.selectByUsername(dto.username);
     if (exists) throw new Error('用户名已存在');
     const hashed = await bcrypt.hash(dto.password, 10);
+    const status = dto.status !== undefined ? dto.status : 1;
     await this.userMapper.insert({
       username: dto.username,
-      password: hashed,
+      passwordHash: hashed,
       realName: dto.realName,
       email: dto.email,
       phone: dto.phone,
-      status: dto.status ?? 1,
+      status: status,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
     const user = await this.userMapper.selectByUsername(dto.username);
     if (!user) throw new Error('创建用户失败');
-    if (dto.roleIds?.length) await this.assignRoles(user.id, dto.roleIds);
+    if (dto.roleIds !== undefined && dto.roleIds.length > 0) await this.assignRoles(user.id, dto.roleIds);
     return this.toVo(this.parseEntityDates(user));
   }
 
@@ -92,7 +116,7 @@ export class UserService {
     let user = await this.userMapper.selectById(id);
     if (!user) throw new Error('用户不存在');
     user = this.parseEntityDates(user);
-    user.password = await bcrypt.hash(newPassword, 10);
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
     user.updatedAt = new Date().toISOString();
     await this.userMapper.updateById(this.formatEntityDates(user));
   }
@@ -129,14 +153,18 @@ export class UserService {
 
   private async toVo(user: any): Promise<UserVo> {
     const userRoles = await this.userRoleMapper.selectList({ userId: user.id });
-    console.log('[userRoles] userRoles:', userRoles);
     const roles: string[] = [];
-    for (const ur of userRoles) {
+    for (let i = 0; i < userRoles.length; i++) {
+      const ur = userRoles[i];
       const role = await this.roleMapper.selectById(ur.roleId);
-      console.log('[role] role:', role);
       if (role) roles.push(role.roleCode);
     }
-    const { password: _p, ...safe } = user;
+    const safe: any = {};
+    for (const key in user) {
+      if (key !== 'password') {
+        safe[key] = user[key];
+      }
+    }
     return { ...safe, roles };
   }
 }

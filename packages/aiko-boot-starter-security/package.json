@@ -36,9 +36,8 @@
         "passport-local": "^1.0.0",
         "passport-oauth2": "^1.8.0",
         "reflect-metadata": "^0.2.1",
-        "@ai-partner-x/aiko-boot": "workspace:*",
-        "@ai-partner-x/aiko-boot-starter-orm": "workspace:*",
-        "@ai-partner-x/aiko-boot-starter-web": "workspace:*"
+        "tslib": "^2.6.0",
+        "@ai-partner-x/aiko-boot": "workspace:*"
     },
     "peerDependencies": {
         "express": ">=4.0.0",

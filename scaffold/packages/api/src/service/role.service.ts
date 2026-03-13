@@ -1,60 +1,65 @@
 import 'reflect-metadata';
-import { Injectable, Autowired } from '@ai-partner-x/aiko-boot/di/server';
-import { SysRoleMapper } from '../mapper/sys-role.mapper.js';
-import { SysRoleMenuMapper } from '../mapper/sys-role-menu.mapper.js';
+import { Service, Transactional } from '@ai-partner-x/aiko-boot';
+import { Autowired } from '@ai-partner-x/aiko-boot/di/server';
+import { RoleMapper } from '../mapper/role.mapper.js';
+import { RoleMenuMapper } from '../mapper/role-menu.mapper.js';
 import type { CreateRoleDto, UpdateRoleDto } from '../dto/role.dto.js';
 
-@Injectable()
+@Service()
 export class RoleService {
   @Autowired()
-  private roleMapper!: SysRoleMapper;
+  private roleMapper!: RoleMapper;
 
   @Autowired()
-  private roleMenuMapper!: SysRoleMenuMapper;
+  private roleMenuMapper!: RoleMenuMapper;
 
   async listRoles() {
-    return (await this.roleMapper.selectList()).map(r => this.parseEntityDates(r));
+    return this.roleMapper.selectList();
   }
 
   async getById(id: number) {
-    let role = await this.roleMapper.selectById(id);
+    const role = await this.roleMapper.selectById(id);
     if (!role) throw new Error('角色不存在');
-    role = this.parseEntityDates(role);
     const roleMenus = await this.roleMenuMapper.selectList({ roleId: id });
-    return { ...role, menuIds: roleMenus.map((rm: any) => rm.menuId) };
+    const menuIds: number[] = [];
+    for (let i = 0; i < roleMenus.length; i++) {
+      const rm = roleMenus[i];
+      menuIds.push(rm.menuId);
+    }
+    return { ...role, menuIds: menuIds };
   }
 
-
+  @Transactional()
   async createRole(dto: CreateRoleDto) {
+    console.log("dto", dto);
     const exists = await this.roleMapper.selectList({ roleCode: dto.roleCode });
     if (exists.length) throw new Error('角色编码已存在');
+    const status = dto.status !== undefined ? dto.status : 1;
     await this.roleMapper.insert({
       roleCode: dto.roleCode,
       roleName: dto.roleName,
       description: dto.description,
-      status: dto.status ?? 1,
+      status: status,
       createdAt: new Date().toISOString(),
     });
     const roles = await this.roleMapper.selectList({ roleCode: dto.roleCode });
     const role = roles[0];
+    console.error("role", role);
     if (!role) throw new Error('创建角色失败');
-    if (dto.menuIds?.length) {
-      await this.assignMenus(role.id, dto.menuIds);
-    }
-    return this.parseEntityDates(role);
+    if (dto.menuIds !== undefined && dto.menuIds.length > 0) await this.assignMenus(role.id, dto.menuIds);
+    return role;
   }
 
-
+  @Transactional()
   async updateRole(id: number, dto: UpdateRoleDto) {
-    let role = await this.roleMapper.selectById(id);
+    const role = await this.roleMapper.selectById(id);
     if (!role) throw new Error('角色不存在');
-    role = this.parseEntityDates(role);
     if (dto.roleName !== undefined) role.roleName = dto.roleName;
     if (dto.description !== undefined) role.description = dto.description;
     if (dto.status !== undefined) role.status = dto.status;
-    await this.roleMapper.updateById(this.formatEntityDates(role));
+    await this.roleMapper.updateById(role);  
     if (dto.menuIds !== undefined) await this.assignMenus(id, dto.menuIds);
-    return this.parseEntityDates(role);
+    return role;
   }
 
   async deleteRole(id: number): Promise<boolean> {
@@ -66,7 +71,12 @@ export class RoleService {
 
   async getRoleMenuIds(roleId: number): Promise<number[]> {
     const roleMenus = await this.roleMenuMapper.selectList({ roleId });
-    return roleMenus.map((rm: any) => rm.menuId);
+    const menuIds: number[] = [];
+    for (let i = 0; i < roleMenus.length; i++) {
+      const rm = roleMenus[i];
+      menuIds.push(rm.menuId);
+    }
+    return menuIds;
   }
 
   private async assignMenus(roleId: number, menuIds: number[]) {
@@ -74,21 +84,5 @@ export class RoleService {
     for (const menuId of menuIds) {
       await this.roleMenuMapper.insert({ roleId, menuId });
     }
-  }
-
-  private parseEntityDates(entity: any): any {
-    const parsed = { ...entity };
-    if (parsed.createdAt && typeof parsed.createdAt === 'string') {
-      parsed.createdAt = new Date(parsed.createdAt);
-    }
-    return parsed;
-  }
-
-  private formatEntityDates(entity: any): any {
-    const formatted = { ...entity };
-    if (formatted.createdAt && formatted.createdAt instanceof Date) {
-      formatted.createdAt = formatted.createdAt.toISOString();
-    }
-    return formatted;
   }
 }
