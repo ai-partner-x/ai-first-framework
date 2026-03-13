@@ -13,6 +13,7 @@ export class AuthService {
 
   async setup(provider: AuthProviderConfig) {
     this.provider = provider
+    await this.getIdentity()
     return this
   }
 
