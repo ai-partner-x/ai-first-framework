@@ -1,18 +1,41 @@
 import 'reflect-metadata';
 import { RestController, PostMapping, DeleteMapping, GetMapping, RequestParam } from '@ai-partner-x/aiko-boot-starter-web';
 import { Autowired } from '@ai-partner-x/aiko-boot';
+import { ConfigLoader } from '@ai-partner-x/aiko-boot/boot';
 import { StorageService, type UploadResult } from '@ai-partner-x/aiko-boot-starter-storage';
 import type { Request, Response } from 'express';
 
 /**
  * 文件上传控制器
  *
- * 提供文件上传、删除、获取 URL 及图片预览等接口
+ * 提供文件上传、删除、获取 URL 及图片预览等接口。
+ * 上传策略（allowedTypes、maxSize）读自 app.config.ts 的 upload.* 配置块。
  */
 @RestController({ path: '/upload' })
 export class UploadController {
   @Autowired()
   private storageService!: StorageService;
+
+  /**
+   * 从配置中读取允许的 MIME 类型列表
+   * 默认已在 app.config.ts 的 upload.allowedTypes 配置
+   */
+  private getAllowedTypes(): string[] {
+    return ConfigLoader.get<string[]>('upload.allowedTypes', [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+    ]);
+  }
+
+  /**
+   * 从配置中读取单个文件最大大小（字节）
+   * 默认已在 app.config.ts 的 upload.maxSize 配置
+   */
+  private getMaxSize(): number {
+    return ConfigLoader.get<number>('upload.maxSize', 10 * 1024 * 1024); // 默认 10MB
+  }
 
   /**
    * 校验 folder 参数，防止路径遍历攻击（如 ../../etc/passwd）。
@@ -46,8 +69,8 @@ export class UploadController {
 
       return await this.storageService.upload(file.buffer, file.originalname, {
         folder,
-        maxSize: 10 * 1024 * 1024, // 10MB
-        allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+        maxSize: this.getMaxSize(),
+        allowedTypes: this.getAllowedTypes(),
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Upload failed';
@@ -81,8 +104,8 @@ export class UploadController {
         files.map((file) =>
           this.storageService.upload(file.buffer, file.originalname, {
             folder,
-            maxSize: 10 * 1024 * 1024, // 10MB
-            allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+            maxSize: this.getMaxSize(),
+            allowedTypes: this.getAllowedTypes(),
           }),
         ),
       );

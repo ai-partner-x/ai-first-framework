@@ -16,10 +16,14 @@ import type { AppConfig } from '@ai-partner-x/aiko-boot';
  *   GET    http://localhost:3003/api/upload/url?key=...     获取文件 URL
  *   GET    http://localhost:3003/api/upload/preview?key=... 获取图片预览 URL
  */
+
+// 统一端口变量，确保 server.port 与 storage.local.baseUrl 始终一致
+const PORT = Number(process.env.PORT) || 3003;
+
 export default {
   // ========== Server Configuration (server.*) ==========
   server: {
-    port: Number(process.env.PORT) || 3003,
+    port: PORT,
     servlet: {
       contextPath: '/api',
     },
@@ -38,7 +42,15 @@ export default {
     provider: 'local',
     local: {
       uploadDir: './uploads',
-      baseUrl: `http://localhost:${process.env.PORT || 3003}/api/uploads`,
+      baseUrl: `http://localhost:${PORT}/api/uploads`,
     },
+  },
+
+  // ========== Upload Policy Configuration (upload.*) ==========
+  // 文件上传策略：允许的 MIME 类型和最大文件大小
+  // 修改此处即可调整上传限制，无需改动控制器代码
+  upload: {
+    allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+    maxSize: 10 * 1024 * 1024, // 10MB (单位: 字节)
   },
 } satisfies AppConfig;
