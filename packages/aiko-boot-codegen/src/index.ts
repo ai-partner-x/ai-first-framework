@@ -35,7 +35,7 @@ export {
 
 import { parseSourceFileFull } from './parser.js';
 import { generateJavaClass, generateJavaFromInterface } from './generator.js';
-import type { TranspilerOptions, ParsedClass, ParsedInterface } from './types.js';
+import type { TranspilerOptions } from './types.js';
 
 /**
  * Transpile TypeScript source code to Java

@@ -146,7 +146,7 @@ function parseController(filePath: string): ControllerInfo | null {
   return { className, basePath, methods, imports };
 }
 
-function generateControllerCode(info: ControllerInfo, entityFile: string, dtoFile: string): string {
+function generateControllerCode(info: ControllerInfo, entityFile: string): string {
   const methodsCode = info.methods.map((m) => {
     const paramsStr = m.params.map((p) => `${p.name}: ${p.type}`).join(', ');
     
@@ -190,7 +190,7 @@ function generateControllerCode(info: ControllerInfo, entityFile: string, dtoFil
     importStatements += `import type { ${entityImports.join(', ')} } from './${entityFile.replace('.ts', '')}';\n`;
   }
   if (dtoImports.length > 0) {
-    importStatements += `import type { ${dtoImports.join(', ')} } from './${dtoFile.replace('.ts', '')}';\n`;
+    importStatements += `import type { ${dtoImports.join(', ')} } from './index';\n`;
   }
 
   return `${importStatements}
@@ -212,6 +212,7 @@ function generateInterface(filePath: string, type: 'entity' | 'dto'): string {
   const result: string[] = [];
 
   ts.forEachChild(sourceFile, (node) => {
+    // 处理 class 声明
     if (ts.isClassDeclaration(node) && node.name) {
       const className = node.name.text;
 
@@ -228,6 +229,24 @@ function generateInterface(filePath: string, type: 'entity' | 'dto'): string {
       });
 
       result.push(`export interface ${className} {\n${properties.join('\n')}\n}`);
+    }
+    // 处理 interface 声明
+    else if (ts.isInterfaceDeclaration(node) && node.name) {
+      const interfaceName = node.name.text;
+
+      const properties: string[] = [];
+      node.members.forEach((member) => {
+        if (ts.isPropertySignature(member) && member.name) {
+          const propName = (member.name as ts.Identifier).text;
+          const propType = member.type
+            ? printer.printNode(ts.EmitHint.Unspecified, member.type, sourceFile)
+            : 'any';
+          const optional = member.questionToken ? '?' : '';
+          properties.push(`  ${propName}${optional}: ${propType};`);
+        }
+      });
+
+      result.push(`export interface ${interfaceName} {\n${properties.join('\n')}\n}`);
     }
   });
 
@@ -309,7 +328,7 @@ export function generateApiClient(options: CodegenOptions = {}) {
 
   const exports: string[] = [];
   let entityFile = '';
-  let dtoFile = '';
+  const dtoFiles: string[] = [];
   
   // 统计
   let generated = 0;
@@ -354,7 +373,7 @@ export function generateApiClient(options: CodegenOptions = {}) {
           file,
         });
         exports.push(`export * from './${file.replace('.ts', '')}';`);
-        dtoFile = file;
+        dtoFiles.push(file);
       }
     }
   }
@@ -392,7 +411,7 @@ export function generateApiClient(options: CodegenOptions = {}) {
     } else {
       const info = parseController(task.srcPath);
       if (!info) continue;
-      code = generateControllerCode(info, entityFile, dtoFile);
+      code = generateControllerCode(info, entityFile);
     }
 
     // 智能写入（内容比对）

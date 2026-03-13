@@ -184,9 +184,10 @@ function parseClass(node: ts.ClassDeclaration, sourceFile: ts.SourceFile): Parse
   const methods: ParsedMethod[] = [];
   let constructor: ParsedConstructor | undefined;
   
-  // Parse class-level JSDoc comment (only the last one before the class)
+  // Parse class-level JSDoc comment (prefer JSDoc, fallback to last comment)
   const comments = parseLeadingComments(node, sourceFile);
-  const comment = comments.length > 0 ? comments[comments.length - 1] : undefined;
+  const comment = comments.find(c => c.type === 'jsdoc') || 
+                  (comments.length > 0 ? comments[comments.length - 1] : undefined);
 
   node.members.forEach(member => {
     if (ts.isPropertyDeclaration(member)) {
@@ -214,9 +215,10 @@ function parseInterface(node: ts.InterfaceDeclaration, sourceFile: ts.SourceFile
   // Parse interface-level decorators
   const decorators = parseDecorators(node, sourceFile);
   
-  // Parse interface-level JSDoc comment (only the last one before the interface)
+  // Parse interface-level JSDoc comment (prefer JSDoc, fallback to last comment)
   const comments = parseLeadingComments(node, sourceFile);
-  const comment = comments.length > 0 ? comments[comments.length - 1] : undefined;
+  const comment = comments.find(c => c.type === 'jsdoc') || 
+                  (comments.length > 0 ? comments[comments.length - 1] : undefined);
   
   // Parse interface members
   node.members.forEach(member => {
@@ -244,8 +246,13 @@ function parseInterface(node: ts.InterfaceDeclaration, sourceFile: ts.SourceFile
 
 /**
  * Parse decorators from a node
+ * Note: TypeScript's ts.getDecorators() requires ts.HasDecorators type,
+ * but ts.InterfaceDeclaration doesn't extend ts.HasDecorators in the type system.
+ * We use ts.canHaveDecorators() to safely check if the node supports decorators.
  */
-function parseDecorators(node: ts.HasDecorators, sourceFile: ts.SourceFile): ParsedDecorator[] {
+function parseDecorators(node: ts.Node, sourceFile: ts.SourceFile): ParsedDecorator[] {
+  if (!ts.canHaveDecorators(node)) return [];
+  
   const decorators: ParsedDecorator[] = [];
   const nodeDecorators = ts.getDecorators(node);
   
