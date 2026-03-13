@@ -1,19 +1,6 @@
-export {
-  AuthProvider,
-  useAuth,
-  useOptionalAuth,
-  useLogin,
-  useLogout,
-  useIsAuthenticated,
-  useGetIdentity,
-} from "./auth-provider"
-export {
-  authClientMiddleware
-} from "./auth-client-middleware"
-export {
-  setAppAuthConfig,
-} from "./auth-config"
-
+export { appAuth } from "./auth-service"
+export { default as defaultAuthProvider } from "./default-auth-provider"
+export { createAuthClientMiddleware } from "./auth-client-middleware"
 export type {
   AuthUser,
   LoginParams,

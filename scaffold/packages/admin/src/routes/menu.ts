@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import type { RouteConfig } from "./index"
-import { routes } from "./index"
+import { getModulesContext } from "./index"
 
 export interface MenuItem {
   id: string
@@ -167,7 +167,8 @@ export type UseMenuItemsOptions = { mainItem?: MenuItem }
  * 若 options 含动态值（如 i18n），请用 useMemo 包住 options 以保持引用稳定。
  */
 export function useMenuItems(options?: UseMenuItemsOptions): RoutesToMenuResult {
-  return useMemo(() => routesToMenu(routes, options), [options])
+  const { routes } = getModulesContext()
+  return useMemo(() => routesToMenu(routes, options), [routes, options])
 }
 
 function slugify(s: string): string {

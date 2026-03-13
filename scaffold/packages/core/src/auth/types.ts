@@ -13,7 +13,8 @@ export type AuthUser = {
 
 export type LoginParams = {
   account: string
-  password?: string
+  password?: string,
+  [key: string]: unknown
 }
 
 export type AuthProviderResult = {
@@ -24,7 +25,7 @@ export type AuthProviderResult = {
 }
 
 export type AuthProviderConfig = {
-  login: (params: LoginParams) => Promise<AuthProviderResult>
+  login?: (params: LoginParams) => Promise<AuthProviderResult>
   logout: () => Promise<AuthProviderResult>
   getIdentity: () => Promise<AuthUser | null>
   onError?: (
@@ -32,9 +33,6 @@ export type AuthProviderConfig = {
   ) => Promise<{ logout?: boolean; redirectTo?: string } | void>
 }
 
-
 export type AuthConfig = {
-  fallbackUrl?: string
-  useMiddleware?: boolean
   provider?: AuthProviderConfig
 }

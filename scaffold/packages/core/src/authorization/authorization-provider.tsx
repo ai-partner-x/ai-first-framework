@@ -9,11 +9,10 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { useOptionalAuth } from "../auth"
 import { authorizationConfig } from "./authorization-config"
 import type { AuthorizationState, PermissionSet } from "./types"
 import { normalizePermissions } from "./authorization-client-middleware"
-
+import { appAuth } from "../auth"
 
 const AuthorizationContext = createContext<{
   state: AuthorizationState
@@ -24,8 +23,8 @@ export function AuthorizationProvider({
 }: {
   children: ReactNode
 }) {
-  const auth = useOptionalAuth()
-  const isAuthenticated = auth?.state.isAuthenticated ?? false
+  const result = appAuth.check()
+  const isAuthenticated = result.isAuthenticated ?? false
 
   const provider = authorizationConfig.provider!
 

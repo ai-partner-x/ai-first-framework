@@ -6,7 +6,6 @@ import { createElement, lazy } from "react"
 import { ShoppingCart } from "lucide-react"
 import type { RouteConfig } from "../index"
 import { withSuspense } from "../withSuspense"
-import { middleware } from "../auth"
 
 const GoodsReceiptListPage = lazy(() => import("@/pages/goods-receipt/ListPage"))
 const GoodsReceiptCreatePage = lazy(() => import("@/pages/goods-receipt/CreatePage"))
@@ -22,7 +21,6 @@ export const routes: RouteConfig[] = [
     groupName: "MM-采购",
     groupOrder: 10,
     order: 3,
-    middleware,
     children: [
       { index: true, element: withSuspense(GoodsReceiptListPage) },
       { path: "create", element: withSuspense(GoodsReceiptCreatePage) },

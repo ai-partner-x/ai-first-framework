@@ -5,7 +5,6 @@ import { createElement } from "react"
 import { Settings } from "lucide-react"
 import type { RouteConfig } from "../index"
 import { SettingsPage } from "@/pages/settings-page"
-import { middleware } from "../auth"
 
 export const routes: RouteConfig[] = [
   {
@@ -15,7 +14,6 @@ export const routes: RouteConfig[] = [
     group: "system",
     groupName: "系统设置",
     groupOrder: 30,
-    middleware,
     element: createElement(SettingsPage),
   },
 ]

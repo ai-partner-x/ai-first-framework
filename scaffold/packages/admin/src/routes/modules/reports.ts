@@ -7,7 +7,6 @@ import { createElement, lazy } from "react"
 import { BarChart3 } from "lucide-react"
 import type { RouteConfig } from "../index"
 import { withSuspense } from "../withSuspense"
-import { middleware } from "../auth"
 
 const PurchaseRequisitionReport = lazy(() => import("@/pages/reports/PurchaseRequisitionReport"))
 const PurchaseOrderReport = lazy(() => import("@/pages/reports/PurchaseOrderReport"))
@@ -20,7 +19,6 @@ export const routes: RouteConfig[] = [
     group: "analytics",
     groupName: "报表分析",
     groupOrder: 20,
-    middleware,
     element: withSuspense(PurchaseRequisitionReport),
   },
   {
@@ -30,7 +28,6 @@ export const routes: RouteConfig[] = [
     group: "analytics",
     groupName: "报表分析",
     groupOrder: 20,
-    middleware,
     element: withSuspense(PurchaseOrderReport),
   },
 ]

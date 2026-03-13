@@ -13,10 +13,10 @@ import { Toaster } from "./components/admin-ui/notification/toaster"
 import { MenuLayout } from "./layouts/menu-layout"
 import { TileLayout } from "./layouts/tile-layout"
 import { HomePage } from "./pages/home-page"
-import { routes } from "./routes"
+import { getModulesContext } from "./routes"
 import "./App.css"
 import { SignInForm } from "./components/admin-ui/form/sign-in-form"
-import { AuthProvider, authClientMiddleware, useAuth, setAppAuthConfig } from "@scaffold/core"
+import { appAuth } from "@scaffold/core"
 import { AuthorizationProvider, setAppAuthorizationConfig } from "@scaffold/core"
 import { ErrorComponent } from "./components/admin-ui/layout/error-component"
 import { withSuspense } from "./routes/withSuspense"
@@ -42,15 +42,8 @@ const defaultTitleIcon = (
 
 /** 登录页：根据 auth state 同步渲染，已登录则重定向到首页 */
 function LoginPageRoute() {
-  const { state } = useAuth()
-  if (state.isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <span className="inline-flex h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary" />
-      </div>
-    )
-  }
-  if (state.isAuthenticated) {
+  const result = appAuth.check()
+  if (result.isAuthenticated) {
     return <Navigate to="/" replace />
   }
   return <SignInForm />
@@ -85,33 +78,30 @@ function RootLayout() {
   )
 }
 
-const appRoutes: RouteObject[] = [
-  {
-    path: "/",
-    element: <RootLayout />,
-    children: [
-      { index: true, middleware: [authClientMiddleware], element: <HomePage /> } as RouteObject,
-      ...(routes as RouteObject[]),
-      { path: "*", element: <ErrorComponent /> },
-    ],
-  },
-]
-
-if (!LOGIN_URL.startsWith("http")) {
-  appRoutes.unshift({
-    path: LOGIN_URL,
-    element: withSuspense(LoginPageRoute),
-  })
-}
-
-const router = createBrowserRouter(appRoutes)
 
 function AppShell() {
   const { t } = useTranslation()
-  // set app auth config
-  setAppAuthConfig({
-    fallbackUrl: LOGIN_URL,
-  })
+  const { routes, middlewares } = getModulesContext()
+  const appRoutes: RouteObject[] = [
+    {
+      path: "/",
+      element: <RootLayout />,
+      children: [
+        { index: true, middleware: [middlewares[0]], element: <HomePage /> } as RouteObject,
+        ...(routes as RouteObject[]),
+        { path: "*", element: <ErrorComponent /> },
+      ],
+    },
+  ]
+
+  if (!LOGIN_URL.startsWith("http")) {
+    appRoutes.unshift({
+      path: LOGIN_URL,
+      element: withSuspense(LoginPageRoute),
+    })
+  }
+
+  const router = createBrowserRouter(appRoutes)
   setAppAuthorizationConfig({
     fallbackUrl: '/not-found',
   })
@@ -120,11 +110,9 @@ function AppShell() {
       <AppConfigProvider
         title={{ icon: defaultTitleIcon, text: t("common.appTitle") }}
       >
-        <AuthProvider>
-          <AuthorizationProvider>
-            <RouterProvider router={router} />
-          </AuthorizationProvider>
-        </AuthProvider>
+        <AuthorizationProvider>
+          <RouterProvider router={router} />
+        </AuthorizationProvider>
         <Toaster />
       </AppConfigProvider>
     </ThemeProvider>

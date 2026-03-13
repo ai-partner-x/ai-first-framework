@@ -15,24 +15,21 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { InputPassword } from "@/components/admin-ui/form/input-password"
 import { cn } from "@/lib/utils"
-import { useLogin } from "@scaffold/core"
 import { useNavigate } from "react-router"
+import { appAuth } from "@scaffold/core"
 
 export const SignInForm = () => {
   const [account, setAccount] = useState("")
   const [password, setPassword] = useState("")
-  const navigate = useNavigate()
-
-  const { mutate: login } = useLogin()
+  const navigator = useNavigate()
 
   const handleSignIn: React.ComponentProps<"form">["onSubmit"] = async (e) => {
     e.preventDefault()
-    const result = await login({ account, password })
+    const result = await appAuth.login({ account, password })
     if (result.success) {
-      navigate(result.redirectTo ?? "/", { replace: true })
+      navigator(result.redirectTo ?? "/", { replace: true })
     }
   }
-
 
   return (
     <div

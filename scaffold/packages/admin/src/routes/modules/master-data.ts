@@ -6,7 +6,6 @@ import { createElement, lazy } from "react"
 import type { RouteConfig } from "../index"
 import { Database } from "lucide-react"
 import { withSuspense } from "../withSuspense"
-import { middleware } from "../auth"
 
 const MaterialsListPage = lazy(() => import("@/pages/master-data/materials/ListPage"))
 const MaterialsViewPage = lazy(() => import("@/pages/master-data/materials/ViewPage"))
@@ -26,7 +25,6 @@ export const routes: RouteConfig[] = [
     groupName: "主数据",
     groupOrder: 10,
     icon: createElement(Database, { className: "size-[18px]" }),
-    middleware,
     children: [
       { path: "materials", label: "物料主数据", element: withSuspense(MaterialsListPage) },
       { path: "materials/:id", element: withSuspense(MaterialsViewPage) },

@@ -10,7 +10,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { useGetIdentity, useLogout } from "@scaffold/core"
 import {
   LayoutGrid,
   List,
@@ -24,6 +23,9 @@ import {
   ArrowLeft,
   Search,
 } from "lucide-react"
+import { appAuth, type AuthUser } from "@scaffold/core"
+import { useEffect, useState } from "react"
+import { LOGIN_URL } from "@/app.config"
 
 export interface ShellBarProps {
   title?: string
@@ -41,26 +43,36 @@ export interface ShellBarProps {
 export function ShellBar({
   title = "AI-First",
   logo,
-  userName,
   notificationCount = 3,
   layoutMode,
   onLayoutModeChange,
   onMenuToggle,
-  onLogout,
   showBackButton = false,
   onBack,
 }: ShellBarProps) {
   const navigate = useNavigate()
-  const { data: identity } = useGetIdentity()
-  const { mutate: logout } = useLogout()
 
-  const displayName = userName ?? identity?.account ?? identity?.email ?? "用户"
-  const displayEmail = identity?.email
-
+  const [user, setUser] = useState<AuthUser | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    try {
+      appAuth.getIdentity()
+        .then((u) => {
+          if (!cancelled) setUser(u ?? null)
+        })
+        .catch(() => {
+          if (!cancelled) setUser(null)
+        })
+    } catch {
+      setUser(null)
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [])
   const handleLogout = async () => {
-    if (onLogout) return onLogout()
-    const result = await logout()
-    if (result?.redirectTo) navigate(result.redirectTo, { replace: true })
+    const result = await appAuth.logout()
+    if (result?.success) navigate(LOGIN_URL, { replace: true })
   }
 
   return (
@@ -165,7 +177,7 @@ export function ShellBar({
                 <User className="size-4" />
               </div>
               <span className="hidden text-sm font-medium sm:block">
-                {displayName}
+                {user?.account}
               </span>
               <ChevronDown className="hidden size-4 text-muted-foreground sm:block" />
             </Button>
@@ -177,9 +189,9 @@ export function ShellBar({
                   <User className="size-10" />
                 </div>
                 <div>
-                  <p className="font-semibold">{displayName}</p>
-                  {displayEmail ? (
-                    <p className="text-xs text-muted-foreground">{displayEmail}</p>
+                  <p className="font-semibold">{user?.account}</p>
+                  {user?.email ? (
+                    <p className="text-xs text-muted-foreground">{user.email}</p>
                   ) : null}
                 </div>
               </div>

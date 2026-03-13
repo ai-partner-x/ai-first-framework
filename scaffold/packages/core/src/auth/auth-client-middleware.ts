@@ -1,8 +1,11 @@
-import { redirect } from "react-router"
-import { authConfig } from "./auth-config"
+import { appAuth } from "./auth-service"
 
-export function createAuthClientMiddleware() {
-
+export function createAuthClientMiddleware(callback?: () => void) {
+  if (!callback) {
+    callback = () => {
+      location.assign('/login')
+    }
+  }
   return async function authClientMiddleware(
     _args: {
       request: Request
@@ -10,12 +13,10 @@ export function createAuthClientMiddleware() {
     },
     next: () => Promise<unknown>
   ): Promise<void> {
-    const user = await authConfig.provider!.getIdentity()
+    const user = await appAuth.getIdentity()
     if (!user) {
-      throw redirect(authConfig.fallbackUrl!)
+      throw callback()
     }
     await next()
   }
 }
-
-export const authClientMiddleware = createAuthClientMiddleware()
