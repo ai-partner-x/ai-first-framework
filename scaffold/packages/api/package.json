@@ -20,7 +20,7 @@
     "lint": "eslint src"
   },
   "dependencies": {
-    "@ai-partner-x/aiko-boot-codegen": "file:../../../packages/aiko-boot-codegen",
+    "@ai-partner-x/aiko-boot-codegen": "workspace:*",
     "@ai-partner-x/aiko-boot": "workspace:*",
     "@ai-partner-x/aiko-boot-starter-web": "workspace:*",
     "@ai-partner-x/aiko-boot-starter-orm": "workspace:*",
