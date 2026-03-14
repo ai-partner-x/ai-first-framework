@@ -17,8 +17,8 @@ import {
   defaultLogger,
   initFromAikoBoot,
   autoInit
-} from '../src/facade';
-import { Logger } from '../src/logger';
+} from '../src/core/facade';
+import { Logger } from '../src/core/logger';
 import { LogLevel } from '../src/types';
 
 describe('门面函数', () => {

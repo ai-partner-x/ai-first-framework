@@ -3,7 +3,7 @@
  */
 
 import * as winston from 'winston';
-import type { FormatType, FormatOptions } from './types';
+import type { FormatType, FormatOptions } from '../types';
 
 /**
  * 日志格式化工具类

@@ -9,8 +9,7 @@
  * 4. 支持向后兼容的 'log' 和 'logger' 前缀
  */
 
-import type { LogConfig, LogLevel, TransportConfig } from './types';
-import { ConfigLoader } from '@ai-partner-x/aiko-boot/boot';
+import type { LogConfig, LogLevel, TransportConfig } from '../types';
 
 /**
  * 日志配置属性类
@@ -32,13 +31,43 @@ const DEFAULT_CONFIG: LogConfig = {
   transports: [{ type: 'console', format: 'cli', colorize: true, enabled: true }],
 };
 
-/** 加载配置 */
-function loadConfig(): LogConfig {
+// 改为动态导入
+async function loadConfigLoader() {
   try {
-    // 动态加载 ConfigLoader - 使用同步方式避免异步问题
-    if (!ConfigLoader?.isLoaded?.()) return { ...DEFAULT_CONFIG };
+    const { ConfigLoader } = await import('@ai-partner-x/aiko-boot/boot');
+    return ConfigLoader;
+  } catch {
+    return null;
+  }
+}
+
+// 缓存 ConfigLoader 实例
+let cachedConfigLoader: any = null;
+let configLoaderPromise: Promise<any> | null = null;
+
+/** 异步获取 ConfigLoader */
+async function getConfigLoader(): Promise<any> {
+  if (cachedConfigLoader !== null) {
+    return cachedConfigLoader;
+  }
+  
+  if (configLoaderPromise === null) {
+    configLoaderPromise = loadConfigLoader();
+  }
+  
+  cachedConfigLoader = await configLoaderPromise;
+  return cachedConfigLoader;
+}
+
+/** 加载配置 */
+async function loadConfigAsync(): Promise<LogConfig> {
+  try {
+    const ConfigLoaderInstance = await getConfigLoader();
     
-    const raw = ConfigLoader.getPrefix('logging');
+    // 如果 ConfigLoader 未加载或不存在，返回默认配置
+    if (!ConfigLoaderInstance?.isLoaded?.()) return { ...DEFAULT_CONFIG };
+    
+    const raw = ConfigLoaderInstance.getPrefix('logging');
     if (!raw || Object.keys(raw).length === 0) return { ...DEFAULT_CONFIG };
     
     // 创建配置
@@ -66,20 +95,45 @@ function loadConfig(): LogConfig {
   }
 }
 
+/** 同步加载配置（向后兼容） */
+function loadConfig(): LogConfig {
+  // 对于同步调用，直接返回默认配置
+  // 实际应用中，调用者应该使用异步版本
+  return { ...DEFAULT_CONFIG };
+}
+
 /**
  * 日志自动配置类
  * 简化版本，不依赖 winston
  */
 export class LogAutoConfiguration {
   private config: LogConfig | null = null;
+  private configPromise: Promise<LogConfig> | null = null;
   
-  /** 获取配置 */
+  /** 获取配置（同步，向后兼容） */
   getConfig(): LogConfig {
-    if (!this.config) this.config = loadConfig();
-    return this.config;
+    if (!this.config) {
+      // 同步调用时返回默认配置
+      this.config = { ...DEFAULT_CONFIG };
+    }
+    return { ...this.config };
   }
   
-  /** 获取配置属性 */
+  /** 异步获取配置 */
+  async getConfigAsync(): Promise<LogConfig> {
+    if (this.config !== null) {
+      return { ...this.config };
+    }
+    
+    if (this.configPromise === null) {
+      this.configPromise = loadConfigAsync();
+    }
+    
+    this.config = await this.configPromise;
+    return { ...this.config };
+  }
+  
+  /** 获取配置属性（同步，向后兼容） */
   getProperties(): LoggingProperties {
     const config = this.getConfig();
     const props = new LoggingProperties();
@@ -101,15 +155,47 @@ export class LogAutoConfiguration {
     return props;
   }
   
+  /** 异步获取配置属性 */
+  async getPropertiesAsync(): Promise<LoggingProperties> {
+    const config = await this.getConfigAsync();
+    const props = new LoggingProperties();
+    
+    // 映射配置到属性
+    switch (config.level) {
+      case 'debug':
+      case 'info':
+      case 'warn':
+      case 'error':
+        props.level = config.level;
+        break;
+    }
+    
+    if (config.format === 'json' || config.format === 'cli') {
+      props.format = config.format === 'json' ? 'json' : 'text';
+    }
+    
+    return props;
+  }
+  
   /** 初始化方法 */
-  initialize(): void {
-    this.config = loadConfig();
+  async initialize(): Promise<void> {
+    // 清除缓存，强制重新加载配置
+    this.config = null;
+    this.configPromise = null;
+    
+    this.config = await loadConfigAsync();
     console.log(`📝 [aiko-log] 日志配置已加载 - 级别: ${this.config.level}, 格式: ${this.config.format}`);
   }
   
-  /** 获取传输配置 */
+  /** 获取传输配置（同步，向后兼容） */
   getTransportConfigs(): TransportConfig[] {
     const config = this.getConfig();
+    return config.transports || [];
+  }
+  
+  /** 异步获取传输配置 */
+  async getTransportConfigsAsync(): Promise<TransportConfig[]> {
+    const config = await this.getConfigAsync();
     return config.transports || [];
   }
 }

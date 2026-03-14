@@ -2,9 +2,9 @@
  * 日志工厂 - 单例模式管理日志记录器
  */
 
-import { Logger } from './logger';
-import { LogAutoConfiguration } from './auto-configuration';
-import type { ILogger, LogLevel, LoggerFactoryOptions, LogConfig, AikoApplicationContext, DynamicImportError } from './types';
+import { Logger } from '../core/logger';
+import { LogAutoConfiguration } from '../config/auto-configuration';
+import type { ILogger, LogLevel, LoggerFactoryOptions, LogConfig, AikoApplicationContext, DynamicImportError } from '../types';
 import { getApplicationContext } from '@ai-partner-x/aiko-boot/boot';
 /**
  * 日志工厂

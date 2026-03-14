@@ -4,7 +4,7 @@
  */
 
 import { describe, test, expect } from 'vitest';
-import { Formatter } from '../src/formatter';
+import { Formatter } from '../src/utils/formatter';
 import type { FormatType } from '../src/types';
 
 describe('Formatter', () => {

@@ -53,10 +53,18 @@ export interface ILogger {
   isWarnEnabled?(): boolean;
   /** 是否启用 INFO 级别 */
   isInfoEnabled?(): boolean;
+  /** 是否启用 HTTP 级别 */
+  isHttpEnabled?(): boolean;
+  /** 是否启用 VERBOSE 级别 */
+  isVerboseEnabled?(): boolean;
   /** 是否启用 DEBUG 级别 */
   isDebugEnabled?(): boolean;
+  /** 是否启用 SILLY 级别 */
+  isSillyEnabled?(): boolean;
   /** 是否启用 TRACE 级别 */
   isTraceEnabled?(): boolean;
+  /** 检查指定级别是否启用 */
+  isLevelEnabled?(level: LogLevel): boolean;
 
   // ========== 子记录器与上下文 ==========
 
@@ -150,4 +158,57 @@ export interface AikoApplicationContext {
 export interface DynamicImportError extends Error {
   code?: string;
   type?: 'MODULE_NOT_FOUND' | 'NETWORK_ERROR' | 'PARSE_ERROR' | 'UNKNOWN';
+}
+
+// ========== 装饰器相关类型 ==========
+
+/** @Slf4j 装饰器选项 */
+export interface Slf4jDecoratorOptions {
+  name?: string;
+  level?: string;
+  enabled?: boolean;
+  factoryOptions?: Partial<LoggerFactoryOptions>;
+}
+
+/** @Log 装饰器选项 */
+export interface LogDecoratorOptions {
+  level?: 'error' | 'warn' | 'info' | 'http' | 'verbose' | 'debug' | 'silly';
+  message?: string;
+  logArgs?: boolean;
+  logResult?: boolean;
+  logDuration?: boolean;
+  logError?: boolean;
+  argsSerializer?: (args: any[]) => any;
+  resultSerializer?: (result: any) => any;
+  errorSerializer?: (error: Error) => any;
+  loggerName?: string;
+}
+
+/** 支持日志的类接口 */
+export interface LoggableClass {
+  /** 日志记录器实例 */
+  logger?: ILogger;
+}
+
+/** 支持日志的类构造函数接口 */
+export interface LoggableClassConstructor {
+  /** 静态日志记录器实例 */
+  logger?: ILogger;
+  new (...args: any[]): LoggableClass;
+}
+
+/** 装饰器元数据键类型 */
+export type LoggerMetadataKey = 
+  | 'logger' 
+  | 'logger:name' 
+  | 'logger:options';
+
+/** 装饰器配置接口 */
+export interface DecoratorConfig {
+  /** 是否启用装饰器支持 */
+  enabled?: boolean;
+  /** 默认日志级别 */
+  defaultLevel?: string;
+  /** 是否自动注入 logger 属性 */
+  autoInject?: boolean;
 }

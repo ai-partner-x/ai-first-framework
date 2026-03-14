@@ -3,6 +3,7 @@
  * 在所有测试运行之前执行
  */
 
+import 'reflect-metadata';
 import { vi, beforeEach, afterEach } from 'vitest';
 
 // 模拟 console 方法以避免测试输出干扰

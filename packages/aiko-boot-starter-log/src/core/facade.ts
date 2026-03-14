@@ -3,10 +3,10 @@
  * 提供简洁的静态方法访问日志功能
  */
 
-import { LoggerFactory } from './loggerFactory';
-import { Logger } from './logger';
-import { LogAutoConfiguration, DEFAULT_CONFIG } from './auto-configuration';
-import type { ILogger, LogLevel, LoggerFactoryOptions, LogConfig, AikoApplicationContext, DynamicImportError } from './types';
+import { LoggerFactory } from '../factory/loggerFactory';
+import { Logger } from '../core/logger';
+import { LogAutoConfiguration, DEFAULT_CONFIG } from '../config/auto-configuration';
+import type { ILogger, LogLevel, LoggerFactoryOptions, LogConfig, AikoApplicationContext, DynamicImportError } from '../types';
 import { getApplicationContext } from '@ai-partner-x/aiko-boot/boot';
 
 /**

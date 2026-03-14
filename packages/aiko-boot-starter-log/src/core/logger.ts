@@ -3,9 +3,9 @@
  */
 
 import * as winston from 'winston';
-import { Formatter } from './formatter';
-import type { ILogger, LogLevel, LogMeta, LoggerOptions, TransportConfig } from './types';
-import { LOG_LEVELS } from './types';
+import { Formatter } from '../utils/formatter';
+import type { ILogger, LogLevel, LogMeta, LoggerOptions, TransportConfig } from '../types';
+import { LOG_LEVELS } from '../types';
 
 /** 文件大小单位映射 */
 const SIZE_UNITS: Record<string, number> = {
@@ -178,6 +178,21 @@ export class Logger implements ILogger {
     return this.isLevelEnabled('silly');
   }
 
+  /** 是否启用 HTTP 级别 */
+  isHttpEnabled(): boolean {
+    return this.isLevelEnabled('http');
+  }
+
+  /** 是否启用 VERBOSE 级别 */
+  isVerboseEnabled(): boolean {
+    return this.isLevelEnabled('verbose');
+  }
+
+  /** 是否启用 SILLY 级别 */
+  isSillyEnabled(): boolean {
+    return this.isLevelEnabled('silly');
+  }
+
   /**
    * 判断指定日志级别是否启用
    * 注意：LOG_LEVELS 映射中数值越小优先级越高（error:0, warn:1, info:2, ...）
@@ -186,7 +201,7 @@ export class Logger implements ILogger {
    * @param level 要检查的日志级别
    * @returns 该级别是否启用
    */
-  private isLevelEnabled(level: LogLevel): boolean {
+  isLevelEnabled(level: LogLevel): boolean {
     return LOG_LEVELS[level] <= LOG_LEVELS[this._level];
   }
 
