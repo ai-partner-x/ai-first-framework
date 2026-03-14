@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { Injectable, Singleton, Autowired } from '@ai-partner-x/aiko-boot';
 import type { IAuthStrategy } from '../../types.js';
 import type { User } from '../../entities/index.js';
