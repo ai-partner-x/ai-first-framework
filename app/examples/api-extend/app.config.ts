@@ -2,58 +2,40 @@ import type { AppConfig } from '@ai-partner-x/aiko-boot';
 
 /**
  * Aiko Boot 配置文件 (Spring Boot 风格)
- * 
- * 配置风格参考:
- * @see https://docs.spring.io/spring-boot/docs/current/reference/html/application-properties.html
+ *
+ * 演示 aiko-boot-starter-web 的 AutoConfiguration 配置能力:
+ *   - server.*          ← 服务器端口、context-path
+ *   - spring.servlet.multipart.*  ← 文件上传大小限制
+ *   - logging.*         ← 日志级别
+ *   - storage.*         ← 存储服务配置（本地/S3/OSS/COS）
  */
 export default {
   // ========== Server Configuration (server.*) ==========
   server: {
-    port: Number(process.env.PORT) || 3001,
+    port: Number(process.env.PORT) || 3003,
     servlet: {
       contextPath: '/api',  // Spring Boot: server.servlet.context-path
     },
-    shutdown: 'graceful',   // Spring Boot: server.shutdown
+    shutdown: 'graceful',
   },
 
   // ========== Logging Configuration (logging.*) ==========
   logging: {
     level: {
-      root: 'debug',  // Spring Boot: logging.level.root (临时开启调试)
+      root: 'debug',  // 详细日志，方便观察 @Async 后台任务输出
     },
   },
 
-  // ========== Database Configuration (spring.datasource.*) ==========
-  database: {
-    type: 'sqlite',
-    filename: './data/app.db',
-    // PostgreSQL 配置示例:
-    // type: 'postgres',
-    // host: process.env.DB_HOST || 'localhost',
-    // port: Number(process.env.DB_PORT) || 5432,
-    // user: process.env.DB_USER || 'postgres',
-    // password: process.env.DB_PASSWORD || '',
-    // database: process.env.DB_NAME || 'app',
+  // ========== Multipart File Upload (spring.servlet.multipart.*) ==========
+  // 对应 Spring Boot: spring.servlet.multipart.max-file-size / max-request-size
+  spring: {
+    servlet: {
+      multipart: {
+        enabled: true,
+        maxFileSize: '10MB',      // 单个文件最大 10 MB
+      },
+    },
   },
-
-  // ========== Validation Configuration ==========
-  validation: {
-    enabled: true,
-    failFast: false,
-  },
-
-  // ========== Cache Configuration (aiko-boot-starter-cache) ==========
-  // 将 enabled 设为 true 并配置 Redis 地址后即可启用缓存
-  // 对应 Spring Boot: spring.cache.type + spring.data.redis.*
-  //
-  // cache: {
-  //   enabled: true,
-  //   type: 'redis',
-  //   host: process.env.REDIS_HOST || '127.0.0.1',
-  //   port: Number(process.env.REDIS_PORT) || 6379,
-  //   // password: process.env.REDIS_PASSWORD,
-  //   // database: 0,
-  // },
 
   // ========== Storage Configuration (storage.*) ==========
   // 支持 local / s3 / oss / cos 四种存储提供商
@@ -64,7 +46,7 @@ export default {
     // 本地存储配置
     local: {
       uploadDir: './uploads',  // 本地文件上传目录
-      baseUrl: 'http://localhost:3001/api/uploads',  // 文件访问基础 URL
+      baseUrl: 'http://localhost:3003/api/uploads',  // 文件访问基础 URL
     },
     
     // 以下为云存储配置示例，使用时取消注释并填写真实凭证

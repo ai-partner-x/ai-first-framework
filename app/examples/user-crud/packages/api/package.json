@@ -26,6 +26,7 @@
     "@ai-partner-x/aiko-boot-starter-orm": "workspace:*",
     "@ai-partner-x/aiko-boot-starter-validation": "workspace:*",
     "@ai-partner-x/aiko-boot-starter-web": "workspace:*",
+    "@ai-partner-x/aiko-boot-starter-storage": "workspace:*",
     "better-sqlite3": "^12.6.2",
     "cors": "^2.8.5",
     "express": "^4.18.0",

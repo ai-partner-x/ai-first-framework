@@ -73,6 +73,8 @@ export async function createKyselyDatabase(config: DatabaseConnectionConfig): Pr
     }
     
     case 'mysql': {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore - mysql2 is an optional peer dependency
       const mysql = await import('mysql2');
       const pool = mysql.createPool({
         host: config.host,

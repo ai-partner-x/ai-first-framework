@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { Service, Transactional, Autowired } from '@ai-partner-x/aiko-boot';
+import { Service, Transactional, Autowired, Async } from '@ai-partner-x/aiko-boot';
 import { QueryWrapper, UpdateWrapper } from '@ai-partner-x/aiko-boot-starter-orm';
 import {
   Cacheable,
@@ -265,5 +265,38 @@ export class UserService {
       .between('age', minAge, maxAge);
     
     return this.userMapper.deleteByWrapper(wrapper);
+  }
+
+  // ==================== @Async 示例 ====================
+
+  /**
+   * @Async - 异步后台审计日志（fire-and-forget，调用方不阻塞）
+   *
+   * 等同于 Spring Boot @Async：方法立即返回，实际逻辑在后台事件循环中执行。
+   * 适用于发送通知、写入审计日志、触发异步流水线等场景。
+   *
+   * @example
+   * // 在 controller 中调用后立即返回，不等待日志写入完成
+   * this.userService.recordAuditLog('CREATE', userId, operatorId);
+   */
+  @Async()
+  async recordAuditLog(action: string, userId: number, operatorId?: number): Promise<void> {
+    // 模拟异步日志写入（如写入数据库或外部日志服务）
+    const timestamp = new Date().toISOString();
+    console.log(`[AuditLog] ${timestamp} action=${action} userId=${userId} operator=${operatorId ?? 'anonymous'}`);
+  }
+
+  /**
+   * 更新用户最后修改时间（头像上传后调用）
+   */
+  @Transactional()
+  async updateAvatar(id: number): Promise<User> {
+    const user = await this.userMapper.selectById(id);
+    if (!user) {
+      throw new Error('用户不存在');
+    }
+    user.updatedAt = new Date();
+    await this.userMapper.updateById(user);
+    return (await this.userMapper.selectById(id))!;
   }
 }

@@ -23,14 +23,28 @@ export {
   RequestParam,
   QueryParam,
   RequestBody,
+  RequestPart,
+  ModelAttribute,
+  RequestAttribute,
+  JsonFormat,
+  convertModelAttributes,
+  applyJsonFormat,
+  formatDate,
   getControllerMetadata,
   getRequestMappings,
   getPathVariables,
   getRequestParams,
   getRequestBody,
+  getRequestParts,
+  getModelAttributes,
+  getRequestAttributes,
+  getJsonFormatFields,
   type RestControllerOptions,
   type RequestMappingOptions,
   type HttpMethod,
+  type MultipartFile,
+  type JsonFormatOptions,
+  type JsonFormatShape,
 } from './decorators.js';
 
 // Export Express router
@@ -61,12 +75,24 @@ export {
 export {
   WebAutoConfiguration,
   ServerProperties,
+  ServletProperties,
+  MultipartProperties,
+  parseSizeToBytes,
   getServerConfig,
   setServerConfig,
   getExpressApp,
+  useExpressApp,
   ExpressHttpServer,
 } from './auto-configuration.js';
 
 // Config Augmentation (扩展 @ai-partner-x/aiko-boot 的 AppConfig)
 import './config-augment.js';
+
+// Re-export @Async and related helpers from @ai-partner-x/aiko-boot for convenient one-stop import
+export {
+  Async,
+  isAsync,
+  getAsyncOptions,
+  type AsyncOptions,
+} from '@ai-partner-x/aiko-boot';
 
