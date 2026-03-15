@@ -11,9 +11,11 @@ export class JwtStrategy implements IAuthStrategy {
   name = 'jwt';
 
   private secret: string;
+  private expiresIn: string;
 
   constructor() {
-    this.secret = ConfigLoader.get<string>('security.jwt.secret', 'your-secret-key');
+    this.secret = process.env.JWT_SECRET || ConfigLoader.get<string>('security.jwt.secret', 'ai-first-admin-secret-change-in-production');
+    this.expiresIn = ConfigLoader.get<string>('security.jwt.expiresIn', '2h');
   }
 
   async authenticate(request: any): Promise<User | null> {
@@ -26,12 +28,23 @@ export class JwtStrategy implements IAuthStrategy {
     try {
       const decoded = jwt.verify(token, this.secret);
       const payload = decoded as unknown as JwtPayload;
+
+      // 支持业务代码的用户权限结构
+      // 业务代码使用 permissions: string[] 和 roles: string[]
+      const userId = payload.sub || (payload as any).userId;
+
       return {
-        id: payload.sub,
+        id: userId,
         username: payload.username,
-        roles: payload.roles.map(function(name) {
-          return { id: 0, name: name };
-        }),
+        email: payload.email || '',
+        roles: (payload.roles as any[])?.map(function(role: any) {
+          // 支持字符串或对象格式
+          if (typeof role === 'string') {
+            return { id: 0, name: role };
+          }
+          return { id: role.id || 0, name: role.name };
+        }) || [],
+        permissions: payload.permissions || [], // 业务代码使用的权限字符串列表
       } as User;
     } catch {
       return null;
@@ -42,10 +55,12 @@ export class JwtStrategy implements IAuthStrategy {
     const payload = {
       sub: user.id,
       username: user.username,
-      roles: user.roles ? user.roles.map(function(r) { return r.name; }) : [],
+      email: user.email,
+      // 统一使用字符串格式，便于业务代码处理
+      roles: user.roles?.map(function(r) { return typeof r === 'string' ? r : r.name; }) || [],
+      permissions: user.permissions || [], // 支持权限列表
     };
-    const expiresIn = ConfigLoader.get<string>('security.jwt.expiresIn', '24h');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return jwt.sign(payload, this.secret, { expiresIn } as any);
+    return jwt.sign(payload, this.secret, { expiresIn: this.expiresIn } as any);
   }
 }

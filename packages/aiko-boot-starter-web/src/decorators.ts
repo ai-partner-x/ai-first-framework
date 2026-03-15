@@ -11,6 +11,7 @@ const REQUEST_MAPPING_METADATA = 'aiko-boot:requestMapping';
 const PATH_VARIABLE_METADATA = 'aiko-boot:pathVariable';
 const REQUEST_PARAM_METADATA = 'aiko-boot:requestParam';
 const REQUEST_BODY_METADATA = 'aiko-boot:requestBody';
+const REQUEST_HEADER_METADATA = 'aiko-boot:requestHeader';
 
 /** 导出供 ApiContract 复用的元数据 key */
 export { CONTROLLER_METADATA, REQUEST_MAPPING_METADATA };
@@ -162,6 +163,17 @@ export function RequestParam(name?: string, required: boolean = false) {
 export const QueryParam = RequestParam;
 
 /**
+ * @RequestHeader - Extract HTTP header (like Spring Boot @RequestHeader)
+ */
+export function RequestHeader(name?: string, required: boolean = false) {
+  return function (target: any, propertyKey: string, parameterIndex: number) {
+    const requestHeaders = Reflect.getMetadata(REQUEST_HEADER_METADATA, target, propertyKey) || {};
+    requestHeaders[parameterIndex] = { name: name || 'header' + parameterIndex, required };
+    Reflect.defineMetadata(REQUEST_HEADER_METADATA, requestHeaders, target, propertyKey);
+  };
+}
+
+/**
  * @RequestBody - Extract request body (like Spring Boot @RequestBody)
  */
 export function RequestBody() {
@@ -192,4 +204,8 @@ export function getRequestParams(target: any, methodName: string): Record<number
 
 export function getRequestBody(target: any, methodName: string): Record<number, boolean> {
   return Reflect.getMetadata(REQUEST_BODY_METADATA, target, methodName) || {};
+}
+
+export function getRequestHeaders(target: any, methodName: string): Record<number, { name: string; required: boolean }> {
+  return Reflect.getMetadata(REQUEST_HEADER_METADATA, target, methodName) || {};
 }

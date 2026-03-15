@@ -7,7 +7,7 @@
  */
 
 import 'reflect-metadata';
-import { Injectable, Singleton, inject } from '@ai-partner-x/aiko-boot/di/server';
+import { Injectable, Singleton, inject, injectAutowiredProperties } from '@ai-partner-x/aiko-boot/di/server';
 import { createAdapterFromEntity } from './config.js';
 import { isDatabaseInitialized } from './database.js';
 
@@ -160,7 +160,10 @@ export function Mapper(entity?: Function) {
       const originalConstructor = target;
       const newConstructor = function (this: any, ...args: any[]) {
         const instance = new (originalConstructor as any)(...args);
-        
+
+        // 注入 @Autowired 属性
+        injectAutowiredProperties(instance);
+
         // 如果数据库已初始化且实例有 setAdapter 方法，自动设置适配器
         if (isDatabaseInitialized() && typeof instance.setAdapter === 'function' && !instance.adapter) {
           try {
@@ -170,7 +173,7 @@ export function Mapper(entity?: Function) {
             // 忽略错误，允许手动设置
           }
         }
-        
+
         return instance;
       } as unknown as T;
       

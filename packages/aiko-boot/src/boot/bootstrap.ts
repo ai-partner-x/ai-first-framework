@@ -275,6 +275,8 @@ export async function createApp(options: AppOptions): Promise<ApplicationContext
   setGlobalContext(context);
 
   // ========== Phase 7: ApplicationReady ==========
+  // 确保全局上下文已设置后再触发ApplicationReady事件
+  // 这样@OnApplicationReady监听器可以正确获取到上下文
   await ApplicationLifecycle.emit('ApplicationReady', verbose);
 
   // 更新启动时间

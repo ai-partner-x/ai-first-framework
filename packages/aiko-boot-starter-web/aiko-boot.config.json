@@ -1,0 +1,5 @@
+{
+  "autoConfiguration": [
+    "./dist/index.js"
+  ]
+}

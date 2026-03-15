@@ -11,7 +11,7 @@ import type { Request } from 'express';
  */
 @RestController({ path: '/upload' })
 export class UploadController {
-  @Autowired()
+  @Autowired(StorageService)
   private storageService!: StorageService;
 
   /**

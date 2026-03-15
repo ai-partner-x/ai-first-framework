@@ -7,7 +7,7 @@ import type { CreateMenuDto, UpdateMenuDto, MenuTreeVo } from '../dto/menu.dto.j
 
 @Service()
 export class MenuService {
-  @Autowired()
+  @Autowired(MenuMapper)
   private menuMapper!: MenuMapper;
 
   async getFullTree(): Promise<MenuTreeVo[]> {

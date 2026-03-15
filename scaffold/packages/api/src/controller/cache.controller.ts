@@ -9,13 +9,13 @@ import type { CachePutDto } from '../dto/cache.dto.js';
  *
  * 提供缓存的 CRUD 操作接口，仅在非生产环境下可用。
  * 注意：需要在 app.config.ts 中启用 cache 并配置 Redis 连接
- * 
+ *
  * 当 NODE_ENV=production 时，所有端点会直接抛出错误拒绝访问，
  * 防止数据泄露、缓存投毒或拒绝服务。
  */
 @RestController({ path: '/cache' })
 export class CacheController {
-  @Autowired()
+  @Autowired(CacheService)
   private cacheService!: CacheService;
 
   private assertNonProduction(): void {
