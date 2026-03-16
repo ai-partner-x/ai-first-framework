@@ -1,8 +1,33 @@
 #!/usr/bin/env node
 /**
  * aiko-boot-create CLI
- * Create a new aiko-boot scaffold project (monorepo: api, admin, mobile, shared[, shared-auth]).
+ *
+ * 顶层入口：注册子命令（init / add app / add api / add feature / list）。
  */
-import { createCommand } from './create.js';
+import { Command } from 'commander';
+import { registerInitCommand } from './commands/init.js';
+import { registerAddAppCommand } from './commands/add-app.js';
+import { registerAddApiCommand } from './commands/add-api.js';
+import { registerAddFeatureCommand } from './commands/add-feature.js';
+import { registerListCommand } from './commands/list.js';
 
-createCommand();
+export function runCli(argv = process.argv): void {
+  const program = new Command();
+
+  program
+    .name('aiko-boot-create')
+    .description('Create and extend aiko-boot scaffold projects (monorepo: api, admin, mobile, core)')
+    .version('0.2.0');
+
+  // 注册子命令
+  registerInitCommand(program);
+  registerAddAppCommand(program);
+  registerAddApiCommand(program);
+  registerAddFeatureCommand(program);
+  registerListCommand(program);
+
+  program.parse(argv);
+}
+
+runCli();
+
