@@ -19,7 +19,6 @@ import { SignInForm } from "./components/admin-ui/form/sign-in-form"
 import { appAuth } from "@scaffold/core"
 import { AuthorizationProvider, setAppAuthorizationConfig } from "@scaffold/core"
 import { ErrorComponent } from "./components/admin-ui/layout/error-component"
-import { withSuspense } from "./routes/withSuspense"
 import { LOGIN_URL } from "./app.config"
 
 const LAYOUT_STORAGE_KEY = "admin-layout-mode"
@@ -101,7 +100,7 @@ function AppShell() {
   if (!isExternalLogin) {
     appRoutes.unshift({
       path: LOGIN_URL,
-      element: withSuspense(LoginPageRoute),
+      element: <LoginPageRoute />,
     })
   }
 
