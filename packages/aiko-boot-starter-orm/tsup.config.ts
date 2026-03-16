@@ -14,6 +14,7 @@ export default defineConfig({
     '@mikro-orm/mysql',
     'mysql2',
     'pg',
-    'pg-types'
+    'pg-types',
+    'better-sqlite3',
   ],
 });
