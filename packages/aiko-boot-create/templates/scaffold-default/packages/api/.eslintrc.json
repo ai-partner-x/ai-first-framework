@@ -1,0 +1,6 @@
+{
+  "extends": ["plugin:@ai-partner-x/aiko-boot/java-compat"],
+  "rules": {
+    "@ai-partner-x/aiko-boot/require-rest-controller": "error"
+  }
+}
