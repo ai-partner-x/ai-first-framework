@@ -20,8 +20,11 @@ export interface LoginResult {
 
 export interface JwtPayload {
   sub: number;
+  userId?: number; // 支持业务代码中的userId字段
   username: string;
+  email?: string; // 支持邮箱字段
   roles: string[];
+  permissions?: string[]; // 支持权限列表
 }
 
 export interface SecurityConfig {

@@ -253,7 +253,7 @@ export class AutoConfigurationLoader {
 
   /**
    * 加载 starter 包的自动配置（约定优于配置）
-   * 
+   *
    * 约定：
    * 1. 包名以 aiko-boot-starter-* 开头
    * 2. 自动配置类从 dist/index.js 导出
@@ -262,7 +262,7 @@ export class AutoConfigurationLoader {
   private static async loadStarterPackage(packagePath: string, packageName: string, verbose: boolean): Promise<void> {
     // 约定：从 dist/index.js 加载
     const modulePath = join(packagePath, 'dist/index.js');
-    
+
     if (!existsSync(modulePath)) {
       if (verbose) {
         console.log(`   Skipping ${packageName}: dist/index.js not found`);
@@ -271,8 +271,14 @@ export class AutoConfigurationLoader {
     }
 
     try {
-      // 动态导入模块
-      const module = await import(modulePath);
+      // 动态导入模块 - 在Windows环境下需要使用file://协议
+      let importPath = modulePath;
+      if (process.platform === 'win32') {
+        // Windows环境下，绝对路径需要转换为file:// URL
+        // 将反斜杠转换为正斜杠，并添加file://前缀
+        importPath = `file:///${modulePath.replace(/\\/g, '/')}`;
+      }
+      const module = await import(importPath);
       
       // 扫描模块导出，找到带有 @AutoConfiguration 元数据的类
       for (const exportName of Object.keys(module)) {

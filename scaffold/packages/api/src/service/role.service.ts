@@ -7,10 +7,10 @@ import type { CreateRoleDto, UpdateRoleDto } from '../dto/role.dto.js';
 
 @Service()
 export class RoleService {
-  @Autowired()
+  @Autowired(RoleMapper)
   private roleMapper!: RoleMapper;
 
-  @Autowired()
+  @Autowired(RoleMenuMapper)
   private roleMenuMapper!: RoleMenuMapper;
 
   async listRoles() {

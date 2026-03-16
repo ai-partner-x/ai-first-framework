@@ -33,14 +33,18 @@ export class SecurityContext {
   hasRole(role: string): boolean {
     if (!this.currentUser || !this.currentUser.roles) return false;
     return this.currentUser.roles.some(function(r) {
-      return r.name === role;
+      // 支持字符串或对象格式
+      const roleName = typeof r === 'string' ? r : r.name;
+      return roleName === role;
     });
   }
 
   hasAnyRole(roles: string[]): boolean {
     if (!this.currentUser || !this.currentUser.roles) return false;
     return this.currentUser.roles.some(function(r) {
-      return roles.indexOf(r.name) !== -1;
+      // 支持字符串或对象格式
+      const roleName = typeof r === 'string' ? r : r.name;
+      return roles.indexOf(roleName) !== -1;
     });
   }
 

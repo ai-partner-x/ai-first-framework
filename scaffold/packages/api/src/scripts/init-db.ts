@@ -95,25 +95,63 @@ if (Number(cntValue) === 0) {
         .executeTakeFirst();
     const sysDirId = Number(sysDir.insertId);
 
-    const menus = [
-        { parent_id: sysDirId, menu_name: '用户管理', menu_type: 2, path: '/sys/user', permission: 'sys:user:list', sort_order: 1, status: 1 },
-        { parent_id: sysDirId, menu_name: '角色管理', menu_type: 2, path: '/sys/role', permission: 'sys:role:list', sort_order: 2, status: 1 },
-        { parent_id: sysDirId, menu_name: '菜单管理', menu_type: 2, path: '/sys/menu', permission: 'sys:menu:list', sort_order: 3, status: 1 },
+    // 用户管理菜单及其按钮权限
+    const userMenu = await db.insertInto('sys_menu')
+        .values({ parent_id: sysDirId, menu_name: '用户管理', menu_type: 2, path: '/sys/user', permission: 'sys:user:list', icon: 'User', sort_order: 1, status: 1 })
+        .executeTakeFirst();
+    const userMenuId = Number(userMenu.insertId);
+    
+    const userButtons = [
+        { parent_id: userMenuId, menu_name: '查询用户', menu_type: 3, permission: 'sys:user:query', sort_order: 1, status: 1 },
+        { parent_id: userMenuId, menu_name: '新增用户', menu_type: 3, permission: 'sys:user:add', sort_order: 2, status: 1 },
+        { parent_id: userMenuId, menu_name: '编辑用户', menu_type: 3, permission: 'sys:user:edit', sort_order: 3, status: 1 },
+        { parent_id: userMenuId, menu_name: '删除用户', menu_type: 3, permission: 'sys:user:delete', sort_order: 4, status: 1 },
+        { parent_id: userMenuId, menu_name: '重置密码', menu_type: 3, permission: 'sys:user:resetPwd', sort_order: 5, status: 1 },
     ];
-    const insertedMenus = await db.insertInto('sys_menu').values(menus).executeTakeFirst();
-    console.log('✅ 默认菜单创建完成');
+    await db.insertInto('sys_menu').values(userButtons).execute();
+
+    // 角色管理菜单及其按钮权限
+    const roleMenu = await db.insertInto('sys_menu')
+        .values({ parent_id: sysDirId, menu_name: '角色管理', menu_type: 2, path: '/sys/role', permission: 'sys:role:list', icon: 'Role', sort_order: 2, status: 1 })
+        .executeTakeFirst();
+    const roleMenuId = Number(roleMenu.insertId);
+    
+    const roleButtons = [
+        { parent_id: roleMenuId, menu_name: '查询角色', menu_type: 3, permission: 'sys:role:query', sort_order: 1, status: 1 },
+        { parent_id: roleMenuId, menu_name: '新增角色', menu_type: 3, permission: 'sys:role:add', sort_order: 2, status: 1 },
+        { parent_id: roleMenuId, menu_name: '编辑角色', menu_type: 3, permission: 'sys:role:edit', sort_order: 3, status: 1 },
+        { parent_id: roleMenuId, menu_name: '删除角色', menu_type: 3, permission: 'sys:role:delete', sort_order: 4, status: 1 },
+    ];
+    await db.insertInto('sys_menu').values(roleButtons).execute();
+
+    // 菜单管理菜单及其按钮权限
+    const menuMenu = await db.insertInto('sys_menu')
+        .values({ parent_id: sysDirId, menu_name: '菜单管理', menu_type: 2, path: '/sys/menu', permission: 'sys:menu:list', icon: 'Menu', sort_order: 3, status: 1 })
+        .executeTakeFirst();
+    const menuMenuId = Number(menuMenu.insertId);
+    
+    const menuButtons = [
+        { parent_id: menuMenuId, menu_name: '查询菜单', menu_type: 3, permission: 'sys:menu:query', sort_order: 1, status: 1 },
+        { parent_id: menuMenuId, menu_name: '新增菜单', menu_type: 3, permission: 'sys:menu:add', sort_order: 2, status: 1 },
+        { parent_id: menuMenuId, menu_name: '编辑菜单', menu_type: 3, permission: 'sys:menu:edit', sort_order: 3, status: 1 },
+        { parent_id: menuMenuId, menu_name: '删除菜单', menu_type: 3, permission: 'sys:menu:delete', sort_order: 4, status: 1 },
+    ];
+    await db.insertInto('sys_menu').values(menuButtons).execute();
+
+    console.log('✅ 默认菜单和权限创建完成');
 
     // 给超级管理员角色分配所有菜单
     const allMenus = await db.selectFrom('sys_menu').select('id').execute();
     for (const m of allMenus) {
         await db.insertInto('sys_role_menu').values({ role_id: adminRoleId, menu_id: m.id as number }).execute();
     }
+    console.log('✅ 超级管理员角色权限分配完成');
 }
 
 // 初始化 admin 账号
 const users = await db.selectFrom('sys_user').where('user_name', '=', 'admin').selectAll().execute();
 if (!users.length) {
-    const hashed = await bcrypt.hash('admin123', 10);
+    const hashed = '$2a$10$jYriD6EK14jUM7W6H5zcleTpVbJVPORxjNXOJsnE0F7ImT0BskCW2';
     const result = await db.insertInto('sys_user')
         .values({ user_name: 'admin', password_hash: hashed, email: 'admin@example.com', real_name: '超级管理员', status: 1, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
         .executeTakeFirst();

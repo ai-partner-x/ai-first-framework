@@ -120,14 +120,17 @@ export class WebAutoConfiguration {
     // CORS (默认启用)
     const corsModule = await import('cors');
     app.use(corsModule.default());
-    
+
     // Body parser
     app.use(express.json({ limit: maxHttpPostSize }));
+
+    // 注册到应用上下文（在路由注册之前，允许添加自定义中间件）
+    context.registerHttpServer(new ExpressHttpServer(app));
 
     // 收集 Controller 并注册路由
     const controllers = context.components.get('controller') || [];
     const validControllers = controllers.filter((c: Function) => getControllerMetadata(c)) as (new (...args: any[]) => any)[];
-    
+
     if (validControllers.length > 0) {
       app.use(createExpressRouter(validControllers, { prefix: contextPath, verbose }));
       if (verbose) {
@@ -140,9 +143,6 @@ export class WebAutoConfiguration {
     // 全局异常处理
     ExceptionHandlerRegistry.initialize();
     app.use(createErrorHandler());
-
-    // 注册到应用上下文
-    context.registerHttpServer(new ExpressHttpServer(app));
   }
 }
 

@@ -3,21 +3,22 @@ import type { User, Role, Permission } from '../entities/index.js';
 
 @Service()
 export class PermissionService {
-  private userMapper: any = null;
-
-  setMappers(userMapper: any, _roleMapper?: any, _permissionMapper?: any): void {
-    this.userMapper = userMapper;
-  }
-
+  // 支持直接权限字符串列表（如业务代码中的permissions字段）
+  // 或者通过嵌套的roles结构
   async hasPermission(user: User, permission: string): Promise<boolean> {
-    if (!this.userMapper) return false;
+    // 优先使用直接的permissions字段（业务代码中的实现）
+    if (user.permissions && user.permissions.length > 0) {
+      return user.permissions.includes(permission);
+    }
 
-    const userWithRoles = await this.userMapper.selectById(user.id);
-    if (!userWithRoles || !userWithRoles.roles) return false;
+    // 降级到嵌套的roles结构
+    if (!user.roles) return false;
 
-    return userWithRoles.roles.some(function (role: Role) {
+    return user.roles.some(function (role: Role) {
       return role.permissions && role.permissions.some(function (perm: Permission) {
-        return perm.name === permission;
+        // 支持字符串或对象格式
+        const permName = typeof perm === 'string' ? perm : perm.name;
+        return permName === permission;
       });
     });
   }
@@ -48,15 +49,17 @@ export class PermissionService {
 
   hasRole(user: User, role: string): boolean {
     if (!user.roles) return false;
+    // 支持role.name（嵌套结构）或直接字符串（扁平结构）
     return user.roles.some(function (r) {
-      return r.name === role;
+      const roleName = typeof r === 'string' ? r : r.name;
+      return roleName === role;
     });
   }
 
   hasAllRoles(user: User, roles: string[]): boolean {
     if (!user.roles) return false;
     const userRoles = user.roles.map(function (r) {
-      return r.name;
+      return typeof r === 'string' ? r : r.name;
     });
     return roles.every(function (role) {
       return userRoles.indexOf(role) !== -1;
@@ -66,7 +69,8 @@ export class PermissionService {
   hasAnyRole(user: User, roles: string[]): boolean {
     if (!user.roles) return false;
     return user.roles.some(function (r) {
-      return roles.indexOf(r.name) !== -1;
+      const roleName = typeof r === 'string' ? r : r.name;
+      return roles.indexOf(roleName) !== -1;
     });
   }
 }

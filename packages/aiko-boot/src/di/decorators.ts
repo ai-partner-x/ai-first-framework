@@ -29,9 +29,9 @@ interface AutowiredInfo {
 
 /**
  * @Autowired - Spring 风格的属性注入
- * 
+ *
  * @param type - 要注入的类型（可选，若不指定则从 metadata 获取）
- * 
+ *
  * @example
  * @Service()
  * class UserService {
@@ -41,16 +41,26 @@ interface AutowiredInfo {
  */
 export function Autowired(type?: Function) {
   return function (target: Object, propertyKey: string | symbol): void {
-    const existingFields: AutowiredInfo[] = Reflect.getMetadata(AUTOWIRED_METADATA, target.constructor) || [];
+    const constructor = target.constructor;
+    const existingFields: AutowiredInfo[] = Reflect.getMetadata(AUTOWIRED_METADATA, constructor) || [];
+
     // 优先使用显式指定的类型，否则从 design:type 获取
-    const propertyType = type || Reflect.getMetadata('design:type', target, propertyKey);
-    
+    let propertyType = type;
+    if (!propertyType) {
+      propertyType = Reflect.getMetadata('design:type', target, propertyKey);
+    }
+
+    // 如果还是无法获取类型，记录警告（但不阻止流程）
+    if (!propertyType && process.env.NODE_ENV !== 'production') {
+      console.warn(`[@Autowired] Cannot determine type for ${constructor.name}.${String(propertyKey)}. Consider specifying type explicitly: @Autowired(Type)`);
+    }
+
     existingFields.push({
       propertyKey: String(propertyKey),
       type: propertyType,
     });
-    
-    Reflect.defineMetadata(AUTOWIRED_METADATA, existingFields, target.constructor);
+
+    Reflect.defineMetadata(AUTOWIRED_METADATA, existingFields, constructor);
   };
 }
 

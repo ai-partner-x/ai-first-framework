@@ -66,11 +66,21 @@ export class PermissionExpressionParser {
   }
 
   private evaluateHasPermission(user: any, permission: string): boolean {
-    if (!user || !user.roles) return false;
+    if (!user) return false;
+
+    // 优先检查直接的permissions字段（业务代码格式）
+    if (user.permissions && user.permissions.length > 0) {
+      return user.permissions.includes(permission);
+    }
+
+    // 降级到嵌套的roles结构
+    if (!user.roles) return false;
     return user.roles.some(function(r: any) {
       if (!r.permissions) return false;
       return r.permissions.some(function(p: any) {
-        return p.name === permission;
+        // 支持字符串或对象格式
+        const permName = typeof p === 'string' ? p : p.name;
+        return permName === permission;
       });
     });
   }

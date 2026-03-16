@@ -1,25 +1,20 @@
 import 'reflect-metadata';
-import { RestController, PostMapping, GetMapping, RequestBody, RequestParam, QueryParam } from '@ai-partner-x/aiko-boot-starter-web';
+import { RestController, PostMapping, GetMapping, RequestBody, RequestParam, RequestHeader } from '@ai-partner-x/aiko-boot-starter-web';
 import { Autowired } from '@ai-partner-x/aiko-boot';
-import { Public } from '@ai-partner-x/aiko-boot-starter-security';
 import { AuthService } from '../service/auth.service.js';
 import type { LoginDto, LoginResultDto, RefreshTokenDto } from '../dto/auth.dto.js';
-import { SecurityContext } from '@ai-partner-x/aiko-boot-starter-security';
-import axios from 'axios';
 
 @RestController({ path: '/auth' })
 export class AuthController {
-  @Autowired()
+  @Autowired(AuthService)
   private authService!: AuthService;
 
   @PostMapping('/login')
-  @Public()
   async login(@RequestBody() dto: LoginDto): Promise<LoginResultDto> {
     return this.authService.login(dto);
   }
 
   @PostMapping('/refresh')
-  @Public()
   async refresh(@RequestBody() dto: RefreshTokenDto): Promise<{ accessToken: string }> {
     return this.authService.refreshToken(dto.refreshToken);
   }
@@ -29,99 +24,72 @@ export class AuthController {
     return this.authService.getUserInfo(Number(userId));
   }
 
-  @PostMapping('/logout')
-  async logout(@RequestBody() body: { token: string }): Promise<any> {
-    return this.authService.logout(body.token);
-  }
+  /**
+   * 获取当前用户信息（基于 JWT token）
+   *
+   * 支持三种 token 传递方式，按优先级顺序：
+   * 1. Authorization Header (Bearer token) - 推荐
+   * 2. Request Body - 兼容方式
+   * 3. URL Parameters - 备用方式
+   *
+   * 所有方式都支持 "Bearer <token>" 和 "<token>" 两种格式
+   *
+   * @example
+   * ```bash
+   * # 方式1：使用 Authorization Header（推荐）
+   * curl -X POST http://localhost:3001/api/auth/current \
+   *   -H "Authorization: Bearer <token>"
+   *
+   * # 方式2：使用请求体
+   * curl -X POST http://localhost:3001/api/auth/current \
+   *   -H "Content-Type: application/json" \
+   *   -d '{"authorization": "Bearer <token>"}'
+   * # 或者不带 Bearer 前缀：
+   * curl -X POST http://localhost:3001/api/auth/current \
+   *   -H "Content-Type: application/json" \
+   *   -d '{"authorization": "<token>"}'
+   *
+   * # 方式3：使用 URL 参数
+   * curl -X POST "http://localhost:3001/api/auth/current?authorization=Bearer <token>"
+   * # 或者不带 Bearer 前缀：
+   * curl -X POST "http://localhost:3001/api/auth/current?authorization=<token>"
+   * ```
+   */
+  @PostMapping('/current')
+  async getCurrentUser(
+    @RequestHeader('authorization', false) headerAuthorization: string | undefined,
+    @RequestBody() body: any,
+    @RequestParam('authorization', false) paramAuthorization: string | undefined
+  ): Promise<LoginResultDto['userInfo']> {
+    let token = '';
 
-  @GetMapping('/github')
-  @Public()
-  async githubAuth(@QueryParam('redirect') redirect?: string): Promise<any> {
-    const clientId = process.env.GITHUB_CLIENT_ID;
-    const redirectUri = process.env.GITHUB_CALLBACK_URL;
-    const scope = 'user:email';
-
-    const authUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}${redirect ? `&redirect_uri=${encodeURIComponent(redirect)}` : ''}`;
-
-    return { authUrl };
-  }
-
-  @GetMapping('/github/callback')
-  @Public()
-  async githubCallback(@QueryParam('code') code: string): Promise<any> {
-    try {
-      const clientId = process.env.GITHUB_CLIENT_ID;
-      const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-      const redirectUri = process.env.GITHUB_CALLBACK_URL;
-
-      const tokenResponse = await axios.post('https://github.com/login/oauth/access_token', {
-        client_id: clientId,
-        client_secret: clientSecret,
-        code: code,
-        redirect_uri: redirectUri,
-      }, {
-        headers: { Accept: 'application/json' }
-      });
-
-      const tokens = tokenResponse.data;
-
-      const userResponse = await axios.get('https://api.github.com/user', {
-        headers: { Authorization: `Bearer ${tokens.access_token}` }
-      });
-
-      const profile = {
-        ...userResponse.data,
-        provider: 'github',
-      };
-
-      return this.authService.handleOAuthCallback(profile, tokens);
-    } catch (error) {
-      throw new Error('GitHub OAuth token exchange failed');
+    // 优先级1：Authorization Header
+    if (headerAuthorization && typeof headerAuthorization === 'string') {
+      token = headerAuthorization;
+      if (token.startsWith('Bearer ')) {
+        token = token.substring(7); // 移除 "Bearer " 前缀
+      }
     }
-  }
-
-  @GetMapping('/google')
-  @Public()
-  async googleAuth(@QueryParam('redirect') redirect?: string): Promise<any> {
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const redirectUri = process.env.GOOGLE_CALLBACK_URL;
-    const scope = 'profile email';
-
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&response_type=code${redirect ? `&redirect_uri=${encodeURIComponent(redirect)}` : ''}`;
-
-    return { authUrl };
-  }
-
-  @GetMapping('/google/callback')
-  @Public()
-  async googleCallback(@QueryParam('code') code: string): Promise<any> {
-    try {
-      const clientId = process.env.GOOGLE_CLIENT_ID;
-      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-      const redirectUri = process.env.GOOGLE_CALLBACK_URL;
-
-      const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
-        client_id: clientId,
-        client_secret: clientSecret,
-        code: code,
-        redirect_uri: redirectUri,
-        grant_type: 'authorization_code',
-      });
-
-      const tokens = tokenResponse.data;
-
-      const userResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: { Authorization: `Bearer ${tokens.access_token}` }
-      });
-
-      const profile = {
-        ...userResponse.data,
-        provider: 'google',
-      };
-
-      return this.authService.handleOAuthCallback(profile, tokens);
-    } catch (error) {
-      throw new Error('Google OAuth token exchange failed');
+    // 优先级2：Request Body
+    else if (body && typeof body === 'object' && body.authorization && typeof body.authorization === 'string') {
+      token = body.authorization;
+      if (token.startsWith('Bearer ')) {
+        token = token.substring(7); // 移除 "Bearer " 前缀
+      }
     }
+    // 优先级3：URL Parameters
+    else if (paramAuthorization && typeof paramAuthorization === 'string') {
+      token = paramAuthorization;
+      if (token.startsWith('Bearer ')) {
+        token = token.substring(7); // 移除 "Bearer " 前缀
+      }
+    }
+    // 都没有找到 authorization
+    else {
+      throw new Error('Authorization is required. Please provide authorization via Authorization header, request body, or URL parameter');
+    }
+
+    return this.authService.getCurrentUserByToken(token);
   }
+
 }

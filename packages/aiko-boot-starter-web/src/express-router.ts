@@ -22,6 +22,7 @@ import {
   getPathVariables,
   getRequestBody,
   getRequestParams,
+  getRequestHeaders,
 } from './decorators.js';
 import { Router, IRouter } from 'express';
 import { Container, injectAutowiredProperties } from '@ai-partner-x/aiko-boot/di/server';
@@ -130,6 +131,7 @@ function registerController(
         const pathVars   = getPathVariables(ControllerClass.prototype, methodName);
         const bodyParams = getRequestBody(ControllerClass.prototype, methodName);
         const queryParams = getRequestParams(ControllerClass.prototype, methodName);
+        const headerParams = getRequestHeaders(ControllerClass.prototype, methodName);
 
         const paramCount = controllerMethod.length;
         const args: any[] = new Array(paramCount);
@@ -148,6 +150,16 @@ function registerController(
         for (const [idx, param] of Object.entries(queryParams)) {
           const { name } = param as { name: string; required: boolean };
           args[Number(idx)] = req.query[name];
+        }
+
+        // 注入 @RequestHeader
+        for (const [idx, param] of Object.entries(headerParams)) {
+          const { name } = param as { name: string; required: boolean };
+          const headerValue = req.headers[name.toLowerCase()]; // Headers are case-insensitive
+          if (!headerValue && param.required) {
+            throw new Error(`Header "${name}" is required but not provided.`);
+          }
+          args[Number(idx)] = headerValue || '';
         }
 
         const result = await controllerMethod.apply(instance, args);

@@ -22,9 +22,13 @@ import {
   OnApplicationReady,
   OnApplicationShutdown,
   ConfigLoader,
+  getApplicationContext,
 } from '@ai-partner-x/aiko-boot/boot';
 import { Component } from '@ai-partner-x/aiko-boot';
 import { createKyselyDatabase, closeKyselyDatabase, type DatabaseConnectionConfig } from './database.js';
+import { getMapperMetadata } from './decorators.js';
+import { createAdapterFromEntity } from './config.js';
+import { Container } from '@ai-partner-x/aiko-boot/di/server';
 
 /**
  * 数据库配置属性类
@@ -78,6 +82,56 @@ export class OrmAutoConfiguration {
     console.log(`🗄️  [aiko-orm] Initializing ${config.type} database...`);
     this.kyselyInstance = await createKyselyDatabase(config);
     console.log(`✅ [aiko-orm] Database connected`);
+
+    // 数据库初始化后，为所有注册的Mapper设置适配器
+    this.configureMappers();
+  }
+
+  /**
+   * 为所有注册的Mapper设置数据库适配器
+   */
+  private configureMappers(): void {
+    try {
+      const context = getApplicationContext();
+      if (!context) {
+        console.warn('[aiko-orm] ApplicationContext not available, skipping Mapper adapter configuration');
+        return;
+      }
+
+      // 获取所有Mapper类型的组件
+      const mapperComponents = context.components.get('mapper') || [];
+
+      if (mapperComponents.length === 0) {
+        console.log('[aiko-orm] No Mappers found');
+        return;
+      }
+
+      console.log(`[aiko-orm] Configuring ${mapperComponents.length} Mapper(s)...`);
+
+      for (const MapperConstructor of mapperComponents) {
+        try {
+          const mapperMetadata = getMapperMetadata(MapperConstructor);
+
+          if (mapperMetadata && mapperMetadata.entity) {
+            // 直接实例化Mapper并设置适配器
+            const mapperInstance = new MapperConstructor();
+
+            if (mapperInstance && typeof mapperInstance.setAdapter === 'function') {
+              const adapter = createAdapterFromEntity(mapperMetadata.entity as any);
+              mapperInstance.setAdapter(adapter);
+              console.log(`[aiko-orm] Configured adapter for ${mapperMetadata.className}`);
+
+              // 将配置好的Mapper实例注册到DI容器，以便@Service通过@Autowired获取
+              Container.registerInstance(MapperConstructor as any, mapperInstance);
+            }
+          }
+        } catch (error) {
+          console.warn(`[aiko-orm] Failed to configure adapter for Mapper:`, error);
+        }
+      }
+    } catch (error) {
+      console.warn('[aiko-orm] Failed to configure Mappers:', error);
+    }
   }
 
   /**

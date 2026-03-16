@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { Injectable, Autowired } from '@ai-partner-x/aiko-boot/di/server';
+import { MethodPermission } from '@ai-partner-x/aiko-boot-starter-security';
 import bcrypt from 'bcryptjs';
 import { UserMapper } from '../mapper/user.mapper.js';
 import { UserRoleMapper } from '../mapper/user-role.mapper.js';
@@ -8,15 +9,19 @@ import type { CreateUserDto, UpdateUserDto, UserPageDto, UserVo } from '../dto/u
 
 @Injectable()
 export class UserService {
-  @Autowired()
+  @Autowired(UserMapper)
   private userMapper!: UserMapper;
 
-  @Autowired()
+  @Autowired(UserRoleMapper)
   private userRoleMapper!: UserRoleMapper;
 
-  @Autowired()
+  @Autowired(RoleMapper)
   private roleMapper!: RoleMapper;
 
+  @MethodPermission('user', 'page', {
+    description: '查询用户分页服务方法',
+    group: '用户服务',
+  })
   async pageUsers(params: UserPageDto) {
     const allUsers = await this.userMapper.selectList();
     let filtered = allUsers;
@@ -57,6 +62,10 @@ export class UserService {
     return { records: usersWithRoles, total, pageNo, pageSize, totalPages: Math.ceil(total / pageSize) };
   }
 
+  @MethodPermission('user', 'read', {
+    description: '查询用户服务方法',
+    group: '用户服务',
+  })
   async getById(id: number): Promise<UserVo> {
     const user = await this.userMapper.selectById(id);
     if (!user) throw new Error('用户不存在');
@@ -65,6 +74,10 @@ export class UserService {
 
 
 
+  @MethodPermission('user', 'create', {
+    description: '创建用户服务方法',
+    group: '用户服务',
+  })
   async createUser(dto: CreateUserDto): Promise<UserVo> {
     const exists = await this.userMapper.selectByUsername(dto.username);
     if (exists) throw new Error('用户名已存在');
@@ -88,6 +101,10 @@ export class UserService {
 
 
 
+  @MethodPermission('user', 'update', {
+    description: '更新用户服务方法',
+    group: '用户服务',
+  })
   async updateUser(id: number, dto: UpdateUserDto): Promise<UserVo> {
     let user = await this.userMapper.selectById(id);
     if (!user) throw new Error('用户不存在');
@@ -104,6 +121,10 @@ export class UserService {
 
 
 
+  @MethodPermission('user', 'delete', {
+    description: '删除用户服务方法',
+    group: '用户服务',
+  })
   async deleteUser(id: number): Promise<boolean> {
     let user = await this.userMapper.selectById(id);
     if (!user) throw new Error('用户不存在');
@@ -112,6 +133,10 @@ export class UserService {
   }
 
 
+  @MethodPermission('user', 'reset-password', {
+    description: '重置密码服务方法',
+    group: '用户服务',
+  })
   async resetPassword(id: number, newPassword: string): Promise<void> {
     let user = await this.userMapper.selectById(id);
     if (!user) throw new Error('用户不存在');

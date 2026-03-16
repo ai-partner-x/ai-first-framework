@@ -57,6 +57,7 @@ export type { DependencyContainer, InjectionToken } from 'tsyringe';
 // Re-export createApp (main entry point)
 export {
   createApp,
+  getApplicationContext,
   type ApplicationContext,
   type AppOptions,
   type HttpServer,
