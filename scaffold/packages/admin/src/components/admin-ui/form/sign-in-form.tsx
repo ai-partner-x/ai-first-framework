@@ -21,13 +21,17 @@ import { appAuth } from "@scaffold/core"
 export const SignInForm = () => {
   const [account, setAccount] = useState("")
   const [password, setPassword] = useState("")
-  const navigator = useNavigate()
+  const [error, setError] = useState<string | null>(null)
+  const navigate = useNavigate()
 
   const handleSignIn: React.ComponentProps<"form">["onSubmit"] = async (e) => {
     e.preventDefault()
+    setError(null)
     const result = await appAuth.login({ account, password })
     if (result.success) {
-      navigator(result.redirectTo ?? "/", { replace: true })
+      navigate(result.redirectTo ?? "/", { replace: true })
+    } else {
+      setError(result.error?.message ?? "Login failed")
     }
   }
 
@@ -87,6 +91,16 @@ export const SignInForm = () => {
               />
             </div>
 
+            {error ? (
+              <p
+                role="alert"
+                className={cn(
+                  "mt-4", "text-sm", "text-destructive", "font-medium"
+                )}
+              >
+                {error}
+              </p>
+            ) : null}
 
             <Button type="submit" size="lg" className={cn("w-full", "mt-6")}>
               Sign in

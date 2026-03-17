@@ -1,17 +1,16 @@
 import { useState } from "react"
 import { useNavigate, useSearchParams } from "react-router"
 import { useTranslation } from "react-i18next"
-import { useLogin } from "@scaffold/core"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import { appAuth } from "@scaffold/core"
 
 export function LoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { mutate: login } = useLogin()
   const [account, setAccount] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -22,7 +21,7 @@ export function LoginPage() {
     setError(null)
     setIsSubmitting(true)
     try {
-      const result = await login({ account, password })
+      const result = await appAuth.login({ account, password })
       if (result.success) {
         const to =
           searchParams.get("to") != null
