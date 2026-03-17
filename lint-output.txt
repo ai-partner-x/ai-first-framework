@@ -1,0 +1,24 @@
+ WARN  Issue while reading "/home/runner/work/ai-first-framework/ai-first-framework/.npmrc". Failed to replace env in config: ${GITHUB_TOKEN}
+ WARN  Issue while reading "/home/runner/work/ai-first-framework/ai-first-framework/.npmrc". Failed to replace env in config: ${GITHUB_TOKEN}
+
+> aiko-boot@0.1.0 lint /home/runner/work/ai-first-framework/ai-first-framework
+> eslint 'packages/**/*.{ts,tsx}'
+
+
+Oops! Something went wrong! :(
+
+ESLint: 8.57.1
+
+ESLint couldn't find the plugin "@ai-partner-x/eslint-plugin-aiko-boot".
+
+(The package "@ai-partner-x/eslint-plugin-aiko-boot" was not found when loaded as a Node module from the directory "/home/runner/work/ai-first-framework/ai-first-framework/packages/aiko-boot-create/templates/scaffold-default/packages/api".)
+
+It's likely that the plugin isn't installed correctly. Try reinstalling by running the following:
+
+    npm install @ai-partner-x/eslint-plugin-aiko-boot@latest --save-dev
+
+The plugin "@ai-partner-x/eslint-plugin-aiko-boot" was referenced from the config file in "packages/aiko-boot-create/templates/scaffold-default/packages/api/.eslintrc.json".
+
+If you still can't figure out the problem, please stop by https://eslint.org/chat/help to chat with the team.
+
+ ELIFECYCLE  Command failed with exit code 2.

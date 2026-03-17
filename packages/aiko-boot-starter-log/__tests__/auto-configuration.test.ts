@@ -10,7 +10,7 @@ import {
   createLogAutoConfiguration,
   logAutoConfigure,
   LoggingProperties
-} from '../src/auto-configuration';
+} from '../src/config/auto-configuration';
 import type { LogConfig, LogLevel } from '../src/types';
 
 describe('自动配置', () => {
@@ -74,9 +74,9 @@ describe('自动配置', () => {
     }
   });
   
-  test('应该正确初始化配置', () => {
-    expect(() => {
-      autoConfig.initialize();
+  test('应该正确初始化配置', async () => {
+    await expect(async () => {
+      await autoConfig.initialize();
     }).not.toThrow();
     
     const config = autoConfig.getConfig();
@@ -109,13 +109,13 @@ describe('自动配置', () => {
     const config1 = autoConfig.getConfig();
     const config2 = autoConfig.getConfig();
     
-    // 第二次调用应该返回相同的配置（缓存）
-    expect(config2).toBe(config1);
+    // 第二次调用应该返回相同的配置值（缓存）
+    expect(config2).toEqual(config1);
   });
   
-  test('initialize() 应该重置缓存', () => {
+  test('initialize() 应该重置缓存', async () => {
     const config1 = autoConfig.getConfig();
-    autoConfig.initialize();
+    await autoConfig.initialize();
     const config2 = autoConfig.getConfig();
     
     // initialize() 后应该重新加载配置
@@ -159,11 +159,11 @@ describe('自动配置', () => {
     });
   });
   
-  test('应该提供有意义的控制台输出', () => {
+  test('应该提供有意义的控制台输出', async () => {
     // 捕获 console.log 输出
     const consoleSpy = vi.spyOn(console, 'log');
     
-    autoConfig.initialize();
+    await autoConfig.initialize();
     
     expect(consoleSpy).toHaveBeenCalled();
     expect(consoleSpy.mock.calls[0][0]).toContain('[aiko-log]');

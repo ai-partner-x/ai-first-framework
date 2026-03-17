@@ -8,6 +8,8 @@ import {
   getApiPermissionMetadata,
   getMethodPermissionMetadata,
   getButtonPermissionMetadata,
+  getRolePermissionMetadata,
+  getMenuPermissionMetadata,
   type PermissionDefinition,
 } from '../permission/decorators.js';
 
@@ -87,7 +89,7 @@ export class PermissionInterceptor {
     }
     // 2.1 检查菜单权限
     if (menuPermission) {
-      const canAccess = await this.permissionGuard.canActivate(user, menuPermission);
+      const canAccess = await this.permissionGuard.canActivate(user, this.generatePermissionCode(menuPermission));
       if (!canAccess) {
         this.sendForbidden(response, `Access denied. Required menu permission: ${this.generatePermissionCode(menuPermission)}`);
         return;
@@ -95,7 +97,7 @@ export class PermissionInterceptor {
     }
     // 2.2 检查角色权限
     if (rolePermission) {
-      const canAccess = await this.permissionGuard.canActivate(user, rolePermission);
+      const canAccess = await this.permissionGuard.canActivate(user, this.generatePermissionCode(rolePermission));
       if (!canAccess) {
         this.sendForbidden(response, `Access denied. Required role permission: ${this.generatePermissionCode(rolePermission)}`);
         return;
@@ -104,13 +106,13 @@ export class PermissionInterceptor {
 
     if (secured && secured.length > 0) {
       // 合并所有权限要求（包括菜单和角色权限）
-      const allPermissions = [...secured];
-      if (menuPermission) allPermissions.push(menuPermission);
-      if (rolePermission) allPermissions.push(rolePermission);
+      const allPermissions: string[] = [...secured];
+      if (menuPermission) allPermissions.push(this.generatePermissionCode(menuPermission));
+      if (rolePermission) allPermissions.push(this.generatePermissionCode(rolePermission));
 
       const canAccess = await this.permissionGuard.canActivateWithPermissions(user, allPermissions);
       if (!canAccess) {
-        this.sendForbidden(response, 'Access denied. Required permissions: ' + allPermissions.map(p => this.generatePermissionCode(p)).join(', '));
+        this.sendForbidden(response, 'Access denied. Required permissions: ' + allPermissions.join(', '));
         return;
       }
     }

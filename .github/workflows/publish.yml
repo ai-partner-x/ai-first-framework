@@ -1,0 +1,61 @@
+name: Publish Packages
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (skip actual publish)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@ai-partner-x'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build all packages
+        run: pnpm --filter "./packages/**" -r build
+
+      - name: Publish packages
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: pnpm -r publish --no-git-checks --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+
+      - name: Dry run (list packages)
+        if: ${{ github.event.inputs.dry_run == 'true' }}
+        run: pnpm -r publish --no-git-checks --access public --dry-run
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}

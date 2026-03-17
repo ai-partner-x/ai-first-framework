@@ -12,6 +12,10 @@ const PATH_VARIABLE_METADATA = 'aiko-boot:pathVariable';
 const REQUEST_PARAM_METADATA = 'aiko-boot:requestParam';
 const REQUEST_BODY_METADATA = 'aiko-boot:requestBody';
 const REQUEST_HEADER_METADATA = 'aiko-boot:requestHeader';
+const REQUEST_PART_METADATA = 'aiko-boot:requestPart';
+const MODEL_ATTRIBUTE_METADATA = 'aiko-boot:modelAttribute';
+const REQUEST_ATTRIBUTE_METADATA = 'aiko-boot:requestAttribute';
+const JSON_FORMAT_METADATA = 'aiko-boot:jsonFormat';
 
 /** 导出供 ApiContract 复用的元数据 key */
 export { CONTROLLER_METADATA, REQUEST_MAPPING_METADATA };
@@ -184,7 +188,174 @@ export function RequestBody() {
   };
 }
 
-// ==================== Metadata Getters ====================
+// ==================== Multipart / File Upload ====================
+
+/**
+ * MultipartFile - Spring Boot compatible interface for uploaded files.
+ * Equivalent to Java: org.springframework.web.multipart.MultipartFile
+ *
+ * @example
+ * @PostMapping('/upload')
+ * async upload(@RequestPart('file') file: MultipartFile) {
+ *   const bytes = file.getBytes();
+ *   await file.transferTo('/tmp/uploaded_' + file.getOriginalFilename());
+ *   return { filename: file.getOriginalFilename(), size: file.getSize() };
+ * }
+ */
+export interface MultipartFile {
+  /** Returns the name of the parameter in the multipart form. */
+  getName(): string;
+  /** Returns the original filename in the client's filesystem. */
+  getOriginalFilename(): string;
+  /** Returns the content type of the file, or null if not defined. */
+  getContentType(): string | null;
+  /** Returns the size of the file in bytes. */
+  getSize(): number;
+  /** Returns the contents of the file as a Buffer (byte array). */
+  getBytes(): Buffer;
+  /** Returns whether the uploaded file is empty. */
+  isEmpty(): boolean;
+  /** Transfer the received file to the given destination path. */
+  transferTo(dest: string): Promise<void>;
+}
+
+/**
+ * @RequestPart - Extract a part from a multipart/form-data request (like Spring Boot @RequestPart)
+ *
+ * Used with file uploads. Multer middleware is applied to the route only when multipart uploads
+ * are enabled/configured (e.g. via `ExpressRouterOptions.multipart` or framework auto-configuration
+ * such as `WebAutoConfiguration` / `spring.servlet.multipart.enabled`). If multipart support is not
+ * configured/enabled for a route that uses `@RequestPart`, the router will fail fast and throw during
+ * route registration instead of injecting an undefined parameter.
+ *
+ * @param name - The name of the form field (defaults to 'file')
+ *
+ * @example
+ * @PostMapping('/upload')
+ * async upload(@RequestPart('avatar') avatar: MultipartFile) { ... }
+ */
+export function RequestPart(name?: string) {
+  return function (target: any, propertyKey: string, parameterIndex: number) {
+    const requestParts = Reflect.getMetadata(REQUEST_PART_METADATA, target, propertyKey) || {};
+    requestParts[parameterIndex] = { name: name || 'file' };
+    Reflect.defineMetadata(REQUEST_PART_METADATA, requestParts, target, propertyKey);
+  };
+}
+
+// ==================== Model Binding & Request Attributes ====================
+
+/**
+ * @ModelAttribute - Bind all request query parameters and form body fields into a
+ * plain object parameter (like Spring Boot @ModelAttribute).
+ *
+ * The decorated parameter receives a merged flat object of `req.query` and `req.body`
+ * (suitable for URL query-string search DTOs and `application/x-www-form-urlencoded`
+ * form submissions).  The optional `name` argument is stored for documentation /
+ * introspection purposes but is not used during binding — the entire merged object is
+ * always passed.
+ *
+ * @param name - Optional logical name (mirrors Spring's model attribute name)
+ *
+ * @example
+ * @GetMapping('/search')
+ * async search(@ModelAttribute() query: SearchDto) {
+ *   // query.keyword, query.page, query.size … all populated from URL params
+ *   return this.userService.search(query);
+ * }
+ *
+ * @example
+ * @PostMapping('/register')
+ * async register(@ModelAttribute('user') dto: RegisterDto) {
+ *   // dto populated from application/x-www-form-urlencoded body
+ *   return this.authService.register(dto);
+ * }
+ */
+export function ModelAttribute(name?: string) {
+  return function (target: any, propertyKey: string, parameterIndex: number) {
+    const modelAttrs = Reflect.getMetadata(MODEL_ATTRIBUTE_METADATA, target, propertyKey) || {};
+    modelAttrs[parameterIndex] = { name: name || '' };
+    Reflect.defineMetadata(MODEL_ATTRIBUTE_METADATA, modelAttrs, target, propertyKey);
+  };
+}
+
+/**
+ * Type conversion helper for @ModelAttribute parameters
+ * 
+ * Automatically converts string values to appropriate types (number, boolean) when possible.
+ * This helper reduces manual type conversion in controller methods.
+ * 
+ * @example
+ * // Without helper (manual conversion required)
+ * @GetMapping('/search')
+ * async search(@ModelAttribute() query: SearchDto) {
+ *   return {
+ *     page: Number(query.page ?? 1),
+ *     size: Number(query.size ?? 10),
+ *     active: query.active === 'true',
+ *   };
+ * }
+ * 
+ * // With helper (automatic conversion)
+ * @GetMapping('/search')
+ * async search(@ModelAttribute() query: SearchDto) {
+ *   const parsed = convertModelAttributes(query);
+ *   return {
+ *     page: parsed.page ?? 1,
+ *     size: parsed.size ?? 10,
+ *     active: parsed.active ?? false,
+ *   };
+ * }
+ */
+export function convertModelAttributes<T extends Record<string, unknown>>(input: T): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  
+  for (const [key, value] of Object.entries(input)) {
+    if (typeof value === 'string') {
+      // Try to convert to number
+      const numValue = Number(value);
+      if (!isNaN(numValue) && value.trim() !== '') {
+        result[key] = numValue;
+      } else if (value.toLowerCase() === 'true') {
+        result[key] = true;
+      } else if (value.toLowerCase() === 'false') {
+        result[key] = false;
+      } else {
+        result[key] = value;
+      }
+    } else {
+      result[key] = value;
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * @RequestAttribute - Extract a named attribute set on the Express request object
+ * by upstream middleware (like Spring Boot @RequestAttribute).
+ *
+ * Middlewares typically attach custom properties directly to the `req` object
+ * (e.g. `req.user`, `req.tenantId`).  This decorator reads `(req as any)[name]`
+ * and injects the value into the controller parameter.
+ *
+ * @param name - The property name on the Express request object
+ *
+ * @example
+ * // In Express middleware:
+ * // app.use((req, res, next) => { (req as any).currentUser = { id: 1 }; next(); });
+ *
+ * @GetMapping('/profile')
+ * async profile(@RequestAttribute('currentUser') user: User) {
+ *   return user;
+ * }
+ */
+export function RequestAttribute(name: string) {
+  return function (target: any, propertyKey: string, parameterIndex: number) {
+    const reqAttrs = Reflect.getMetadata(REQUEST_ATTRIBUTE_METADATA, target, propertyKey) || {};
+    reqAttrs[parameterIndex] = { name };
+    Reflect.defineMetadata(REQUEST_ATTRIBUTE_METADATA, reqAttrs, target, propertyKey);
+  };
+}
 
 export function getControllerMetadata(target: any): RestControllerOptions | undefined {
   return Reflect.getMetadata(CONTROLLER_METADATA, target);
@@ -208,4 +379,348 @@ export function getRequestBody(target: any, methodName: string): Record<number, 
 
 export function getRequestHeaders(target: any, methodName: string): Record<number, { name: string; required: boolean }> {
   return Reflect.getMetadata(REQUEST_HEADER_METADATA, target, methodName) || {};
+}
+
+export function getRequestParts(target: any, methodName: string): Record<number, { name: string }> {
+  return Reflect.getMetadata(REQUEST_PART_METADATA, target, methodName) || {};
+}
+
+export function getModelAttributes(target: any, methodName: string): Record<number, { name: string }> {
+  return Reflect.getMetadata(MODEL_ATTRIBUTE_METADATA, target, methodName) || {};
+}
+
+export function getRequestAttributes(target: any, methodName: string): Record<number, { name: string }> {
+  return Reflect.getMetadata(REQUEST_ATTRIBUTE_METADATA, target, methodName) || {};
+}
+
+// Token keys used by formatDate, sorted by length descending.
+// Pre-computed at module load so formatDate never re-allocates or re-sorts on each call.
+// The comparison inside formatDate is case-sensitive, so 'MM' (month) and
+// 'mm' (minute) are never confused even though they share the same length.
+const SORTED_DATE_TOKEN_KEYS: ReadonlyArray<string> = [
+  'yyyy', 'SSS', 'yy', 'MM', 'dd', 'HH', 'mm', 'ss', 'M', 'd', 'H', 'm', 's', 'S',
+];
+
+/**
+ * Serialization shape for @JsonFormat.
+ * - `STRING` (default): serialize Date as a formatted string (uses `pattern`)
+ * - `NUMBER`: serialize Date as epoch milliseconds (Unix timestamp × 1000)
+ * 
+ * @default 'STRING'
+ */
+export type JsonFormatShape = 'STRING' | 'NUMBER';
+
+/**
+ * Options for the @JsonFormat decorator.
+ * Mirrors Jackson's @JsonFormat annotation in Spring Boot.
+ */
+export interface JsonFormatOptions {
+  /**
+   * Java SimpleDateFormat style pattern used when shape is STRING.
+   * Supported tokens: yyyy yy MM M dd d HH H mm m ss s SSS S
+   * @example 'yyyy-MM-dd HH:mm:ss'
+   * @example 'yyyy/MM/dd'
+   */
+  pattern?: string;
+  /**
+   * IANA timezone identifier or fixed-offset string.
+   * When omitted the local (process) timezone is used.
+   * 
+   * Supported formats:
+   *   - IANA timezone identifiers: 'UTC', 'Asia/Shanghai', 'America/New_York'
+   *   - Fixed offset formats: 'GMT+8', 'GMT+08:00', 'UTC-5', 'UTC-05:00'
+   * 
+   * @example 'UTC'
+   * @example 'Asia/Shanghai'
+   * @example 'America/New_York'
+   * @example 'GMT+8'
+   * @example 'GMT+08:00'
+   * @example 'UTC-05:00'
+   */
+  timezone?: string;
+  /**
+   * How the value should be serialized.
+   * Defaults to 'STRING'.
+   */
+  shape?: JsonFormatShape;
+}
+
+/**
+ * @JsonFormat – Controls how a property is serialized in JSON responses.
+ *
+ * Equivalent to Jackson's `@JsonFormat` annotation in Spring Boot.
+ * Most commonly used to format `Date` properties into human-readable strings.
+ *
+ * @example
+ * ```typescript
+ * class UserDto {
+ *   \@JsonFormat({ pattern: 'yyyy-MM-dd HH:mm:ss', timezone: 'Asia/Shanghai' })
+ *   createTime?: Date;
+ *
+ *   \@JsonFormat({ pattern: 'yyyy-MM-dd' })
+ *   birthday?: Date;
+ *
+ *   \@JsonFormat({ shape: 'NUMBER' })
+ *   updatedAt?: Date;
+ * }
+ * ```
+ */
+export function JsonFormat(options: JsonFormatOptions = {}) {
+  return function (target: object, propertyKey: string) {
+    const formats = Reflect.getMetadata(JSON_FORMAT_METADATA, target) || {};
+    formats[propertyKey] = options;
+    Reflect.defineMetadata(JSON_FORMAT_METADATA, formats, target);
+  };
+}
+
+/**
+ * Returns the @JsonFormat metadata map for the given prototype object.
+ * Keys are property names; values are the associated JsonFormatOptions.
+ */
+export function getJsonFormatFields(target: object): Record<string, JsonFormatOptions> {
+  return Reflect.getMetadata(JSON_FORMAT_METADATA, target) || {};
+}
+
+/**
+ * Format a Date using a Java SimpleDateFormat-style pattern.
+ *
+ * Supported tokens (processed longest-first, so 'yyyy' beats 'yy', 'MM' beats 'M', etc.):
+ *   yyyy  4-digit year       yy   2-digit year
+ *   MM    2-digit month      M    1-digit month
+ *   dd    2-digit day        d    1-digit day
+ *   HH    2-digit hour(0-23) H    1-digit hour
+ *   mm    2-digit minute     m    1-digit minute
+ *   ss    2-digit second     s    1-digit second
+ *   SSS   3-digit millis     S    unpadded millis (0-999)
+ * 
+ * Timezone support:
+ *   - IANA timezone identifiers: 'UTC', 'Asia/Shanghai', 'America/New_York'
+ *   - Fixed offset formats: 'GMT+8', 'GMT+08:00', 'UTC-5', 'UTC-05:00'
+ */
+export function formatDate(date: Date, pattern: string, timezone?: string): string {
+  const pad = (n: number, len = 2) => String(n).padStart(len, '0');
+
+  let y = 0, mo = 0, d = 0, h = 0, mi = 0, s = 0, ms = 0;
+
+  if (timezone) {
+    try {
+      // 支持 GMT/UTC±HH 或 GMT/UTC±HH:MM 格式的固定时区偏移量
+      // 匹配 GMT+8, GMT+08, GMT+08:00, UTC-5, UTC-05, UTC-05:00 等格式
+      const offsetMatch = timezone.match(/^(?:GMT|UTC)([+-])(\d{1,2})(?::?(\d{2}))?$/i);
+      if (offsetMatch) {
+        const sign = offsetMatch[1] === '+' ? 1 : -1;
+        const hours = parseInt(offsetMatch[2], 10);
+        const minutes = offsetMatch[3] ? parseInt(offsetMatch[3], 10) : 0;
+        const offsetMs = sign * (hours * 3600 + minutes * 60) * 1000;
+        
+        // 应用时区偏移
+        const adjustedDate = new Date(date.getTime() + offsetMs);
+        y = adjustedDate.getUTCFullYear();
+        mo = adjustedDate.getUTCMonth() + 1;
+        d = adjustedDate.getUTCDate();
+        h = adjustedDate.getUTCHours();
+        mi = adjustedDate.getUTCMinutes();
+        s = adjustedDate.getUTCSeconds();
+        ms = adjustedDate.getUTCMilliseconds();
+      } else {
+        // 使用 Intl.DateTimeFormat 处理 IANA 时区标识符
+        const parts: Record<string, string> = {};
+        new Intl.DateTimeFormat('en-US', {
+          timeZone: timezone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hourCycle: 'h23',
+        }).formatToParts(date).forEach(p => { parts[p.type] = p.value; });
+        y  = parseInt(parts.year, 10);
+        mo = parseInt(parts.month, 10);
+        d  = parseInt(parts.day, 10);
+        h  = parseInt(parts.hour, 10);
+        mi = parseInt(parts.minute, 10);
+        s  = parseInt(parts.second, 10);
+        ms = date.getMilliseconds();
+      }
+    } catch {
+      // Fallback to local time if the timezone string is unrecognised
+      y = date.getFullYear(); mo = date.getMonth() + 1; d = date.getDate();
+      h = date.getHours();    mi = date.getMinutes();   s = date.getSeconds(); ms = date.getMilliseconds();
+    }
+  } else {
+    y = date.getFullYear(); mo = date.getMonth() + 1; d = date.getDate();
+    h = date.getHours();    mi = date.getMinutes();   s = date.getSeconds(); ms = date.getMilliseconds();
+  }
+
+  // Build the token → value map once per call, then walk the pattern using
+  // the pre-sorted key list so no sorting happens at call time.
+  const tokenValues: Record<string, string> = {
+    yyyy: String(y),
+    yy:   String(y).slice(-2),
+    MM:   pad(mo),
+    M:    String(mo),
+    dd:   pad(d),
+    d:    String(d),
+    HH:   pad(h),
+    H:    String(h),
+    mm:   pad(mi),
+    m:    String(mi),
+    ss:   pad(s),
+    s:    String(s),
+    SSS:  pad(ms, 3),
+    S:    String(ms).padStart(1, '0'),
+  };
+
+  let result = '';
+  let i = 0;
+  while (i < pattern.length) {
+    let matched = false;
+    for (const token of SORTED_DATE_TOKEN_KEYS) {
+      if (pattern.startsWith(token, i)) {
+        result += tokenValues[token];
+        i += token.length;
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) {
+      result += pattern[i++];
+    }
+  }
+  return result;
+}
+
+/**
+ * Recursively transform `value` by applying @JsonFormat rules found on any
+ * class-instance prototypes within the object graph.
+ *
+ * - Class instances: own enumerable properties are copied via `Object.keys()`
+ *   (non-enumerable properties and accessor-only getters are not included, which
+ *   matches the default `JSON.stringify` behaviour); any `Date` property
+ *   annotated with @JsonFormat is converted to a string (or number) according
+ *   to the decorator options.
+ * - Arrays: each element is recursively transformed.
+ * - Plain objects: shallow-copied into a new plain object whose own enumerable
+ *   properties are recursively transformed (nested objects are still walked).
+ * - Primitives (`string`, `number`, `boolean`): returned unchanged.
+ * - `Date` values without an annotation: returned unchanged (serialized to ISO
+ *   string by JSON.stringify as usual).
+ * - Non-plain built-in objects (Buffer, Map, Set, Error, etc.) are returned
+ *   unchanged to preserve their native JSON serialisation behaviour.
+ * - Circular / shared references are detected via a WeakMap; the
+ *   already-transformed copy is returned so every reference to the same
+ *   source object yields a consistently-formatted result.
+ *
+ * @param value The value to transform (typically the controller return value)
+ * @param visited Internal WeakMap used to memoize transformed copies and detect circular references (do not pass)
+ */
+export function applyJsonFormat(value: unknown, visited: WeakMap<object, unknown> = new WeakMap()): unknown {
+  if (value === null || value === undefined) return value;
+  if (Array.isArray(value)) {
+    // Handle arrays with memoization to support circular/shared references
+    if (visited.has(value as object)) {
+      return visited.get(value as object);
+    }
+    // Fast-path: all elements are primitives – return array as-is without copying
+    if (value.every(item => item === null || item === undefined || typeof item !== 'object')) {
+      return value;
+    }
+    const out: unknown[] = [];
+    // Register the array copy before recursing to break cycles
+    visited.set(value as object, out);
+    for (const item of value) {
+      out.push(applyJsonFormat(item, visited));
+    }
+    return out;
+  }
+  if (value instanceof Date) {
+    return value;
+  }
+  if (typeof value === 'object') {
+    // Return non-plain built-in types unchanged to preserve their default serialisation
+    if (
+      Buffer.isBuffer(value) ||
+      value instanceof Map ||
+      value instanceof Set ||
+      value instanceof Error ||
+      value instanceof Uint8Array ||
+      value instanceof RegExp ||
+      value instanceof URL ||
+      value instanceof Date
+    ) {
+      return value;
+    }
+
+    // Return the already-transformed copy for circular/shared references
+    if (visited.has(value)) {
+      return visited.get(value);
+    }
+
+    // If the object defines a toJSON method, honor it and then apply formatting.
+    // Guard against self-referential toJSON (e.g. toJSON returns `this`): if the
+    // returned value is the same reference, fall through to standard object handling.
+    const anyValue = value as any;
+    if (typeof anyValue.toJSON === 'function') {
+      // Register a placeholder object BEFORE calling toJSON so that any re-entrant
+      // call to applyJsonFormat(value) caused by toJSON() returning an object that
+      // still references the original instance (e.g. { self: this }) will find the
+      // placeholder in `visited` and stop recursing instead of looping/overflowing.
+      const placeholder: Record<string, unknown> = {};
+      visited.set(value, placeholder);
+      const jsonValue = anyValue.toJSON.call(anyValue) as unknown;
+      if (jsonValue !== value) {
+        const result = applyJsonFormat(jsonValue, visited);
+        // Back-fill the placeholder with the final result so that any part of the
+        // object graph that already received the placeholder reference (due to a
+        // cycle through the original object) now sees the fully-resolved content.
+        if (result !== null && result !== undefined && typeof result === 'object' && !Array.isArray(result)) {
+          Object.assign(placeholder, result as object);
+        }
+        // Point visited to the final result for any future lookups.
+        visited.set(value, result);
+        return result;
+      }
+      // If toJSON returned the same reference, fall through to standard object handling.
+      // Remove the placeholder so the standard path can register the real result object.
+      visited.delete(value);
+    }
+
+    const proto = Object.getPrototypeOf(value);
+    const formats: Record<string, JsonFormatOptions> =
+      proto && proto !== Object.prototype
+        ? (Reflect.getMetadata(JSON_FORMAT_METADATA, proto) || {})
+        : {};
+
+    // Fast-path: no @JsonFormat metadata and all own values are primitives
+    // – return the original object as-is without deep-copying
+    const hasFormats = Object.keys(formats).length > 0;
+    if (!hasFormats) {
+      const values = Object.values(value as Record<string, unknown>);
+      if (values.every(v => v === null || v === undefined || typeof v !== 'object')) {
+        return value;
+      }
+    }
+
+    const result: Record<string, unknown> = {};
+    // Register result in the map before recursing so circular refs resolve to the partial copy
+    visited.set(value, result);
+    for (const key of Object.keys(value as Record<string, unknown>)) {
+      const val = (value as Record<string, unknown>)[key];
+      const fmt = formats[key];
+      if (fmt && val instanceof Date) {
+        if (fmt.shape === 'NUMBER') {
+          result[key] = val.getTime();
+        } else {
+          result[key] = fmt.pattern
+            ? formatDate(val, fmt.pattern, fmt.timezone)
+            : val.toISOString();
+        }
+      } else {
+        result[key] = applyJsonFormat(val, visited);
+      }
+    }
+    return result;
+  }
+  return value;
 }

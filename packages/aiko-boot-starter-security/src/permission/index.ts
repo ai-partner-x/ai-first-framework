@@ -6,6 +6,9 @@ export {
   ApiPermission,
   MethodPermission,
   ButtonPermission,
+  RolePermission,
+  MenuPermission,
+  DataPermission,
   getPreAuthorizeMetadata,
   getPostAuthorizeMetadata,
   getSecuredMetadata,
@@ -13,6 +16,8 @@ export {
   getApiPermissionMetadata,
   getMethodPermissionMetadata,
   getButtonPermissionMetadata,
+  getRolePermissionMetadata,
+  getMenuPermissionMetadata,
   getAllPermissionMetadata,
   type PermissionDefinition,
 } from './decorators.js';

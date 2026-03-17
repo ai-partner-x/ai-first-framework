@@ -1,0 +1,27 @@
+/**
+ * Green palette.
+ */
+
+.light[data-palette="green"] {
+  --primary: oklch(0.488 0.177 142.496);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.488 0.177 142.496);
+  --sidebar-primary: oklch(0.488 0.177 142.496);
+  --chart-1: oklch(0.488 0.177 142.496);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+}
+
+.dark[data-palette="green"] {
+  --primary: oklch(0.704 0.17 142.496);
+  --primary-foreground: oklch(0.205 0 0);
+  --ring: oklch(0.704 0.17 142.496);
+  --sidebar-primary: oklch(0.704 0.17 142.496);
+  --chart-1: oklch(0.704 0.17 142.496);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+}

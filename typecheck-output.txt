@@ -1,0 +1,16 @@
+ WARN  Issue while reading "/home/runner/work/ai-first-framework/ai-first-framework/.npmrc". Failed to replace env in config: ${GITHUB_TOKEN}
+ WARN  Issue while reading "/home/runner/work/ai-first-framework/ai-first-framework/.npmrc". Failed to replace env in config: ${GITHUB_TOKEN}
+
+> aiko-boot@0.1.0 type-check /home/runner/work/ai-first-framework/ai-first-framework
+> pnpm -r type-check
+
+ WARN  Issue while reading "/home/runner/work/ai-first-framework/ai-first-framework/.npmrc". Failed to replace env in config: ${GITHUB_TOKEN}
+ WARN  Issue while reading "/home/runner/work/ai-first-framework/ai-first-framework/.npmrc". Failed to replace env in config: ${GITHUB_TOKEN}
+Scope: 12 of 13 workspace projects
+packages/aiko-boot type-check$ tsc --noEmit
+packages/aiko-boot type-check: src/di/example.ts(10,1): error TS2354: This syntax requires an imported helper but module 'tslib' cannot be found.
+packages/aiko-boot type-check: Failed
+/home/runner/work/ai-first-framework/ai-first-framework/packages/aiko-boot:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @ai-partner-x/aiko-boot@0.1.0 type-check: `tsc --noEmit`
+Exit status 2
+ ELIFECYCLE  Command failed with exit code 2.

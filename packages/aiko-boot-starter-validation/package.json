@@ -1,6 +1,6 @@
 {
   "name": "@ai-partner-x/aiko-boot-starter-validation",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Aiko Boot - Validation Starter with class-validator compatible decorators",
   "type": "module",
   "main": "./dist/index.js",
@@ -11,7 +11,10 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist", "aiko-boot.config.json"],
+  "files": [
+    "dist",
+    "aiko-boot.config.json"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -33,8 +36,23 @@
     "@hookform/resolvers": ">=3.0.0"
   },
   "peerDependenciesMeta": {
-    "react-hook-form": { "optional": true },
-    "@hookform/resolvers": { "optional": true }
+    "react-hook-form": {
+      "optional": true
+    },
+    "@hookform/resolvers": {
+      "optional": true
+    }
   },
-  "keywords": ["aiko-boot", "boot-starter-validation", "validation", "class-validator", "decorator", "typescript"]
+  "keywords": [
+    "aiko-boot",
+    "boot-starter-validation",
+    "validation",
+    "class-validator",
+    "decorator",
+    "typescript"
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "public"
+  }
 }

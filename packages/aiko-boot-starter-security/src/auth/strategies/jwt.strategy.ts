@@ -46,8 +46,9 @@ export class JwtStrategy implements IAuthStrategy {
         }) || [],
         permissions: payload.permissions || [], // 业务代码使用的权限字符串列表
       } as User;
-    } catch {
-      return null;
+    } catch (error: any) {
+      // 重新抛出 JWT 验证错误，让上层处理具体的错误类型
+      throw error;
     }
   }
 

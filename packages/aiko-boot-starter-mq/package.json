@@ -1,6 +1,6 @@
 {
   "name": "@ai-partner-x/aiko-boot-starter-mq",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AI-First Framework - MQ with Spring Boot style decorators (RabbitMQ)",
   "type": "module",
   "main": "./dist/index.js",
@@ -46,5 +46,9 @@
     "spring-boot",
     "decorator",
     "typescript"
-  ]
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "public"
+  }
 }

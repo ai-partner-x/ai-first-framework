@@ -4,7 +4,7 @@
  */
 
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { Logger } from '../src/logger';
+import { Logger } from '../src/core/logger';
 import { LogLevel } from '../src/types';
 
 describe('Logger', () => {

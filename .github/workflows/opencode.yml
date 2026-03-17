@@ -56,6 +56,12 @@ jobs:
           persist-credentials: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Configure git author (required by opencode)
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git config --local --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Merge PR
         if: steps.check_merge.outputs.should_merge == 'true'
         uses: actions/github-script@v7
@@ -141,27 +147,30 @@ jobs:
         id: typecheck
         continue-on-error: true
         run: |
+          mkdir -p "$RUNNER_TEMP/opencode-checks"
           echo "## TypeScript 类型检查" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          pnpm type-check 2>&1 | tee typecheck-output.txt || true
+          pnpm type-check 2>&1 | tee "$RUNNER_TEMP/opencode-checks/typecheck-output.txt" || true
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Run ESLint
         id: lint
         continue-on-error: true
         run: |
+          mkdir -p "$RUNNER_TEMP/opencode-checks"
           echo "## ESLint 代码检查" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          pnpm lint 2>&1 | tee lint-output.txt || true
+          pnpm lint 2>&1 | tee "$RUNNER_TEMP/opencode-checks/lint-output.txt" || true
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Run tests
         id: test
         continue-on-error: true
         run: |
+          mkdir -p "$RUNNER_TEMP/opencode-checks"
           echo "## 单元测试" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          pnpm test 2>&1 | tee test-output.txt || true
+          pnpm test 2>&1 | tee "$RUNNER_TEMP/opencode-checks/test-output.txt" || true
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Collect check results and rules
@@ -185,9 +194,9 @@ jobs:
             fi
           }
 
-          TYPECHECK_SUMMARY="$(summarize_output 'TypeScript check' typecheck-output.txt)"
-          LINT_SUMMARY="$(summarize_output 'ESLint check' lint-output.txt)"
-          TEST_SUMMARY="$(summarize_output 'Test run' test-output.txt)"
+          TYPECHECK_SUMMARY="$(summarize_output 'TypeScript check' "$RUNNER_TEMP/opencode-checks/typecheck-output.txt")"
+          LINT_SUMMARY="$(summarize_output 'ESLint check' "$RUNNER_TEMP/opencode-checks/lint-output.txt")"
+          TEST_SUMMARY="$(summarize_output 'Test run' "$RUNNER_TEMP/opencode-checks/test-output.txt")"
 
           # 收集所有检查结果
           {

@@ -1,5 +1,7 @@
 # Auth 公共模块设计（mobile / admin 共用）
 
+> **当前实现**：鉴权由 **@scaffold/core** 提供（`appAuth`、`defaultAuthProvider`、`createAuthClientMiddleware`）。admin 与 mobile 通过 `appAuth.setup(provider)` 初始化，登录/登出/ getIdentity 由 provider 抽象，可接本地 localStorage 或后端 API。下文部分为历史/扩展说明。
+
 ## 目标
 
 为 scaffold 中 **mobile** 与 **admin** 提供统一的登录、鉴权与用户状态管理，避免两端重复实现。
@@ -10,24 +12,21 @@
 |------|-----|------|
 | 后端 API | `@scaffold/api` | 登录接口、DTO、后续 JWT/鉴权中间件 |
 | 前端常量/键 | `@scaffold/shared` | API 基地址、本地存储 key 等与 UI 无关的常量 |
-| 前端鉴权状态与调用 | `@scaffold/shared-auth` | React Context、useAuth、登录/登出、持久化 |
+| 前端鉴权状态与调用 | `@scaffold/core` | appAuth、AuthProviderConfig、登录/登出/getIdentity、路由中间件 |
 
-- **类型与 API 客户端**：继续由 `@scaffold/api` 的 codegen 产出（`LoginDto`、`LoginResultDto`、`AuthApi`），mobile 与 admin 均依赖 `@scaffold/api`，直接复用。
-- **API 基地址**：由 `@scaffold/shared` 提供默认值与环境变量 key 约定；各端用各自 env（如 `NEXT_PUBLIC_API_URL` / `VITE_API_URL`）覆盖。
-- **鉴权状态与调用**：由 `@scaffold/shared-auth` 提供 `AuthProvider`、`useAuth()`，内部使用 `AuthApi` 与 `@scaffold/shared` 的存储 key，实现登录、登出与本地持久化。
+- **类型与 API 客户端**：继续由 `@scaffold/api` 的 codegen 产出（`LoginDto`、`LoginResultDto`、`AuthApi`），mobile 与 admin 若接后端可依赖 `@scaffold/api` 复用。
+- **API 基地址**：由 `@scaffold/shared` 提供默认值与环境变量 key 约定；各端用各自 env 覆盖。
+- **鉴权状态与调用**：由 `@scaffold/core` 提供 `appAuth`、`AuthProviderConfig`（如 `defaultAuthProvider`），实现登录、登出与 getIdentity；可替换为自定义 provider 对接真实 API。
 
 ## 数据流
 
 ```
 [LoginForm (mobile/admin)]
-        ↓ useAuth().login(username, password)
-[AuthProvider]
-        ↓ AuthApi.login(dto)  ← 使用各端传入的 apiBaseUrl
-[@scaffold/api]
-        ↓ 返回 LoginResultDto
-[AuthProvider]
-        ↓ 写入 state + localStorage (key: shared.AUTH_STORAGE_KEY)
-[useAuth().user] 可供全应用使用
+        ↓ appAuth.login({ account, password })
+[AuthService + AuthProviderConfig]
+        ↓ provider.login() → 可接 AuthApi 或本地 defaultAuthProvider
+[defaultAuthProvider] 写入 localStorage（键 _kdid）；或 [自定义 provider] 调后端
+[appAuth.getIdentity()] 可供全应用使用；路由用 createAuthClientMiddleware 保护
 ```
 
 ## 接口约定
@@ -36,9 +35,9 @@
 
 - `DEFAULT_API_BASE_URL`：默认 API 基地址（已有）
 - `API_BASE_URL_KEY`：环境变量 key 约定（已有）
-- **新增** `AUTH_STORAGE_KEY`：本地存储用户信息的 key（如 `scaffold_auth`），供 shared-auth 与各端一致使用
+- **新增** `AUTH_STORAGE_KEY`：本地存储用户信息的 key（如 `scaffold_auth`），供 @scaffold/core 的 defaultAuthProvider 与各端一致使用
 
-### 2. `@scaffold/shared-auth`
+### 2. `@scaffold/core`（鉴权）
 
 - **AuthProvider**  
   - Props：`apiBaseUrl: string`（由各端根据 env 或 shared 常量传入）、`children`  
@@ -56,7 +55,7 @@
 ### 3. API 侧（现状与扩展）
 
 - 当前：`POST /api/auth/login`，返回 `LoginResultDto`（id, username, email）
-- 后续若接入 JWT：在 `LoginResultDto` 中增加 `token`，前端在 shared-auth 中存 token，请求时通过 header 携带（可由 shared-auth 提供 `getAuthHeaders()` 或由各端请求封装统一加 header）
+- 后续若接入 JWT：在 `LoginResultDto` 中增加 `token`，前端在 provider 或请求封装中存 token，请求时通过 header 携带（可由各端请求封装统一加 header）
 
 ## 各端使用方式
 
@@ -69,7 +68,7 @@
 
 ## JWT / OAuth2 支持
 
-shared-auth 设计为**兼容**常见 JWT 与 OAuth2 用法，后端可按需升级。
+鉴权层（@scaffold/core + 自定义 provider）可**兼容**常见 JWT 与 OAuth2 用法，后端可按需升级。
 
 ### 当前能力（无 token）
 
@@ -82,12 +81,12 @@ shared-auth 设计为**兼容**常见 JWT 与 OAuth2 用法，后端可按需升
   - `accessToken?: string`
   - `refreshToken?: string`
   - `expiresIn?: number`（秒）
-- **前端**：shared-auth 会持久化 `user` + `accessToken`（及可选的 refreshToken、过期时间）；并暴露 **getAuthHeaders()**，供请求封装在每次请求中加上 `Authorization: Bearer <accessToken>`。
+- **前端**：自定义 AuthProviderConfig 可持久化 `user` + `accessToken`（及可选的 refreshToken、过期时间）；请求封装在每次请求中加上 `Authorization: Bearer <accessToken>`。
 - 后续可扩展：在过期前用 refreshToken 换新 accessToken（需后端提供 refresh 接口）。
 
 ### OAuth2 常用方式（SPA）
 
-- **Authorization Code + PKCE**：由后端或独立网关完成与 IdP 的 code 交换，前端只请求「用 code 换 token」的接口；该接口返回的形态与 JWT 一致（access_token、refresh_token、expires_in）。前端收到后交给 shared-auth 的同一套存储与 getAuthHeaders，即可复用现有逻辑。
+- **Authorization Code + PKCE**：由后端或独立网关完成与 IdP 的 code 交换，前端只请求「用 code 换 token」的接口；该接口返回的形态与 JWT 一致（access_token、refresh_token、expires_in）。前端收到后交给鉴权 provider 的存储与请求头逻辑，即可复用现有设计。
 - **Resource Owner Password**：用户名密码发到后端，后端再向 IdP 换 token 并返回给前端，同样可视为「登录接口返回 user + accessToken」，与 JWT 用法一致。
 
 ### 存储与接口约定

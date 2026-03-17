@@ -13,7 +13,7 @@
 - **内容**：
   - **packages/api**：后端 API（aiko-boot + starter-orm），默认 SQLite（`./data/app.db`）
   - **packages/admin**、**packages/mobile**：前端应用
-  - **packages/shared**、**packages/shared-auth**（可选）：公共常量与鉴权
+  - **packages/shared**、**packages/core**：公共常量与鉴权等通用能力
 - **数据库相关**：
   - `packages/api/app.config.ts`：配置 `database: { type: 'sqlite', filename: './data/app.db' }`
   - `packages/api/src/scripts/init-db.ts`：初始化数据库（建表、种子数据）
@@ -24,9 +24,9 @@
 - **位置**：`ai-frist-framework/packages/aiko-boot-create/`
 - **角色**：从 `scaffold` 复制模板到目标目录，并做 **scope 替换**、**依赖覆盖**、**可选功能** 等后处理。
 - **主要能力**：
-  - 交互/非交互：项目名、目标目录、是否带「基础系统」（登录、shared-auth、用户表等）
+  - 交互/非交互：项目名、目标目录、是否带「基础系统」（登录、用户表等，鉴权由 @scaffold/core 提供）
   - **withBaseSystem = true**：完整复制 scaffold，包含 auth 相关代码；init-db 建 `sys_user` 并插种子
-  - **withBaseSystem = false（bare）**：不复制 shared-auth 及 auth 相关文件，并写入「无用户表」版的 `init-db.ts`（仍用 sql.js）
+  - **withBaseSystem = false（bare）**：不复制 api 端 auth 相关文件，并写入「无用户表」版的 `init-db.ts`（仍用 sql.js）
 - **与 SQLite 的关系**：CLI 只负责复制/生成文件，不直接依赖 better-sqlite3；生成的 init-db 脚本统一使用 **sql.js**，避免在「生成阶段」依赖原生模块。
 
 ---

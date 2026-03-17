@@ -16,7 +16,7 @@
  * Validation decorators -> @ai-partner-x/aiko-boot-starter-validation
  */
 
-// Export types
+// Export types (including AsyncOptions)
 export * from './types.js';
 
 // Export config types (统一配置类型 - Spring Boot 风格)
@@ -35,6 +35,13 @@ export {
   getServiceMetadata,
   isTransactional,
 } from './decorators.js';
+
+// Export lifecycle decorators (including @Async)
+export {
+  Async,
+  isAsync,
+  getAsyncOptions,
+} from './boot/lifecycle.js';
 
 // Re-export DI (for convenience)
 export {

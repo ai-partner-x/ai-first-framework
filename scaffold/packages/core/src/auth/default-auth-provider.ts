@@ -1,5 +1,6 @@
 import { AuthProviderConfig, AuthUser } from "./types"
 
+/** Demo/local provider only: stores serialized user blob. Backend providers use AUTH_ACCESS_TOKEN_KEY in auth-constants.ts. */
 const AUTH_STORAGE_KEY = "_kdid"
 
 const defaultAuthProvider: AuthProviderConfig = {

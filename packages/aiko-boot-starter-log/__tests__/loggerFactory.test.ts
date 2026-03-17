@@ -4,8 +4,8 @@
  */
 
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { LoggerFactory } from '../src/loggerFactory';
-import { Logger } from '../src/logger';
+import { LoggerFactory } from '../src/factory/loggerFactory';
+import { Logger } from '../src/core/logger';
 import { LogLevel } from '../src/types';
 
 describe('LoggerFactory', () => {

@@ -13,7 +13,6 @@ const COPY_IGNORE = [
 
 /** Paths to skip when withBaseSystem is false (relative to scaffold root). */
 const SKIP_WHEN_BARE = [
-  'packages/shared-auth',
   'packages/api/src/controller/auth.controller.ts',
   'packages/api/src/service/auth.service.ts',
   'packages/api/src/dto/auth.dto.ts',
@@ -39,6 +38,8 @@ const FRAMEWORK_PACKAGE_NAMES = [
   'aiko-boot-starter-web',
   'aiko-boot-starter-storage',
   'aiko-boot-starter-security',
+  'aiko-boot-starter-mq',
+  'aiko-boot-starter-log',
 ] as const;
 
 export type CreateOptions = {
@@ -50,10 +51,12 @@ export type CreateOptions = {
 
 export async function createScaffold(options: CreateOptions): Promise<void> {
   const { templateDir, targetDir, scope, withBaseSystem } = options;
-  const frameworkRoot = path.dirname(templateDir);
 
   if (!(await fs.pathExists(templateDir))) {
-    throw new Error(`Template directory not found: ${templateDir}. Run from ai-frist-framework root (scaffold/ must exist).`);
+    throw new Error(
+      `Template directory not found: ${templateDir}. ` +
+        'You can specify a custom template with --template-dir, or use the built-in templates.',
+    );
   }
 
   if (await fs.pathExists(targetDir)) {
@@ -69,7 +72,13 @@ export async function createScaffold(options: CreateOptions): Promise<void> {
 
   // 依赖写 registry 版本，便于将来从中央仓库安装；本地开发通过根目录 pnpm.overrides 覆盖
   await replaceFrameworkDepsWithRegistryVersion(targetDir);
-  await addFrameworkOverridesInRoot(targetDir, frameworkRoot);
+
+  // 尝试自动探测本地框架根目录（用于 monorepo 开发模式下生成 pnpm.overrides）。
+  // 若未探测到（例如在用户项目中全局安装 CLI），则跳过覆盖，直接使用 registry 版本。
+  const frameworkRoot = await detectFrameworkRoot(templateDir);
+  if (frameworkRoot) {
+    await addFrameworkOverridesInRoot(targetDir, frameworkRoot);
+  }
 
   // 使生成的项目成为独立 pnpm workspace，在项目目录内执行 pnpm 时不会回溯到父仓库
   await fs.writeFile(
@@ -193,12 +202,44 @@ async function replaceScopeInFiles(dir: string, scope: string): Promise<void> {
   }
 }
 
+/**
+ * 尝试从模板目录向上查找本地框架根目录：
+ * - 典型场景：在 ai-first-framework monorepo 内开发，模板位于 packages/aiko-boot-create/templates/scaffold-default
+ * - 我们需要找到包含 packages/aiko-boot 的目录，以便为生成项目写入本地 file: overrides
+ * 若未找到（例如用户全局安装 CLI），则返回 null。
+ */
+async function detectFrameworkRoot(templateDir: string): Promise<string | null> {
+  let current = path.resolve(templateDir);
+
+  // 最多向上查找 6 层，防止死循环
+  for (let i = 0; i < 6; i += 1) {
+    const parent = path.dirname(current);
+    if (parent === current) break;
+
+    const candidate = parent;
+    const aikoBootPath = path.join(candidate, 'packages', 'aiko-boot');
+    if (await fs.pathExists(aikoBootPath)) {
+      return candidate;
+    }
+
+    current = parent;
+  }
+
+  return null;
+}
+
 /** Write bare (no auth) template files when withBaseSystem is false. */
 async function writeBareTemplates(targetDir: string, scope: string): Promise<void> {
   const packagesDir = path.join(targetDir, 'packages');
 
+  // api init-db
+  const apiInitDbPath = path.join(
+    packagesDir,
+    'api/src/scripts/init-db.ts',
+  );
+  await fs.ensureDir(path.dirname(apiInitDbPath));
   await fs.writeFile(
-    path.join(packagesDir, 'api/src/scripts/init-db.ts'),
+    apiInitDbPath,
     `/**
  * Initialize SQLite database (bare scaffold, no user table).
  */
@@ -232,27 +273,9 @@ console.log('\\n🎉 Database initialization complete!');
     'utf-8'
   );
 
-  await fs.writeFile(
-    path.join(packagesDir, 'shared/src/constants.ts'),
-    `/** API base URL env key (admin: VITE_API_URL, mobile: etc.) */
-export const API_BASE_URL_KEY = 'API_URL';
-
-/** Default API base URL */
-export const DEFAULT_API_BASE_URL = 'http://localhost:3001';
-`,
-    'utf-8'
-  );
-
-  await fs.writeFile(
-    path.join(packagesDir, 'shared/src/index.ts'),
-    `export {
-  API_BASE_URL_KEY,
-  DEFAULT_API_BASE_URL,
-} from './constants';
-`,
-    'utf-8'
-  );
-
+  // mobile main / routes / pages
+  const mobileMainPath = path.join(packagesDir, 'mobile/src/main.tsx');
+  await fs.ensureDir(path.dirname(mobileMainPath));
   const mobileMain = `import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
@@ -264,8 +287,13 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>
 );
 `;
-  await fs.writeFile(path.join(packagesDir, 'mobile/src/main.tsx'), mobileMain, 'utf-8');
+  await fs.writeFile(mobileMainPath, mobileMain, 'utf-8');
 
+  const mobileRoutesIndexPath = path.join(
+    packagesDir,
+    'mobile/src/routes/index.tsx',
+  );
+  await fs.ensureDir(path.dirname(mobileRoutesIndexPath));
   const mobileRoutesIndex = `import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { HomePage } from '@/pages/HomePage';
 import { ROUTES } from './routes';
@@ -281,10 +309,19 @@ export function AppRouter() {
   );
 }
 `;
-  await fs.writeFile(path.join(packagesDir, 'mobile/src/routes/index.tsx'), mobileRoutesIndex, 'utf-8');
-
   await fs.writeFile(
-    path.join(packagesDir, 'mobile/src/routes/routes.ts'),
+    mobileRoutesIndexPath,
+    mobileRoutesIndex,
+    'utf-8',
+  );
+
+  const mobileRoutesPath = path.join(
+    packagesDir,
+    'mobile/src/routes/routes.ts',
+  );
+  await fs.ensureDir(path.dirname(mobileRoutesPath));
+  await fs.writeFile(
+    mobileRoutesPath,
     `export const ROUTES = {
   HOME: '/',
 } as const;
@@ -294,6 +331,11 @@ export type RoutePath = (typeof ROUTES)[keyof typeof ROUTES];
     'utf-8'
   );
 
+  const mobileHomePagePath = path.join(
+    packagesDir,
+    'mobile/src/pages/HomePage.tsx',
+  );
+  await fs.ensureDir(path.dirname(mobileHomePagePath));
   const homePage = `/**
  * Mobile home page (bare scaffold).
  */
@@ -311,15 +353,23 @@ export function HomePage() {
   );
 }
 `;
-  await fs.writeFile(path.join(packagesDir, 'mobile/src/pages/HomePage.tsx'), homePage, 'utf-8');
+  await fs.writeFile(mobileHomePagePath, homePage, 'utf-8');
 
+  const mobilePagesIndexPath = path.join(
+    packagesDir,
+    'mobile/src/pages/index.ts',
+  );
+  await fs.ensureDir(path.dirname(mobilePagesIndexPath));
   await fs.writeFile(
-    path.join(packagesDir, 'mobile/src/pages/index.ts'),
+    mobilePagesIndexPath,
     `export { HomePage } from './HomePage';
 `,
     'utf-8'
   );
 
+  // admin main / App
+  const adminMainPath = path.join(packagesDir, 'admin/src/main.tsx');
+  await fs.ensureDir(path.dirname(adminMainPath));
   const adminMain = `import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
@@ -331,8 +381,10 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>
 );
 `;
-  await fs.writeFile(path.join(packagesDir, 'admin/src/main.tsx'), adminMain, 'utf-8');
+  await fs.writeFile(adminMainPath, adminMain, 'utf-8');
 
+  const adminAppPath = path.join(packagesDir, 'admin/src/App.tsx');
+  await fs.ensureDir(path.dirname(adminAppPath));
   const adminApp = `export default function App() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -341,33 +393,5 @@ createRoot(document.getElementById('root')!).render(
   );
 }
 `;
-  await fs.writeFile(path.join(packagesDir, 'admin/src/App.tsx'), adminApp, 'utf-8');
-
-  const sharedAuthPkg = `@${scope}/shared-auth`;
-  const mobilePkgPath = path.join(packagesDir, 'mobile/package.json');
-  const mobilePkg = await fs.readJson(mobilePkgPath);
-  if (mobilePkg.dependencies) {
-    delete mobilePkg.dependencies[sharedAuthPkg];
-    mobilePkg.dependencies = Object.fromEntries(
-      Object.entries(mobilePkg.dependencies).filter(([k]) => k !== sharedAuthPkg)
-    );
-  }
-  await fs.writeJson(mobilePkgPath, mobilePkg, { spaces: 2 });
-
-  const adminPkgPath = path.join(packagesDir, 'admin/package.json');
-  const adminPkg = await fs.readJson(adminPkgPath);
-  if (adminPkg.dependencies) {
-    delete adminPkg.dependencies[sharedAuthPkg];
-    adminPkg.dependencies = Object.fromEntries(
-      Object.entries(adminPkg.dependencies).filter(([k]) => k !== sharedAuthPkg)
-    );
-  }
-  await fs.writeJson(adminPkgPath, adminPkg, { spaces: 2 });
-
-  const mobileVitePath = path.join(packagesDir, 'mobile/vite.config.ts');
-  if (await fs.pathExists(mobileVitePath)) {
-    let viteContent = await fs.readFile(mobileVitePath, 'utf-8');
-    viteContent = viteContent.replace(/\s*exclude:\s*\[\s*'@[^']+\/shared-auth'\s*\],?\s*/g, '\n');
-    await fs.writeFile(mobileVitePath, viteContent, 'utf-8');
-  }
+  await fs.writeFile(adminAppPath, adminApp, 'utf-8');
 }

@@ -1,0 +1,66 @@
+ WARN  Issue while reading "/home/runner/work/ai-first-framework/ai-first-framework/.npmrc". Failed to replace env in config: ${GITHUB_TOKEN}
+ WARN  Issue while reading "/home/runner/work/ai-first-framework/ai-first-framework/.npmrc". Failed to replace env in config: ${GITHUB_TOKEN}
+
+> aiko-boot@0.1.0 test /home/runner/work/ai-first-framework/ai-first-framework
+> pnpm -r test
+
+ WARN  Issue while reading "/home/runner/work/ai-first-framework/ai-first-framework/.npmrc". Failed to replace env in config: ${GITHUB_TOKEN}
+ WARN  Issue while reading "/home/runner/work/ai-first-framework/ai-first-framework/.npmrc". Failed to replace env in config: ${GITHUB_TOKEN}
+Scope: 12 of 13 workspace projects
+packages/aiko-boot-codegen test$ jest
+packages/aiko-boot-codegen test: PASS src/plugins.test.ts
+packages/aiko-boot-codegen test: PASS src/generator.test.ts
+packages/aiko-boot-codegen test: PASS src/parser.test.ts
+packages/aiko-boot-codegen test: PASS src/integration.test.ts
+packages/aiko-boot-codegen test: Test Suites: 4 passed, 4 total
+packages/aiko-boot-codegen test: Tests:       89 passed, 89 total
+packages/aiko-boot-codegen test: Snapshots:   0 total
+packages/aiko-boot-codegen test: Time:        2.186 s
+packages/aiko-boot-codegen test: Ran all test suites.
+packages/aiko-boot-codegen test: Done
+packages/aiko-boot-starter-log test$ vitest run
+packages/aiko-boot-starter-mq test$ vitest run
+packages/aiko-boot-starter-security test$ vitest run
+packages/aiko-boot-starter-storage test$ vitest run
+packages/aiko-boot-starter-log test: [1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90m/home/runner/work/ai-first-framework/ai-first-framework/packages/aiko-boot-starter-log[39m
+packages/aiko-boot-starter-security test: [7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90m/home/runner/work/ai-first-framework/ai-first-framework/packages/aiko-boot-starter-security[39m
+packages/aiko-boot-starter-mq test: [7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90m/home/runner/work/ai-first-framework/ai-first-framework/packages/aiko-boot-starter-mq[39m
+packages/aiko-boot-starter-storage test: [7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90m/home/runner/work/ai-first-framework/ai-first-framework/packages/aiko-boot-starter-storage[39m
+packages/aiko-boot-starter-security test:  [33m❯[39m tests/permission-service.test.ts [2m ([22m[2m0 test[22m[2m)[22m
+packages/aiko-boot-starter-security test:  [33m❯[39m tests/security-context.test.ts [2m ([22m[2m0 test[22m[2m)[22m
+packages/aiko-boot-starter-storage test:  [33m❯[39m src/storage-service.test.ts [2m ([22m[2m0 test[22m[2m)[22m
+packages/aiko-boot-starter-log test:  [32m✓[39m __tests__/types.test.ts [2m([22m[2m16 tests[22m[2m)[22m[90m 71[2mms[22m[39m
+packages/aiko-boot-starter-storage test:  [32m✓[39m src/adapters/utils.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 40[2mms[22m[39m
+packages/aiko-boot-starter-security test:  [32m✓[39m tests/permission-decorators.test.ts [2m ([22m[2m16 tests[22m[2m)[22m[90m 12[2mms[22m[39m
+packages/aiko-boot-starter-mq test:  [33m❯[39m src/__tests__/mq.integration.test.ts [2m ([22m[2m0 test[22m[2m)[22m
+packages/aiko-boot-starter-mq test: [31m⎯⎯⎯⎯⎯⎯[1m[7m Failed Suites 1 [27m[22m⎯⎯⎯⎯⎯⎯⎯[39m
+packages/aiko-boot-starter-mq test: [31m[1m[7m FAIL [27m[22m[39m src/__tests__/mq.integration.test.ts [2m[ src/__tests__/mq.integration.test.ts ][22m
+packages/aiko-boot-starter-mq test: [31m[1mError[22m: Failed to load url @ai-partner-x/aiko-boot/boot (resolved id: @ai-partner-x/aiko-boot/boot) in /home/runner/work/ai-first-framework/ai-first-framework/packages/aiko-boot-starter-mq/src/config/MqProperties.ts. Does the file exist?[39m
+packages/aiko-boot-starter-mq test: [90m [2m❯[22m loadAndTransform ../../node_modules/.pnpm/vite@5.4.21_@types+node@24.12.0_lightningcss@1.31.1/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m51969:17[22m[39m
+packages/aiko-boot-starter-mq test: [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+packages/aiko-boot-starter-mq test: [2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+packages/aiko-boot-starter-mq test: [2m      Tests [22m [2mno tests[22m
+packages/aiko-boot-starter-mq test: [2m   Start at [22m 09:07:38
+packages/aiko-boot-starter-mq test: [2m   Duration [22m 1.71s[2m (transform 350ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 498ms)[22m
+packages/aiko-boot-starter-storage test:  [32m✓[39m src/adapters/adapters.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[90m 58[2mms[22m[39m
+packages/aiko-boot-starter-mq test: Failed
+/home/runner/work/ai-first-framework/ai-first-framework/packages/aiko-boot-starter-mq:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @ai-partner-x/aiko-boot-starter-mq@0.1.0 test: `vitest run`
+Exit status 1
+packages/aiko-boot-starter-storage test: [2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m2 passed[39m[22m[90m (3)[39m
+packages/aiko-boot-starter-storage test: [2m      Tests [22m [1m[32m7 passed[39m[22m[90m (7)[39m
+packages/aiko-boot-starter-storage test: [2m   Start at [22m 09:07:38
+packages/aiko-boot-starter-storage test: [2m   Duration [22m 1.84s[2m (transform 635ms, setup 1ms, collect 837ms, tests 98ms, environment 2ms, prepare 1.38s)[22m
+packages/aiko-boot-starter-storage test: [31m⎯⎯⎯⎯⎯⎯[1m[7m Failed Suites 1 [27m[22m⎯⎯⎯⎯⎯⎯⎯[39m
+packages/aiko-boot-starter-storage test: [31m[1m[7m FAIL [27m[22m[39m src/storage-service.test.ts [2m[ src/storage-service.test.ts ][22m
+packages/aiko-boot-starter-storage test: [31m[1mError[22m: Failed to resolve entry for package "@ai-partner-x/aiko-boot". The package may have incorrect main/module/exports specified in its package.json.[39m
+packages/aiko-boot-starter-storage test: [90m [2m❯[22m packageEntryFailure ../../node_modules/.pnpm/vite@5.4.21_@types+node@20.19.37_lightningcss@1.31.1/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46638:15[22m[39m
+packages/aiko-boot-starter-storage test: [90m [2m❯[22m resolvePackageEntry ../../node_modules/.pnpm/vite@5.4.21_@types+node@20.19.37_lightningcss@1.31.1/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46635:3[22m[39m
+packages/aiko-boot-starter-storage test: [90m [2m❯[22m tryNodeResolve ../../node_modules/.pnpm/vite@5.4.21_@types+node@20.19.37_lightningcss@1.31.1/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46451:16[22m[39m
+packages/aiko-boot-starter-storage test: [90m [2m❯[22m ResolveIdContext.resolveId ../../node_modules/.pnpm/vite@5.4.21_@types+node@20.19.37_lightningcss@1.31.1/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46201:19[22m[39m
+packages/aiko-boot-starter-storage test: [90m [2m❯[22m PluginContainer.resolveId ../../node_modules/.pnpm/vite@5.4.21_@types+node@20.19.37_lightningcss@1.31.1/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49018:17[22m[39m
+packages/aiko-boot-starter-storage test: [90m [2m❯[22m TransformPluginContext.resolve ../../node_modules/.pnpm/vite@5.4.21_@types+node@20.19.37_lightningcss@1.31.1/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49178:15[22m[39m
+packages/aiko-boot-starter-storage test: [90m [2m❯[22m normalizeUrl ../../node_modules/.pnpm/vite@5.4.21_@types+node@20.19.37_lightningcss@1.31.1/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64300:26[22m[39m
+packages/aiko-boot-starter-storage test: [90m [2m❯[22m async file:/home/runner/work/ai-first-framework/ai-first-framework/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.37_lightningcss@1.31.1/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64439:39[22m[39m
+packages/aiko-boot-starter-storage test: [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+ ELIFECYCLE  Test failed. See above for more details.

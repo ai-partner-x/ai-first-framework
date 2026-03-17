@@ -57,36 +57,50 @@ export class AuthController {
    */
   @PostMapping('/current')
   async getCurrentUser(
-    @RequestHeader('authorization', false) headerAuthorization: string | undefined,
+    @RequestHeader('Authorization', false) headerAuthorization: string | undefined,
     @RequestBody() body: any,
-    @RequestParam('authorization', false) paramAuthorization: string | undefined
+    @RequestParam('Authorization', false) paramAuthorization: string | undefined
   ): Promise<LoginResultDto['userInfo']> {
     let token = '';
 
     // 优先级1：Authorization Header
     if (headerAuthorization && typeof headerAuthorization === 'string') {
-      token = headerAuthorization;
+      token = headerAuthorization.trim();
       if (token.startsWith('Bearer ')) {
-        token = token.substring(7); // 移除 "Bearer " 前缀
+        token = token.substring(7).trim(); // 移除 "Bearer " 前缀并去除空格
       }
     }
-    // 优先级2：Request Body
-    else if (body && typeof body === 'object' && body.authorization && typeof body.authorization === 'string') {
-      token = body.authorization;
-      if (token.startsWith('Bearer ')) {
-        token = token.substring(7); // 移除 "Bearer " 前缀
+
+    // 优先级2：Request Body - 支持大小写不敏感
+    if (!token && body && typeof body === 'object') {
+      const possibleKeys = ['Authorization', 'authorization', 'AUTHORIZATION'];
+      for (const key of possibleKeys) {
+        if (body[key] && typeof body[key] === 'string') {
+          token = body[key].trim();
+          if (token.startsWith('Bearer ')) {
+            token = token.substring(7).trim();
+          }
+          break;
+        }
       }
     }
+
     // 优先级3：URL Parameters
-    else if (paramAuthorization && typeof paramAuthorization === 'string') {
-      token = paramAuthorization;
+    if (!token && paramAuthorization && typeof paramAuthorization === 'string') {
+      token = paramAuthorization.trim();
       if (token.startsWith('Bearer ')) {
-        token = token.substring(7); // 移除 "Bearer " 前缀
+        token = token.substring(7).trim();
       }
     }
-    // 都没有找到 authorization
-    else {
+
+    // 都没有找到有效的 token
+    if (!token) {
       throw new Error('Authorization is required. Please provide authorization via Authorization header, request body, or URL parameter');
+    }
+
+    // 验证 token 格式（简单的 JWT 格式检查）
+    if (token.split('.').length !== 3) {
+      throw new Error('Invalid token format. Token must be a valid JWT');
     }
 
     return this.authService.getCurrentUserByToken(token);

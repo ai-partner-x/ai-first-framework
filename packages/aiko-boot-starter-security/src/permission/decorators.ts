@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { PermissionType, type Permission } from '../entities/index.js';
+import { PermissionType } from '../entities/index.js';
 
 const PRE_AUTHORIZE_METADATA = 'aiko-boot:preAuthorize';
 const POST_AUTHORIZE_METADATA = 'aiko-boot:postAuthorize';
@@ -280,6 +280,14 @@ export function getMethodPermissionMetadata(target: any, propertyKey: string): P
 
 export function getButtonPermissionMetadata(target: any, propertyKey: string): PermissionDefinition | undefined {
   return Reflect.getMetadata(BUTTON_PERMISSION_METADATA, target, propertyKey);
+}
+
+export function getRolePermissionMetadata(target: any, propertyKey: string): PermissionDefinition | undefined {
+  return Reflect.getMetadata(ROLE_PERMISSION_METADATA, target, propertyKey);
+}
+
+export function getMenuPermissionMetadata(target: any, propertyKey: string): PermissionDefinition | undefined {
+  return Reflect.getMetadata(MENU_PERMISSION_METADATA, target, propertyKey);
 }
 
 /**

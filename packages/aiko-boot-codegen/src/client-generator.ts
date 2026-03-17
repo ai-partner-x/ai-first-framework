@@ -149,9 +149,8 @@ function parseController(filePath: string): ControllerInfo | null {
 function generateControllerCode(info: ControllerInfo, entityFile: string): string {
   const methodsCode = info.methods.map((m) => {
     const paramsStr = m.params.map((p) => `${p.name}: ${p.type}`).join(', ');
-    
     let urlCode = `\`\${this.baseUrl}/api${info.basePath}${m.path}\``;
-    
+
     for (const p of m.params) {
       if (p.decorator === 'PathVariable' && p.decoratorArg) {
         urlCode = urlCode.replace(`:${p.decoratorArg}`, `\${${p.name}}`);
@@ -161,10 +160,20 @@ function generateControllerCode(info: ControllerInfo, entityFile: string): strin
     const bodyParam = m.params.find((p) => p.decorator === 'RequestBody');
     const bodyCode = bodyParam ? `body: JSON.stringify(${bodyParam.name}),` : '';
 
+    // 处理 @RequestHeader 装饰器
+    const headerParams = m.params.filter((p) => p.decorator === 'RequestHeader' && p.decoratorArg);
+    let headerCode = '';
+    if (headerParams.length > 0) {
+      const headerEntries = headerParams.map((p) => `'${p.decoratorArg}': ${p.name}`);
+      headerCode = `headers: { 'Content-Type': 'application/json', ${headerEntries.join(', ')} },`;
+    } else {
+      headerCode = `headers: { 'Content-Type': 'application/json' },`;
+    }
+
     return `  async ${m.name}(${paramsStr}): ${m.returnType} {
     const res = await fetch(${urlCode}, {
       method: '${m.httpMethod}',
-      headers: { 'Content-Type': 'application/json' },
+      ${headerCode}
       ${bodyCode}
     });
     const json = await res.json() as { success: boolean; data?: ${m.innerType}; error?: string };
@@ -176,9 +185,13 @@ function generateControllerCode(info: ControllerInfo, entityFile: string): strin
   // 生成 import 语句
   const entityImports: string[] = [];
   const dtoImports: string[] = [];
-  
+
   info.imports.forEach((type) => {
-    if (type.endsWith('Dto')) {
+    // 内联类型（如 LoginResultDto['userInfo']）不需要单独导入，因为它们引用已导入的 DTO 类型
+    if (type.includes('[') && type.includes(']')) {
+      // 跳过内联类型，避免尝试从不存在的 entity 文件导入
+      return;
+    } else if (type.endsWith('Dto')) {
       dtoImports.push(type);
     } else {
       entityImports.push(type);

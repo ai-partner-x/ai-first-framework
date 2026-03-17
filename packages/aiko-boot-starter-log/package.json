@@ -1,6 +1,6 @@
 {
   "name": "@ai-partner-x/aiko-boot-starter-log",
-  "version": "0.2.0",
+  "version": "0.1.1",
   "description": "Aiko Boot Starter - Log Component with Winston Integration",
   "type": "module",
   "main": "./dist/index.js",
@@ -35,7 +35,8 @@
   "author": "AI Partner X",
   "license": "MIT",
   "dependencies": {
-    "winston": "^3.11.0"
+    "winston": "^3.11.0",
+    "reflect-metadata": "^0.2.2"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
@@ -53,5 +54,9 @@
     "@ai-partner-x/aiko-boot": {
       "optional": true
     }
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "public"
   }
 }

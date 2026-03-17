@@ -38,6 +38,13 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Configure git author (required by opencode)
+        if: steps.check.outputs.result == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git config --local --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Run OpenCode Triage
         if: steps.check.outputs.result == 'true' || github.event_name == 'workflow_dispatch'
         uses: anomalyco/opencode/github@latest

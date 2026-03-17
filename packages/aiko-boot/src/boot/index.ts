@@ -93,6 +93,8 @@ export {
   OnApplicationReady,
   OnApplicationShutdown,
   Async,
+  isAsync,
+  getAsyncOptions,
   ApplicationEventPublisher,
   ApplicationLifecycle,
   getLifecycleListeners,
