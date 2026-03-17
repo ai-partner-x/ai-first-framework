@@ -1,6 +1,6 @@
 {
   "name": "@ai-partner-x/aiko-boot-codegen",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeScript to Java code generator for Aiko Boot",
   "type": "module",
   "main": "./dist/index.js",

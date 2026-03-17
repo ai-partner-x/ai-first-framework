@@ -1,6 +1,6 @@
 {
   "name": "@ai-partner-x/eslint-plugin-aiko-boot",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "ESLint plugin to enforce Java-compatible TypeScript code for Aiko Boot",
   "type": "module",
   "main": "./dist/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@ai-partner-x/aiko-boot-create",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "CLI to create aiko-boot scaffold project (monorepo with api, admin, mobile, shared)",
   "type": "module",
   "main": "./dist/index.js",

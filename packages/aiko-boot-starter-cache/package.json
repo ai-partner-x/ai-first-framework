@@ -1,6 +1,6 @@
 {
   "name": "@ai-partner-x/aiko-boot-starter-cache",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AI-First Framework - Cache with Spring Boot compatible decorators (Spring Cache + Spring Data Redis)",
   "type": "module",
   "main": "./dist/index.js",

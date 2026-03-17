@@ -1,6 +1,6 @@
 {
   "name": "@ai-partner-x/aiko-boot-starter-log",
-  "version": "0.2.0",
+  "version": "0.1.1",
   "description": "Aiko Boot Starter - Log Component with Winston Integration",
   "type": "module",
   "main": "./dist/index.js",

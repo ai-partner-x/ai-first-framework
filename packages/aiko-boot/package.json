@@ -1,6 +1,6 @@
 {
   "name": "@ai-partner-x/aiko-boot",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Aiko Boot - Core Boot with DI, Configuration, and Auto-Configuration",
   "type": "module",
   "main": "./dist/index.js",
@@ -40,7 +40,9 @@
     "react": ">=18.0.0"
   },
   "peerDependenciesMeta": {
-    "react": { "optional": true }
+    "react": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/react": "^18.2.0",

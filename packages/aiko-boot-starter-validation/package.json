@@ -1,6 +1,6 @@
 {
   "name": "@ai-partner-x/aiko-boot-starter-validation",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Aiko Boot - Validation Starter with class-validator compatible decorators",
   "type": "module",
   "main": "./dist/index.js",
