@@ -12,7 +12,7 @@ export function registerAddFeatureCommand(program: Command): void {
     .requiredOption('--service <service>', '目标服务端名称，例如 api、user-api')
     .requiredOption(
       '--feature <feature>',
-      '特性类型：redis | file | mq（可扩展）',
+      '特性类型：redis | file | mq | log（可扩展）',
     )
     .option('--root <dir>', '脚手架根目录（默认：当前工作目录）')
     .option('--dry-run', '仅显示将要执行的操作，不实际写入文件')
