@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils"
 import { useTranslation } from "react-i18next"
 import { appAuth } from "@scaffold/core"
 import { LOGIN_URL } from "@/app.config"
+import { toast } from "sonner"
 
 export const Header = () => {
   const { isMobile } = useSidebar()
@@ -129,9 +130,11 @@ const UserDropdown = () => {
         navigate(LOGIN_URL, { replace: true })
       } else {
         console.error("[Header] Logout failed without success flag.")
+        toast.error("Logout failed. Please try again.")
       }
     } catch (error) {
       console.error("[Header] Logout error:", error)
+      toast.error("Logout failed. Please try again.")
     }
   }
 

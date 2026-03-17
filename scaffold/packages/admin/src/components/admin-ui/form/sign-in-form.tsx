@@ -73,7 +73,7 @@ export const SignInForm = () => {
             <div className={cn("flex", "flex-col", "gap-2")}>
               <Label htmlFor="account">Account</Label>
               <Input
-                id="username"
+                id="account"
                 placeholder=""
                 required
                 value={account}

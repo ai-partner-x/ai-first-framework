@@ -22,6 +22,7 @@ import { ErrorComponent } from "./components/admin-ui/layout/error-component"
 import { LOGIN_URL } from "./app.config"
 
 const LAYOUT_STORAGE_KEY = "admin-layout-mode"
+const authorizationConfig = { fallbackUrl: "/not-found" } as const
 
 const defaultTitleIcon = (
   <svg
@@ -106,9 +107,7 @@ function AppShell() {
 
   const router = createBrowserRouter(appRoutes)
   useEffect(() => {
-    setAppAuthorizationConfig({
-      fallbackUrl: "/not-found",
-    })
+    setAppAuthorizationConfig(authorizationConfig)
   }, [])
   return (
     <ThemeProvider>

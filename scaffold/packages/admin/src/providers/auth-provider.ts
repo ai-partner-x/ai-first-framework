@@ -23,12 +23,15 @@ function toAuthUser(info: {
   }
 }
 
-function logAuthError(context: string, error: unknown): string {
-  const message =
-    error instanceof Error ? error.message : typeof error === "string" ? error : "Unknown error"
+function getAuthErrorMessage(error: unknown, fallbackMessage: string): string {
+  if (error instanceof Error && error.message.trim() !== "") return error.message
+  if (typeof error === "string" && error.trim() !== "") return error
+  return fallbackMessage
+}
+
+function logAuthError(context: string, error: unknown): void {
   // Centralized auth error logging for easier debugging.
   console.error(`[Auth] ${context} error:`, error)
-  return message
 }
 
 export function createBackendAuthProvider(apiBaseUrl: string): AuthProviderConfig {
@@ -50,7 +53,8 @@ export function createBackendAuthProvider(apiBaseUrl: string): AuthProviderConfi
           redirectTo: "/",
         }
       } catch (err) {
-        const message = logAuthError("login", err) || "Login failed"
+        logAuthError("login", err)
+        const message = getAuthErrorMessage(err, "Login failed")
         return {
           success: false,
           error: { name: "Login Error", message },
