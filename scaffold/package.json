@@ -17,10 +17,14 @@
     "start:api": "pnpm -F @scaffold/api start",
     "init-db": "pnpm -F @scaffold/api init-db",
     "rebuild:sqlite": "node ./scripts/rebuild-sqlite.cjs",
-    "lint": "pnpm -r --filter \"@scaffold/*\" lint"
+    "lint": "pnpm -r --filter \"@scaffold/*\" lint",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "postinstall": "node ./scripts/postinstall.cjs",
   "devDependencies": {
-    "typescript": "^5.3.0"
+    "typescript": "^5.3.0",
+    "vitepress": "^1.0.0"
   }
 }
