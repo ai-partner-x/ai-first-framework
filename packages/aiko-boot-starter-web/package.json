@@ -1,6 +1,6 @@
 {
   "name": "@ai-partner-x/aiko-boot-starter-web",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Aiko Boot - Spring Boot style Web Starter with HTTP decorators and Express router",
   "type": "module",
   "main": "./dist/index.js",

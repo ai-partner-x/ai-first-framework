@@ -1,6 +1,6 @@
 {
   "name": "@ai-partner-x/aiko-boot-starter-security",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Aiko Boot - Spring Boot style Security Starter with authentication and authorization",
   "type": "module",
   "main": "./dist/index.js",
