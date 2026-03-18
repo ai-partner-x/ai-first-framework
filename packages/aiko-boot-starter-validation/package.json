@@ -25,7 +25,8 @@
     "@ai-partner-x/aiko-boot": "workspace:*",
     "class-validator": "^0.14.1",
     "class-transformer": "^0.5.1",
-    "reflect-metadata": "^0.2.1"
+    "reflect-metadata": "^0.2.1",
+    "tslib": "^2.8.1"
   },
   "devDependencies": {
     "tsup": "^8.0.0",

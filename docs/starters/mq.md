@@ -1,4 +1,4 @@
-## @ai-partner-x/aiko-boot-starter-mq
+# @ai-partner-x/aiko-boot-starter-mq
 
 Spring Boot 风格的消息队列，支持 RabbitMQ、Kafka、RocketMQ：
 

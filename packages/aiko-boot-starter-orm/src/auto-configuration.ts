@@ -114,7 +114,8 @@ export class OrmAutoConfiguration {
 
           if (mapperMetadata && mapperMetadata.entity) {
             // 直接实例化Mapper并设置适配器
-            const mapperInstance = new MapperConstructor();
+            const MapperCtor = MapperConstructor as unknown as new () => any;
+            const mapperInstance = new MapperCtor();
 
             if (mapperInstance && typeof mapperInstance.setAdapter === 'function') {
               const adapter = createAdapterFromEntity(mapperMetadata.entity as any);
