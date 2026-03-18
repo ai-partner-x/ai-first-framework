@@ -1,6 +1,6 @@
 {
   "name": "@ai-partner-x/aiko-boot-starter-orm",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "description": "Aiko Boot - ORM Starter with MyBatis-Plus compatible decorators",
   "type": "module",
   "main": "./dist/index.js",

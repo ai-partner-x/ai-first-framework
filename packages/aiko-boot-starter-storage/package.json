@@ -1,6 +1,6 @@
 {
   "name": "@ai-partner-x/aiko-boot-starter-storage",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "description": "Aiko Boot - Storage Starter with multi-provider support (Local, S3, OSS, COS)",
   "type": "module",
   "main": "./dist/index.js",
