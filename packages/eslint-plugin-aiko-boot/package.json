@@ -42,7 +42,7 @@
     "@typescript-eslint/utils": "^6.21.0"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
+    "registry": "https://registry.npmjs.org",
     "access": "public"
   }
 }
