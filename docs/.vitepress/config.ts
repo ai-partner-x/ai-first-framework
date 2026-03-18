@@ -73,6 +73,7 @@ export default withMermaid(
         items: [
           { text: '文件存储 Starter', link: '/aiko-boot-starter-storage' },
           { text: '消息队列 Starter', link: '/aiko-boot-starter-mq' },
+          { text: '日志 Starter', link: '/aiko-boot-starter-log' },
         ],
       },
       {

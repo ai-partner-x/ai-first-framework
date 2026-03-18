@@ -1,4 +1,4 @@
-### @ai-partner-x/aiko-boot-starter-mq
+## @ai-partner-x/aiko-boot-starter-mq
 
 Spring Boot 风格的消息队列，支持 RabbitMQ、Kafka、RocketMQ：
 
@@ -11,7 +11,7 @@ Spring Boot 风格的消息队列，支持 RabbitMQ、Kafka、RocketMQ：
 
 **支持消息系统**: RabbitMQ、Kafka、RocketMQ、In-Memory
 
-#### Mq 消息消费示例
+### Mq 消费示例
 
 ```ts
 import { MqListener, type MqListenerMeta } from '@ai-partner-x/aiko-boot-starter-mq';
@@ -39,7 +39,7 @@ export class MqConsumer {
 }
 ```
 
-#### Mq 消息生产示例
+### Mq 生产示例
 
 ```ts
 import { Service, Autowired } from '@ai-partner-x/aiko-boot';
