@@ -4,6 +4,7 @@ import {
   PathVariable, RequestBody, RequestParam,
 } from '@ai-partner-x/aiko-boot-starter-web';
 import { Autowired } from '@ai-partner-x/aiko-boot/di/server';
+import { ApiPermission, ButtonPermission } from '@ai-partner-x/aiko-boot-starter-security';
 import { UserService } from '../service/user.service.js';
 import type { CreateUserDto, UpdateUserDto, UserPageDto } from '../dto/user.dto.js';
 
@@ -99,4 +100,3 @@ export class UserController {
     return { message: '密码重置成功' };
   }
 }
-

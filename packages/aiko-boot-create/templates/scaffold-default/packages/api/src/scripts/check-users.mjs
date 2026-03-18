@@ -42,4 +42,3 @@ try {
   await db.destroy();
   process.exit(1);
 }
-

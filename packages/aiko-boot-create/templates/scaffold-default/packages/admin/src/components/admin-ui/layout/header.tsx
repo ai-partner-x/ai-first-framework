@@ -1,6 +1,5 @@
 import { useAppConfig } from "@/providers/app-config"
-import { useLogout } from "@scaffold/core"
-// import { useNavigate } from "react-router"
+import { useNavigate } from "react-router"
 import {
   DropdownMenu,
   DropdownMenuItem,
@@ -14,6 +13,9 @@ import { useSidebar, SidebarTrigger } from "@/components/ui/sidebar"
 import { LogOutIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTranslation } from "react-i18next"
+import { appAuth } from "@scaffold/core"
+import { LOGIN_URL } from "@/app.config"
+import { toast } from "sonner"
 
 export const Header = () => {
   const { isMobile } = useSidebar()
@@ -119,11 +121,21 @@ function MobileHeader() {
 
 const UserDropdown = () => {
   const { t } = useTranslation()
-  // const navigate = useNavigate()
-  const { mutate: logout } = useLogout()
+  const navigate = useNavigate()
 
   const handleLogout = async () => {
-    await logout()
+    try {
+      const result = await appAuth.logout()
+      if (result?.success) {
+        navigate(LOGIN_URL, { replace: true })
+      } else {
+        console.error("[Header] Logout failed without success flag.")
+        toast.error("Logout failed. Please try again.")
+      }
+    } catch (error) {
+      console.error("[Header] Logout error:", error)
+      toast.error("Logout failed. Please try again.")
+    }
   }
 
   return (

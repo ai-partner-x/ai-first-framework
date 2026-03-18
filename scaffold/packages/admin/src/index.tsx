@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client"
 import "./i18n"
 import App from "./App"
 import { appAuth, } from "@scaffold/core"
-import { createBackendAuthProvider } from "./providers/auth-provider"
+import { createBackendAuthProvider } from "@scaffold/core"
 
 const container = document.getElementById("root") as HTMLElement
 const root = createRoot(container)

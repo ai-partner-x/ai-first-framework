@@ -4,6 +4,7 @@ import {
   PathVariable, RequestBody, RequestParam,
 } from '@ai-partner-x/aiko-boot-starter-web';
 import { Autowired } from '@ai-partner-x/aiko-boot/di/server';
+import { ApiPermission, ButtonPermission } from '@ai-partner-x/aiko-boot-starter-security';
 import { MenuService } from '../service/menu.service.js';
 import type { CreateMenuDto, UpdateMenuDto } from '../dto/menu.dto.js';
 
@@ -83,4 +84,3 @@ export class MenuController {
     return { message: '删除成功' };
   }
 }
-

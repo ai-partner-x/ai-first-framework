@@ -46,6 +46,7 @@
     "sql.js": "^1.11.0",
     "@swc-node/register": "^1.11.1",
     "@swc/core": "^1.15.18",
+    "@ai-partner-x/eslint-plugin-aiko-boot": "workspace:*",
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.13",
     "@types/cors": "^2.8.17",
@@ -53,6 +54,8 @@
     "@types/jsonwebtoken": "^9.0.5",
     "@types/multer": "^1.4.12",
     "@types/node": "^20.11.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.57.1",
     "tsup": "^8.0.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.0"

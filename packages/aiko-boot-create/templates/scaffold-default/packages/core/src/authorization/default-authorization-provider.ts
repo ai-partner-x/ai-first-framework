@@ -15,7 +15,7 @@ const defaultAuthorizationProvider: AuthorizationProviderConfig = {
     return promiseResultCache(PERMISSIONS_CACHE_KEY, async () => {
       // 返回菜单树、授权控制点列表
       return {
-        permissonPoints: [],
+        permissionPoints: [],
         menuTree: [],
       }
     })

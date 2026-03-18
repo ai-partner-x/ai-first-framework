@@ -1,8 +1,7 @@
 import 'reflect-metadata';
-import { RestController, PostMapping, DeleteMapping, GetMapping, RequestParam } from '@ai-partner-x/aiko-boot-starter-web';
+import { RestController, PostMapping, DeleteMapping, GetMapping, RequestParam, RequestPart, MultipartFile } from '@ai-partner-x/aiko-boot-starter-web';
 import { Autowired } from '@ai-partner-x/aiko-boot';
 import { StorageService, type UploadResult } from '@ai-partner-x/aiko-boot-starter-storage';
-import type { Request } from 'express';
 
 /**
  * 文件上传控制器
@@ -23,16 +22,15 @@ export class UploadController {
    *   -F "folder=images"
    */
   @PostMapping('/')
-  async upload(req: Request): Promise<UploadResult> {
-    const file = (req as Request & { file?: Express.Multer.File }).file;
-    if (!file) {
-      throw new Error('No file uploaded');
+  async upload(
+    @RequestPart('file') file: MultipartFile | undefined,
+    @RequestPart('folder') folder?: string,
+  ): Promise<UploadResult> {
+    if (!file || file.isEmpty()) {
+      throw new Error('上传的文件为空或未提供');
     }
-
-    const folder = (req.body?.folder as string) || 'uploads';
-
-    return this.storageService.upload(file.buffer, file.originalname, {
-      folder,
+    return this.storageService.upload(file.getBytes(), file.getOriginalFilename(), {
+      folder: folder || 'uploads',
       maxSize: 10 * 1024 * 1024, // 10MB
       allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
     });

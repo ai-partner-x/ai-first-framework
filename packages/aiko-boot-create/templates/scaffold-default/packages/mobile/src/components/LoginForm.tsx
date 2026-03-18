@@ -78,7 +78,6 @@ export function LoginForm({ onSuccessRedirectTo = '/', navigate }: LoginFormProp
           {isSubmitting ? '登录中...' : '登录'}
         </button>
       </form>
-      <p className="mt-4 text-xs text-gray-500">本地演示：任意账号即可登录（由 @scaffold/core defaultAuthProvider 提供）</p>
     </div>
   );
 }

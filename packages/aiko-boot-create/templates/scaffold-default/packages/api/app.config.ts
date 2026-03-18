@@ -83,7 +83,7 @@ export default {
     },
     session: {
       secret: process.env.SESSION_SECRET || (() => {
-        console.warn('⚠️ Using default session secret in development!');
+        console.warn('⚠️ Using default session secret in development! Please set SESSION_SECRET environment variable in production.');
         return 'dev-only-session-secret';
       })(),
       maxAge: 86400000,

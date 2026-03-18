@@ -88,19 +88,24 @@ function parseController(filePath: string): ControllerInfo | null {
 
           const params: MethodMeta['params'] = [];
           member.parameters.forEach((param) => {
-            const paramName = (param.name as ts.Identifier).text;
-            const paramType = param.type
-              ? printer.printNode(ts.EmitHint.Unspecified, param.type, sourceFile)
-              : 'any';
-            const paramDecorators = ts.getDecorators(param) || [];
+          const paramName = (param.name as ts.Identifier).text;
+          const paramType = param.type
+            ? printer.printNode(ts.EmitHint.Unspecified, param.type, sourceFile)
+            : 'any';
+          const paramDecorators = ts.getDecorators(param) || [];
 
-            // 收集类型引用
-            if (param.type) {
-              const typeText = paramType.replace(/\[\]$/, '');
-              if (/^[A-Z]/.test(typeText) && !['Promise', 'Record', 'Array'].includes(typeText)) {
-                imports.add(typeText);
-              }
+          // 收集类型引用
+          if (param.type) {
+            // 清洗参数类型，避免将 "MultipartFile | undefined" 这类联合类型整体加入 import
+            const rawType = paramType.split('|')[0].trim();
+            const typeText = rawType
+              .replace(/\[\]$/, '')
+              .replace(/ \| undefined$/, '')
+              .replace(/ \| null$/, '');
+            if (/^[A-Z]/.test(typeText) && !['Promise', 'Record', 'Array'].includes(typeText)) {
+              imports.add(typeText);
             }
+          }
 
             let decorator = '';
             let decoratorArg = '';

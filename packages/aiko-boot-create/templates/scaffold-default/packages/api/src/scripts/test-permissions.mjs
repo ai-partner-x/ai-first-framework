@@ -63,7 +63,7 @@ function makeRequest(options) {
             data: JSON.parse(data),
           };
           resolve(result);
-        } catch {
+        } catch (error) {
           resolve({
             statusCode: res.statusCode,
             headers: res.headers,
@@ -549,4 +549,3 @@ runAllTests().catch((error) => {
   console.error('Fatal error:', error);
   process.exit(1);
 });
-

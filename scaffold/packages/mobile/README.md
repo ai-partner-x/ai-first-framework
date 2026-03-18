@@ -46,7 +46,11 @@ pnpm build    # 构建
 pnpm preview  # 预览构建结果
 ```
 
+## 环境变量
+
+- **VITE_API_URL**: 后端 API Base URL（可选）。不配置时默认使用 `http://localhost:3001`（对应 scaffold/api 默认端口）。
+
 ## 依赖
 
-- `@scaffold/core`：鉴权（与 admin 一致：appAuth + defaultAuthProvider）
+- `@scaffold/core`：鉴权（与 admin 一致：appAuth + createBackendAuthProvider）
 - `react-router-dom`：路由

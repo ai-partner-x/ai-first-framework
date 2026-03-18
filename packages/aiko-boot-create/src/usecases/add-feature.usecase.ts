@@ -95,9 +95,18 @@ export function createAddFeatureUseCase(deps: AddFeatureDeps) {
       logger.info(
         `已为服务端 "${input.serviceName}" 启用 mq 特性（消息队列 + 消费者服务）。`,
       );
+    } else if (feature === 'log') {
+      await addLogFeatureToApi({
+        apiDir,
+        rootDir,
+        logger,
+      });
+      logger.info(
+        `已为服务端 "${input.serviceName}" 启用 log 特性（日志初始化 + HTTP 请求日志 + 错误日志）。`,
+      );
     } else {
       logger.info(
-        `TODO: 特性 "${feature}" 暂未实现，当前仅支持 feature=file（文件上传）、feature=redis（缓存管理）和 feature=mq（消息队列）。`,
+        `TODO: 特性 "${feature}" 暂未实现，当前仅支持 feature=file（文件上传）、feature=redis（缓存管理）、feature=mq（消息队列）和 feature=log（日志）。`,
       );
       return;
     }
@@ -481,6 +490,229 @@ async function addMqFeatureToApi(ctx: AddMqFeatureContext): Promise<void> {
   } else {
     logger.info('检测到 MQ 控制器已存在，跳过创建。');
   }
+}
+
+type AddLogFeatureContext = {
+  apiDir: string;
+  rootDir: string;
+  logger: Logger;
+};
+
+async function addLogFeatureToApi(ctx: AddLogFeatureContext): Promise<void> {
+  const { apiDir, logger } = ctx;
+
+  // 1) 更新 api package.json 依赖（log starter）
+  const pkgPath = path.join(apiDir, 'package.json');
+  if (!(await fs.pathExists(pkgPath))) {
+    throw new Error(`未找到 API package.json：${pkgPath}`);
+  }
+  const pkg = await fs.readJson(pkgPath);
+  pkg.dependencies = pkg.dependencies ?? {};
+
+  if (!pkg.dependencies['@ai-partner-x/aiko-boot-starter-log']) {
+    pkg.dependencies['@ai-partner-x/aiko-boot-starter-log'] = 'workspace:*';
+  }
+
+  await fs.writeJson(pkgPath, pkg, { spaces: 2 });
+  logger.info('更新依赖：已写入 aiko-boot-starter-log。');
+
+  // 2) 更新 app.config.ts，增加 logging 配置（如果尚未存在）
+  const appConfigPath = path.join(apiDir, 'app.config.ts');
+  if (await fs.pathExists(appConfigPath)) {
+    let content = await fs.readFile(appConfigPath, 'utf-8');
+    if (!content.includes('logging:')) {
+      const marker = '} satisfies AppConfig;';
+      const loggingBlock = createLoggingConfigBlock();
+      if (!content.includes(marker)) {
+        throw new Error(
+          `无法在 app.config.ts 中找到 "${marker}"，请手动合并 logging 配置。`,
+        );
+      }
+      content = content.replace(marker, `${loggingBlock}${marker}`);
+      await fs.writeFile(appConfigPath, content, 'utf-8');
+      logger.info('已在 app.config.ts 中注入 logging 配置。');
+    } else {
+      logger.info('检测到 app.config.ts 已存在 logging 配置，跳过注入。');
+    }
+  } else {
+    logger.warn?.('未找到 app.config.ts，跳过 logging 配置注入。');
+  }
+
+  // 3) 更新 server.ts，集成日志初始化、HTTP 请求日志中间件、全局错误日志处理
+  const serverPath = path.join(apiDir, 'src', 'server.ts');
+  if (await fs.pathExists(serverPath)) {
+    let serverCode = await fs.readFile(serverPath, 'utf-8');
+    let changed = false;
+
+    // a) 确保引入并调用 autoInit + getLogger
+    if (!serverCode.includes("from '@ai-partner-x/aiko-boot-starter-log'")) {
+      serverCode = serverCode.replace(
+        "import { createApp } from '@ai-partner-x/aiko-boot';",
+        "import { createApp } from '@ai-partner-x/aiko-boot';\nimport { autoInit, getLogger } from '@ai-partner-x/aiko-boot-starter-log';",
+      );
+      changed = true;
+    }
+    if (!serverCode.includes('autoInit();')) {
+      // 在 import 后尽量靠前插入
+      serverCode = serverCode.replace(
+        "import { autoInit, getLogger } from '@ai-partner-x/aiko-boot-starter-log';",
+        "import { autoInit, getLogger } from '@ai-partner-x/aiko-boot-starter-log';\n\nautoInit();",
+      );
+      changed = true;
+    }
+    if (!serverCode.includes("getLogger('server')")) {
+      // 在 autoInit 后创建 logger
+      serverCode = serverCode.replace(
+        'autoInit();',
+        "autoInit();\nconst logger = getLogger('server');\n\nlogger.info('Starting API server...');",
+      );
+      changed = true;
+    }
+
+    // b) 引入 RequestLogService（本 feature 提供）
+    if (!serverCode.includes('RequestLogService')) {
+      serverCode = serverCode.replace(
+        "import express from 'express';",
+        "import express from 'express';\nimport { RequestLogService } from './service/log.request.service';",
+      );
+      changed = true;
+    }
+
+    // c) 挂载请求日志中间件
+    const jsonLine = 'expressApp.use(express.json());';
+    if (serverCode.includes(jsonLine) && !serverCode.includes('RequestLogService.requestLogMiddleware')) {
+      serverCode = serverCode.replace(
+        jsonLine,
+        `${jsonLine}\n\n// HTTP request logging\nexpressApp.use(RequestLogService.requestLogMiddleware);`,
+      );
+      changed = true;
+    }
+
+    // d) 全局错误处理中间件（放在 listen 前）
+    if (!serverCode.includes('Global error handler')) {
+      const listenMarker = 'expressApp.listen(';
+      if (serverCode.includes(listenMarker)) {
+        serverCode = serverCode.replace(
+          listenMarker,
+          `// Global error handler\nexpressApp.use((err: unknown, req: any, res: any, next: any) => {\n  // eslint-disable-next-line @typescript-eslint/no-unused-vars\n  void next;\n  const error = err instanceof Error ? err : new Error(String(err));\n  logger.error('Unhandled error', error, {\n    method: req?.method,\n    url: req?.url,\n    path: req?.path,\n  });\n  if (!res.headersSent) {\n    res.status(500).json({ message: 'Internal Server Error' });\n  }\n});\n\n${listenMarker}`,
+        );
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      await fs.writeFile(serverPath, serverCode, 'utf-8');
+      logger.info('已在 src/server.ts 中集成日志初始化、请求日志中间件与全局错误处理。');
+    } else {
+      logger.info('检测到 src/server.ts 已包含日志相关配置，跳过修改。');
+    }
+  } else {
+    logger.warn?.('未找到 src/server.ts，跳过服务端集成。');
+  }
+
+  // 4) 复制 log 相关文件模板（services + docs）
+  const templateBaseDir = path.resolve(
+    __dirname,
+    '../../templates/feature-log/api',
+  );
+
+  const serviceDir = path.join(apiDir, 'src', 'service');
+  await fs.ensureDir(serviceDir);
+
+  const logServicePath = path.join(serviceDir, 'log.service.ts');
+  if (!(await fs.pathExists(logServicePath))) {
+    await fs.copy(
+      path.join(templateBaseDir, 'src', 'service', 'log.service.ts'),
+      logServicePath,
+    );
+    logger.info('已创建日志服务 src/service/log.service.ts。');
+  } else {
+    logger.info('检测到日志服务已存在，跳过创建。');
+  }
+
+  const requestLogServicePath = path.join(serviceDir, 'log.request.service.ts');
+  if (!(await fs.pathExists(requestLogServicePath))) {
+    await fs.copy(
+      path.join(templateBaseDir, 'src', 'service', 'log.request.service.ts'),
+      requestLogServicePath,
+    );
+    logger.info('已创建请求日志服务 src/service/log.request.service.ts。');
+  } else {
+    logger.info('检测到请求日志服务已存在，跳过创建。');
+  }
+
+  const docsDir = path.join(apiDir, 'docs');
+  await fs.ensureDir(docsDir);
+  const docsPath = path.join(docsDir, 'log-integration-guide.md');
+  if (!(await fs.pathExists(docsPath))) {
+    await fs.copy(
+      path.join(templateBaseDir, 'docs', 'log-integration-guide.md'),
+      docsPath,
+    );
+    logger.info('已创建 docs/log-integration-guide.md。');
+  } else {
+    logger.info('检测到 docs/log-integration-guide.md 已存在，跳过创建。');
+  }
+}
+
+function createLoggingConfigBlock(): string {
+  return `  logging: {
+    // 日志级别：error, warn, info, http, verbose, debug, silly
+    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+
+    // 输出格式：json, cli, pretty, simple
+    format: process.env.NODE_ENV === 'production' ? 'json' : 'cli',
+
+    // 是否启用颜色
+    colorize: process.env.NODE_ENV !== 'production',
+
+    // 是否显示时间戳
+    timestamp: true,
+
+    // 默认元数据
+    defaultMeta: {
+      service: 'scaffold-api',
+      version: '0.1.0',
+      env: process.env.NODE_ENV || 'development',
+    },
+
+    // 传输配置
+    transports: [
+      {
+        type: 'console',
+        enabled: true,
+        level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+        format: process.env.NODE_ENV === 'production' ? 'json' : 'cli',
+        colorize: process.env.NODE_ENV !== 'production',
+      },
+      {
+        type: 'file',
+        enabled: true,
+        filename: './logs/log-{date}.log',
+        level: 'info',
+        maxSize: '10m',
+        maxFiles: 7,
+        format: 'json',
+        rotateByDate: true,
+        retentionDays: 30,
+        maxFileSize: 100,
+      },
+      {
+        type: 'file',
+        enabled: true,
+        filename: './logs/error-{date}.log',
+        level: 'error',
+        maxSize: '10m',
+        maxFiles: 30,
+        format: 'json',
+        rotateByDate: true,
+        retentionDays: 30,
+        maxFileSize: 100,
+      },
+    ],
+  },
+
+`;
 }
 
 

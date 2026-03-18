@@ -39,4 +39,3 @@ if (users.length > 0 && roles.length > 0) {
 }
 
 process.exit(0);
-

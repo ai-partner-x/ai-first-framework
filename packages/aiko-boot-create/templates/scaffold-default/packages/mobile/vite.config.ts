@@ -13,6 +13,8 @@ export default defineConfig({
     port: 3002,
   },
   optimizeDeps: {
-    include: ['@scaffold/core'],
+    // workspace package exports can change frequently during development;
+    // excluding avoids stale pre-bundled output missing new named exports.
+    exclude: ['@scaffold/core'],
   },
 });

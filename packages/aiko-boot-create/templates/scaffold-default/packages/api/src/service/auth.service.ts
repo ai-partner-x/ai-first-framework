@@ -1,12 +1,14 @@
 import 'reflect-metadata';
 import { Service, Autowired } from '@ai-partner-x/aiko-boot';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken'; // 只用于refresh token，access token使用安全组件
+import { JwtStrategy } from '@ai-partner-x/aiko-boot-starter-security';
 import { UserMapper } from '../mapper/user.mapper.js';
 import { UserRoleMapper } from '../mapper/user-role.mapper.js';
 import { RoleMapper } from '../mapper/role.mapper.js';
 import { RoleMenuMapper } from '../mapper/role-menu.mapper.js';
 import { MenuMapper } from '../mapper/menu.mapper.js';
+import type { User } from '@ai-partner-x/aiko-boot-starter-security';
 
 import type { LoginDto, LoginResultDto } from '../dto/auth.dto.js';
 
@@ -26,6 +28,9 @@ export class AuthService {
 
   @Autowired(MenuMapper)
   private menuMapper!: MenuMapper;
+
+  @Autowired(JwtStrategy)
+  private jwtStrategy!: JwtStrategy;
 
   async login(dto: LoginDto): Promise<LoginResultDto> {
     const user = await this.userMapper.selectByUsername(dto.username);
@@ -50,8 +55,8 @@ export class AuthService {
       permissions: permissions, // 使用字符串数组格式
     };
 
-    // 生成JWT token - 这里简化处理，实际应该通过框架的JwtStrategy
-    const accessToken = this.generateAccessToken(frameworkUser);
+    // 生成JWT token - 使用安全组件的JwtStrategy
+    const accessToken = await this.jwtStrategy.generateToken(frameworkUser as User);
     const refreshToken = this.generateRefreshToken(user.id);
 
     return {
@@ -78,7 +83,7 @@ export class AuthService {
       permissions: permissions,
     };
 
-    const accessToken = this.generateAccessToken(frameworkUser);
+    const accessToken = await this.jwtStrategy.generateToken(frameworkUser as User);
     return { accessToken };
   }
 
@@ -98,13 +103,23 @@ export class AuthService {
   }
 
   async getCurrentUserByToken(accessToken: string): Promise<LoginResultDto['userInfo']> {
-    const payload = this.verifyAccessToken(accessToken);
-    // JWT payload uses 'sub' field for user ID
-    const userId = payload.sub || payload.userId;
-    if (!userId) {
-      throw new Error('Invalid token payload: missing user ID');
+    try {
+      // 使用安全组件的JwtStrategy验证token
+      const user = await this.jwtStrategy.validate(accessToken);
+      if (!user) {
+        throw new Error('Invalid token');
+      }
+      return this.getUserInfo(user.id);
+    } catch (error: any) {
+      if (error.name === 'TokenExpiredError') {
+        throw new Error('Token has expired');
+      } else if (error.name === 'JsonWebTokenError') {
+        throw new Error('Invalid token: ' + error.message);
+      } else if (error.name === 'NotBeforeError') {
+        throw new Error('Token not active yet');
+      }
+      throw error;
     }
-    return this.getUserInfo(userId);
   }
 
   private async getUserRolesAndPermissions(userId: number) {
@@ -134,31 +149,12 @@ export class AuthService {
     return { roles: [...new Set(roles)], permissions: [...new Set(permissions)] };
   }
 
-  // 临时JWT生成方法，应该与框架的JwtStrategy保持一致
-  private generateAccessToken(user: any): string {
-    const secret = process.env.JWT_SECRET || 'aiko-boot-admin-secret-2025-develop-change';
-    const expiresIn = '2h';
-
-    const payload = {
-      sub: user.id,
-      username: user.username,
-      email: user.email,
-      roles: user.roles?.map(function(r) { return typeof r === 'string' ? r : r.name; }) || [],
-      permissions: user.permissions || [],
-    };
-    return jwt.sign(payload, secret, { expiresIn } as any);
-  }
-
+  // Refresh token 方法（使用独立的secret，与安全组件的JWT分离）
   private generateRefreshToken(userId: number): string {
     const secret = process.env.JWT_REFRESH_SECRET || 'ai-first-refresh-secret-change-in-production';
     const expiresIn = '7d';
 
     return jwt.sign({ userId }, secret, { expiresIn } as any);
-  }
-
-  private verifyAccessToken(token: string): any {
-    const secret = process.env.JWT_SECRET || 'aiko-boot-admin-secret-2025-develop-change';
-    return jwt.verify(token, secret);
   }
 
   private verifyRefreshToken(token: string): any {

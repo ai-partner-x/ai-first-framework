@@ -73,4 +73,3 @@ export class SecurityAutoConfiguration {
     this.logger.info('Security middleware configured successfully');
   }
 }
-

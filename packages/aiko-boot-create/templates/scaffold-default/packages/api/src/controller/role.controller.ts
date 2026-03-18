@@ -4,6 +4,7 @@ import {
   PathVariable, RequestBody,
 } from '@ai-partner-x/aiko-boot-starter-web';
 import { Autowired } from '@ai-partner-x/aiko-boot/di/server';
+import { ApiPermission, ButtonPermission } from '@ai-partner-x/aiko-boot-starter-security';
 import { RoleService } from '../service/role.service.js';
 import type { CreateRoleDto, UpdateRoleDto } from '../dto/role.dto.js';
 
@@ -97,4 +98,3 @@ export class RoleController {
     return this.roleService.updateRole(Number(id), { menuIds: body.menuIds });
   }
 }
-

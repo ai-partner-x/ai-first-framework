@@ -12,4 +12,3 @@ export default defineConfig({
   // Keep TypeScript source files for runtime discovery
   splitting: false,
 });
-

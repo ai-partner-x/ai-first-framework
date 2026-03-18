@@ -247,7 +247,7 @@ export class UserController {
 
 ## 更多信息
 
-- [Aiko Boot 官方文档](../../../../../docs/)
+- [Aiko Boot 官方文档](https://github.com/ai-partner-x/aiko-boot)
 - [项目分析报告](../../../../../项目分析报告.md)
 - [Security Starter README](../../../../../packages/aiko-boot-starter-security/README.md)
 
@@ -660,5 +660,5 @@ server {
 
 - [项目结构说明](complete/PROJECT_STRUCTURE.md)
 - [测试报告](complete/tests/TEST_REPORT.md)
-- [Aiko Boot 官方文档](../../../../../docs/)
+- [Aiko Boot 官方文档](https://github.com/ai-partner-x/aiko-boot)
 - [Security Starter README](../../../../../packages/aiko-boot-starter-security/README.md)

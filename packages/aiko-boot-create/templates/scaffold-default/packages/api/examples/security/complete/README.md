@@ -842,6 +842,6 @@ export class HealthController {
 
 ## 更多信息
 
-- [Aiko Boot 官方文档](../../../../../docs/)
+- [Aiko Boot 官方文档](https://github.com/ai-partner-x/aiko-boot)
 - [项目分析报告](../../../../../项目分析报告.md)
 - [Security Starter README](../../../../../packages/aiko-boot-starter-security/README.md)

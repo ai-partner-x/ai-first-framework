@@ -285,5 +285,5 @@ git push origin feature/xxx --force-with-lease
 ## 相关文档
 
 - [GitHub Actions 工作流说明](./github-actions-workflows.md)
-- [API 开发指南](./api-development.md)
-- [Aiko Boot 插件开发指南](./aiko-boot-plugin-guide.md)
+- [API 开发指南](../guide/api-development.md)
+- [Aiko Boot 插件开发指南](../core/plugin-guide.md)

@@ -19,7 +19,9 @@
   ],
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "sync:templates:scaffold-default": "node ./scripts/sync-scaffold-default.mjs",
+    "sync:templates:scaffold-default:dry": "node ./scripts/sync-scaffold-default.mjs --dry-run"
   },
   "dependencies": {
     "commander": "^12.1.0",

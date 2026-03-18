@@ -29,4 +29,3 @@ await db.updateTable('sys_user')
 console.log('\n✅ admin 密码已重置为: admin123');
 
 process.exit(0);
-

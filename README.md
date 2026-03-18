@@ -21,6 +21,7 @@ aiko-boot/
 │   ├── aiko-boot-starter-web/          # Web Starter (HTTP 装饰器)
 │   ├── aiko-boot-starter-orm/          # ORM Starter (MyBatis-Plus API)
 │   ├── aiko-boot-starter-validation/   # Validation Starter
+│   ├── aiko-boot-starter-log/          # Logging Starter
 │   ├── aiko-boot-codegen/              # TypeScript → Java 转译器
 │   └── eslint-plugin-aiko-boot/        # ESLint Java 兼容规则
 ├── app/
@@ -54,6 +55,21 @@ pnpm install
 
 ```bash
 pnpm build
+```
+
+## 📖 文档站点（VitePress）
+
+本仓库的文档源文件在 `docs/`，使用 VitePress 构建与预览：
+
+```bash
+# 本地开发（热更新）
+pnpm docs:dev
+
+# 构建静态站点（输出到 docs/.vitepress/dist）
+pnpm docs:build
+
+# 预览构建产物
+pnpm docs:preview
 ```
 
 ### 运行示例项目
@@ -114,6 +130,14 @@ MyBatis-Plus 风格 ORM，底层使用 Kysely：
 | `UpdateWrapper<T>` | 更新构造器 |
 
 **支持数据库**: PostgreSQL、SQLite、MySQL
+
+### @ai-partner-x/aiko-boot-starter-log
+
+统一日志 Starter，基于 `winston` 风格的多级别、多传输配置，支持：
+
+- `getLogger(name)` / `autoInit()` 一键初始化
+- `logging` 配置块（默认元数据、console/file transports）
+- HTTP 请求日志中间件与装饰器集成（详见文档 `aiko-boot-starter-log`）
 
 ### @ai-partner-x/aiko-boot-codegen
 
