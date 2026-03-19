@@ -48,7 +48,7 @@ export default withMermaid(
 
     nav: [
       { text: '首页', link: '/' },
-      { text: '快速开始', link: '/guide/cli/aiko-boot-create' },
+      { text: '快速开始', link: '/guide/cli/aiko-boot-cli' },
       { text: '核心指南', link: '/core/plugin-guide' },
       { text: '开发指南', link: '/guide/api-development' },
       { text: 'Starter', link: '/starters/storage' },
@@ -60,7 +60,7 @@ export default withMermaid(
         text: '快速入口',
         items: [
           { text: 'README（仓库）', link: 'https://github.com/ai-partner-x/aiko-boot' },
-          { text: 'aiko-boot（脚手架 CLI）', link: '/guide/cli/aiko-boot-create' },
+          { text: 'aiko-boot（脚手架 CLI）', link: '/guide/cli/aiko-boot-cli' },
           { text: '核心能力与插件开发指南', link: '/core/plugin-guide' },
         ],
       },
